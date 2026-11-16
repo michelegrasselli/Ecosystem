@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="description" content="Ecosystem Planet — simulazione procedurale di un pianeta esplorabile in stile cartoon." />
+    <title>Ecosystem Planet</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='%233f7c74'/%3E%3Cpath d='M6 20c4-1 6-5 10-4s6 4 10 2' stroke='%23c9b07a' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <canvas id="scene"></canvas>
+
+    <!-- HUD -->
+    <div id="hud" class="hud">
+      <div class="hud-block" id="hud-readout">
+        <div class="hud-row"><span class="hud-key">Lat</span><span class="hud-val" id="hud-lat">0.00°</span></div>
+        <div class="hud-row"><span class="hud-key">Lon</span><span class="hud-val" id="hud-lon">0.00°</span></div>
+        <div class="hud-row"><span class="hud-key">Quota</span><span class="hud-val" id="hud-alt">—</span></div>
+        <div class="hud-row"><span class="hud-key">Bioma</span><span class="hud-val" id="hud-biome">—</span></div>
+        <div class="hud-row"><span class="hud-key">Temp</span><span class="hud-val" id="hud-temp">—</span></div>
+      </div>
+
+      <div class="hud-tools">
+        <button class="tool" id="btn-zoom-in" title="Zoom avanti">+</button>
+        <button class="tool" id="btn-zoom-out" title="Zoom indietro">−</button>
+        <button class="tool" id="btn-home" title="Torna allo spazio">⌂</button>
+      </div>
+
+      <!-- Tasto volutamente poco visibile -->
+      <button id="btn-save" class="save-ghost" title="Salva lo stato del pianeta (Ctrl+S)">salva</button>
+      <div id="toast" class="toast"></div>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading" class="loading">
+      <div class="loading-inner">
+        <div class="loading-title">ECOSYSTEM PLANET</div>
+        <div class="loading-sub" id="loading-step">inizializzazione…</div>
+        <div class="loading-bar"><div class="loading-fill" id="loading-fill"></div></div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
