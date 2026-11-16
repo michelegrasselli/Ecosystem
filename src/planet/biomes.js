@@ -49,9 +49,9 @@ export const BIOME_NAME = {
 const C = (r, g, b) => [r / 255, g / 255, b / 255]
 
 export const PALETTE = {
-  [BIOME.OCEAN_DEEP]: C(19, 48, 74),
-  [BIOME.OCEAN]: C(30, 76, 108),
-  [BIOME.OCEAN_SHELF]: C(51, 116, 141),
+  [BIOME.OCEAN_DEEP]: C(23, 57, 86),
+  [BIOME.OCEAN]: C(34, 85, 118),
+  [BIOME.OCEAN_SHELF]: C(58, 126, 150),
   [BIOME.LAKE]: C(52, 118, 138),
   [BIOME.RIVER]: C(58, 126, 146),
   [BIOME.BEACH]: C(205, 187, 143),

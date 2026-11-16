@@ -25,20 +25,22 @@ const RAD = 180 / Math.PI
 export const degToRad = (d) => d * DEG
 export const radToDeg = (r) => r * RAD
 
-/** Direzione unitaria da latitudine/longitudine (gradi). Longitudine 0 => +X, 90 => +Z. */
+/** Direzione unitaria da latitudine/longitudine (gradi).
+ *  Convenzione destrorsa: est = (-sin λ, 0, -cos λ), nord = d(dir)/dφ.
+ *  Con questa scelta (est, nord, alto) è una terna destrorsa: la mappa non è specchiata. */
 export function latLonToDir(lat, lon, out = { x: 0, y: 0, z: 0 }) {
   const la = lat * DEG
   const lo = lon * DEG
   const cl = Math.cos(la)
   out.x = cl * Math.cos(lo)
   out.y = Math.sin(la)
-  out.z = cl * Math.sin(lo)
+  out.z = -cl * Math.sin(lo)
   return out
 }
 
 export function dirToLatLon(x, y, z) {
   const lat = Math.asin(clamp(y, -1, 1)) * RAD
-  const lon = Math.atan2(z, x) * RAD
+  const lon = Math.atan2(-z, x) * RAD
   return { lat, lon }
 }
 

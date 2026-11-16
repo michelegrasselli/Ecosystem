@@ -50,9 +50,9 @@ export class Planet {
     pz *= pl
 
     // ---------- 2. Continentalità ----------
-    const base = fbm(n, px * 1.45, py * 1.45, pz * 1.45, 4)
-    const macro = fbm(n, px * 0.62 + 31.7, py * 0.62 - 12.3, pz * 0.62 + 5.9, 2)
-    const cont = base * 0.63 + macro * 0.37
+    const base = fbm(n, px * 1.05, py * 1.05, pz * 1.05, 4)
+    const macro = fbm(n, px * 0.48 + 31.7, py * 0.48 - 12.3, pz * 0.48 + 5.9, 2)
+    const cont = base * 0.55 + macro * 0.45
 
     // ---------- 3. Latitudine ----------
     const absLat = Math.abs(radToDeg(Math.asin(clamp(y, -1, 1))))
@@ -220,7 +220,7 @@ export class Planet {
     const la = degToRad(lat)
     const lo = degToRad(lon)
     const cl = Math.cos(la)
-    return this.sample(cl * Math.cos(lo), Math.sin(la), cl * Math.sin(lo), quality, out)
+    return this.sample(cl * Math.cos(lo), Math.sin(la), -cl * Math.sin(lo), quality, out)
   }
 }
 

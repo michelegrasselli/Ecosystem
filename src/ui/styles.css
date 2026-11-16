@@ -1,0 +1,226 @@
+:root {
+  --ink: #e8eef2;
+  --muted: #9fb0bb;
+  --panel: rgba(14, 22, 28, 0.55);
+  --edge: rgba(190, 215, 230, 0.16);
+  --accent: #8fd0c4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #05080c;
+  color: var(--ink);
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+#scene {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  touch-action: none;
+  outline: none;
+  cursor: grab;
+}
+
+#scene:active {
+  cursor: grabbing;
+}
+
+/* ---------------------------------------------------------------- HUD */
+
+.hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.hud-block {
+  position: absolute;
+  left: 18px;
+  bottom: 18px;
+  min-width: 186px;
+  padding: 11px 13px 10px;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+}
+
+.hud-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  line-height: 1.65;
+}
+
+.hud-key {
+  color: var(--muted);
+  text-transform: uppercase;
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  padding-top: 2px;
+}
+
+.hud-val {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+/* --------------------------------------------------------------- tools */
+
+.hud-tools {
+  position: absolute;
+  right: 18px;
+  top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.tool {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--edge);
+  background: var(--panel);
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.tool:hover {
+  background: rgba(30, 46, 56, 0.75);
+  border-color: rgba(190, 215, 230, 0.32);
+}
+
+.tool:active {
+  transform: scale(0.94);
+}
+
+/* ------------------------------------------------------- tasto "salva" */
+/* Volutamente quasi invisibile: si nota solo se lo si cerca. */
+
+.save-ghost {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  pointer-events: auto;
+  padding: 5px 11px;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: lowercase;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  opacity: 0.13;
+  cursor: pointer;
+  transition: opacity 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+}
+
+.save-ghost:hover {
+  opacity: 0.85;
+  border-color: var(--edge);
+  background: var(--panel);
+}
+
+.save-ghost.saved {
+  opacity: 1;
+  color: var(--accent);
+  border-color: rgba(143, 208, 196, 0.4);
+}
+
+/* --------------------------------------------------------------- toast */
+
+.toast {
+  position: absolute;
+  right: 18px;
+  bottom: 58px;
+  padding: 7px 12px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ------------------------------------------------------------- loading */
+
+.loading {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 42%, #0d1a24 0%, #05080c 62%);
+  transition: opacity 0.6s ease;
+}
+
+.loading.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading-inner {
+  text-align: center;
+  width: min(320px, 76vw);
+}
+
+.loading-title {
+  font-size: 12px;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+
+.loading-sub {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  margin-bottom: 16px;
+  min-height: 15px;
+}
+
+.loading-bar {
+  height: 2px;
+  background: rgba(190, 215, 230, 0.12);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.loading-fill {
+  height: 100%;
+  width: 4%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.35s ease;
+}
