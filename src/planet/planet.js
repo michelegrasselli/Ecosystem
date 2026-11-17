@@ -30,11 +30,16 @@ export class Planet {
    * @param {number} x @param {number} y @param {number} z direzione unitaria
    * @param {number} quality 0..1 — quanto dettaglio calcolare (LOD)
    * @param {object} [out] oggetto di output riutilizzabile
+   * @param {number} [spacingKm] lato della maglia della mesh che userà il campione.
+   *   Serve solo a esagerare i corsi d'acqua quando la griglia è grossa:
+   *   non influenza le quote, quindi non crea crepe tra livelli LOD.
    */
-  sample(x, y, z, quality = 1, out = this._out) {
+  sample(x, y, z, quality = 1, out = this._out, spacingKm = 0) {
     const n = this.noise
     const nd = this.noiseDetail
     const q = quality
+    // esagerazione cartografica dei fiumi per griglie grossolane
+    const mapScale = spacingKm > 0 ? clamp(spacingKm / 1.0, 1, 10) : 1
 
     // ---------- 1. Domain warping ----------
     // Deforma le coordinate per ottenere coste organiche invece che "a bolle".
@@ -84,6 +89,15 @@ export class Planet {
       }
       if (q > 0.8) {
         height += fbm(nd, px * 68.0, py * 68.0, pz * 68.0, 2) * 9 * inland
+      }
+
+      // rilievo di media scala (colline di 10-30 km): è quello che dà
+      // "corpo" al terreno quando si scende da 900 km a poche decine di km.
+      if (q > 0.5) {
+        const hills =
+          nd.noise(px * 235 + 4.7, py * 235 - 2.3, pz * 235 + 9.1) * 0.72 +
+          nd.noise(px * 690 - 8.2, py * 690 + 5.5, pz * 690 - 1.4) * 0.28
+        height += hills * 170 * inland
       }
     }
 
@@ -137,20 +151,36 @@ export class Planet {
     }
 
     // ---------- 9. Fiumi ----------
+    let valley = 0
+    let riverAmount = 0
     if (!isSea && !isLake && q > 0.42 && height > 4 && height < 2600) {
       const riverField = fbm(nd, px * 13.0 + 41.5, py * 13.0 - 3.2, pz * 13.0 + 19.7, 2)
       const d = Math.abs(riverField)
-      // larghezza ~600 m costanti: leggibile anche a LOD basso, stile cartografico
-      const width = (600 / PLANET_RADIUS) * 13.0
-      const river = 1 - smoothstep(0, width, d)
-      if (river > 0.01) {
-        const corridor = smoothstep(0.0, 0.2, moist + 0.35) * smoothstep(2800, 1400, height)
-        const r = river * corridor
-        if (r > 0.06) {
-          height = lerp(height, Math.max(height - 22, 1.5), r)
-          water = Math.max(water, r)
-          isRiver = true
-        }
+      // Letto largo ~2 km: abbastanza da coprire più maglie della griglia,
+      // così il fiume resta una linea continua invece di una fila di puntini.
+      const width = (2200 / PLANET_RADIUS) * 13.0
+      const mapWidth = width * mapScale
+      const corridor = smoothstep(0.0, 0.2, moist + 0.35) * smoothstep(2800, 1400, height)
+
+      // l'acqua (colore) è esagerata sulle griglie grossolane...
+      riverAmount = (1 - smoothstep(0, mapWidth, d)) * corridor
+
+      // ...l'incisione del terreno invece resta alla sua larghezza reale,
+      // così le quote sono identiche a ogni livello LOD
+      const carve = (1 - smoothstep(0, width, d)) * corridor
+      if (carve > 0.02) {
+        height = lerp(height, Math.max(height - 26, 1.5), carve)
+      }
+      if (riverAmount > 0.18) {
+        water = Math.max(water, riverAmount)
+        isRiver = true
+      }
+
+      // Fascia valliva: accompagna il corso del fiume anche dove l'acqua è
+      // più sottile di una maglia.
+      valley = (1 - smoothstep(mapWidth, mapWidth * 2.5, d)) * corridor
+      if (!isRiver && valley > 0.05) {
+        height = lerp(height, Math.max(height - 7, 1.5), valley)
       }
     }
 
@@ -177,8 +207,11 @@ export class Planet {
     let g = col[1]
     let b = col[2]
 
-    // variazione sottile per evitare superfici piatte
-    const v = 1 + 0.12 * (moistNoise * 0.5 + 0.5 - 0.5)
+    // variazione di albedo: senza, il terreno sembra un tappeto di colore piatto.
+    // Su maglie grossolane va spenta, altrimenti aliasa e i blocchi LOD si vedono.
+    const mottleFade = spacingKm > 0 ? clamp(1 - (spacingKm - 12) / 90, 0, 1) : 1
+    const mottle = fbm(nd, px * 150 + 17.3, py * 150 - 9.8, pz * 150 + 3.6, 2)
+    const v = 1 + 0.05 * moistNoise + 0.07 * mottle * mottleFade
     if (biome === BIOME.OCEAN_DEEP) {
       r = lerp(col[0], 0.05, smoothstep(0, 1, clamp((-height - 2600) / 6000, 0, 1)))
       g = lerp(col[1], 0.11, smoothstep(0, 1, clamp((-height - 2600) / 6000, 0, 1)))
@@ -191,6 +224,26 @@ export class Planet {
       r *= 1 - 0.1 * tint
       g *= 1 - 0.1 * tint
       b *= 1 + 0.09 * tint
+    }
+
+    // la valle del fiume resta leggibile anche quando l'acqua è più sottile
+    // di una maglia della griglia
+    if (!isSea && valley > 0.02) {
+      const k = Math.min(valley, 1)
+      r = lerp(r, 0.30, 0.30 * k)
+      g = lerp(g, 0.40, 0.28 * k)
+      b = lerp(b, 0.46, 0.26 * k)
+    }
+
+    // l'acqua del fiume entra in modo continuo, senza scalini di bioma
+    if (!isSea && riverAmount > 0.02) {
+      const rc = RIVER_RGB
+      const k = Math.min(riverAmount * 1.25, 1)
+      // le linee esagerate per il LOD basso restano più tenui, come su una mappa
+      const blend = 0.85 / Math.pow(mapScale, 0.35)
+      r = lerp(r, rc[0], blend * k)
+      g = lerp(g, rc[1], blend * k)
+      b = lerp(b, rc[2], blend * k)
     }
 
     out.height = height
@@ -223,6 +276,9 @@ export class Planet {
     return this.sample(cl * Math.cos(lo), Math.sin(la), -cl * Math.sin(lo), quality, out)
   }
 }
+
+/** Colore dell'acqua dei fiumi (condiviso con la palette dei biomi). */
+const RIVER_RGB = rgbFor(BIOME.RIVER)
 
 /** Le spiagge non devono ricoprire tutta la costa: le rendiamo a chiazze. */
 function moistureSandy(noiseValue, absLat) {

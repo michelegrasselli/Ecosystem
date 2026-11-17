@@ -22,14 +22,14 @@ distribuzione di mari/continenti, laghi, fiumi, fasce climatiche e temperature.
 
 | # | Requisito | Stato |
 |---|-----------|-------|
-| R1 | Vista della Terra in stile Google Earth, con **lo stesso stile di navigazione** (drag per ruotare, scroll per zoomare, tilt, fly-to) | da implementare |
-| R2 | Zoom **multi-scala**: dallo spazio fino a scala regionale (es. Sahara) | da implementare |
+| R1 | Vista della Terra in stile Google Earth, con **lo stesso stile di navigazione** (drag per ruotare, scroll per zoomare, tilt, fly-to) | **fatto** |
+| R2 | Zoom **multi-scala**: dallo spazio fino a scala regionale (es. Sahara) | **fatto** (LOD 0→15) |
 | R3 | A scala regionale si devono poter vedere animali e piante **senza appesantire la grafica** | rimandato (fase 2) |
-| R4 | Contenuto **ragionevolmente fedele**: ambienti, temperature, conformazione territoriale | da implementare |
-| R5 | **Per ora**: solo modello del pianeta — continenti, mari, oceani, laghi, fiumi, rilievi. **Niente piante né animali.** | da implementare |
-| R6 | Stile grafico **cartoon**, tipo Animal Crossing ma **meno bambinesco e più maturo** | da implementare |
-| R7 | Tasto **poco visibile "Salva"** che salva lo stato del pianeta | da implementare |
-| R8 | Lo stato salvato viene **ricaricato automaticamente** al prossimo avvio | da implementare |
+| R4 | Contenuto **ragionevolmente fedele**: ambienti, temperature, conformazione territoriale | **fatto** per il pianeta |
+| R5 | **Per ora**: solo modello del pianeta — continenti, mari, oceani, laghi, fiumi, rilievi. **Niente piante né animali.** | **fatto** |
+| R6 | Stile grafico **cartoon**, tipo Animal Crossing ma **meno bambinesco e più maturo** | **fatto** (toon a bande morbide, palette spenta) |
+| R7 | Tasto **poco visibile "Salva"** che salva lo stato del pianeta | **fatto** |
+| R8 | Lo stato salvato viene **ricaricato automaticamente** al prossimo avvio | **fatto** (verificato) |
 | R9 | Repository GitHub con **commit + push dopo ogni prompt** | attivo |
 
 ---
@@ -47,19 +47,48 @@ distribuzione di mari/continenti, laghi, fiumi, fasce climatiche e temperature.
 
 ### 3.2 Scala e dettaglio (R2 + R3)
 
-- Il pianeta ha raggio `R = 6371 km` (Terra), unità di scena 1 = 1 km per comodità nei calcoli,
-  poi scalato nella scena 3D.
-- Navigazione a **modello camera look-at su punto di superficie**:
-  - `lat`, `lon` → punto target
-  - `range` → distanza camera↔target
-  - `pitch` → angolo di inclinazione (90° = zenitale)
-  - `heading` → rotazione
-- **Due livelli di rendering del pianeta**:
-  1. **FarGlobe**: sfera unica ad alta risoluzione per la vista dallo spazio. Economica.
-  2. **TerrainLOD**: quadtree su cubo-sfera (6 facce), attivo solo sotto una certa quota.
-     Risoluzione adattiva per livello, skirt per nascondere le crepe, budget di tile per frame.
-- Il dettaglio *non* deve crescere all'infinito: tetto massimo di livello LOD e risoluzione
-  per tile tarata per restare fluido su un laptop medio.
+- Il pianeta ha raggio `R = 6371 km` (Terra), unità di scena 1 = 1 km, con
+  `logarithmicDepthBuffer` per gestire l'enorme intervallo di profondità.
+- Navigazione a **modello camera su punto di superficie**:
+  - `lat`, `lon` → punto sotto la camera
+  - `altitude` → quota sopra la superficie, in km
+  - `pitch` → inclinazione (90° = zenitale, 20-30° = vista radente)
+  - `heading` → orientamento
+  - La base della camera è costruita **esplicitamente** (destra, alto, avanti) invece che
+    con `lookAt`: evita la degenerazione allo zenit e mantiene la terna destrorsa.
+- **Un solo sistema di rendering**: `TerrainLOD`, un quadtree su cubo-sfera (6 facce) attivo
+  a ogni quota. Non esiste una sfera separata per la vista dallo spazio: a quota alta
+  bastano i livelli 0-3. Vantaggi: una sola `Planet.sample()` come verità, nessun pop
+  nel passaggio tra "globo lontano" e "terreno vicino".
+- LOD: una tile si suddivide quando supera `SPLIT_PIXELS = 110` pixel a schermo; livello
+  massimo 15. Budget di generazione per frame (`buildBudgetMs`), priorità alle tile vicine.
+- Risoluzione per tile (`tileResForLevel`): 10 → 44 vertici per lato secondo il livello,
+  scelta per tenere ~2 pixel per maglia a schermo.
+- `qualityForLevel()` restituisce sempre `1`: le quote devono essere **identiche a tutti i
+  livelli LOD**, altrimenti sulle giunzioni compaiono gradini.
+- **Skirt** (gonna) lungo i bordi di ogni tile per chiudere le crepe tra livelli diversi.
+
+### 3.5 Cuciture tra tile (importante)
+
+Tre accorgimenti, tutti necessari, altrimenti compaiono righe scure sui confini:
+
+1. **Normali da griglia estesa**: `buildTileMesh` campiona una griglia più larga di una
+   cella per lato e calcola le normali con differenze centrali usando le coordinate
+   *globali* (`(ix + (i-1)/res)/div`). Due tile adiacenti ottengono così normali
+   identiche bit per bit; con differenze unilaterali il toon shading creava una riga scura.
+2. **Nessuna inversione di normale sulle facce posteriori**: le skirt, viste di taglio dal
+   lato interno attraversando una crepa, venivano illuminate al contrario. Il fragment
+   shader usa `N` così com'è.
+3. **Skirt poco profonde** (`min(max(lato*0.06, 0.6), 26)` unità): gonne troppo profonde
+   bucano il terreno delle tile vicine.
+
+### 3.6 Leggibilità cartografica dei fiumi
+
+A LOD basso la maglia della mesh è più larga del letto del fiume (~2 km) e l'acqua si
+sgretona in puntini. `Planet.sample()` riceve quindi anche `spacingKm` (lato della maglia)
+e usa un`mapScale` per **allargare solo il colore** del fiume, mai la sua incisione:
+le quote restano identiche a ogni livello, quindi nessuna crepa. Le linee esagerate sono
+anche più tenui, come su una carta geografica.
 
 ### 3.3 Fedeltà geografica (R4 + R5)
 
@@ -121,10 +150,8 @@ Nessun backend. L'applicazione è **statica** e può essere pubblicata su GitHub
 │   │   ├── biomes.js          palette e classificazione dei biomi
 │   │   └── constants.js       costanti fisiche e geografiche
 │   ├── render/
-│   │   ├── globe.js           orchestrazione: FarGlobe + TerrainLOD
-│   │   ├── farGlobe.js        sfera unica per la vista dallo spazio
 │   │   ├── terrainLOD.js      quadtree cubo-sfera
-│   │   ├── tileBuilder.js     costruzione geometria tile
+│   │   ├── tileBuilder.js     costruzione geometria tile (griglia estesa + skirt)
 │   │   ├── materials.js       shader toon del terreno/acqua
 │   │   ├── atmosphere.js      alone atmosferico
 │   │   └── sky.js             sfondo + stelle
@@ -135,6 +162,9 @@ Nessun backend. L'applicazione è **statica** e può essere pubblicata su GitHub
 │   └── ui/
 │       ├── hud.js             HUD + tasto "Salva"
 │       └── styles.css
+└── tools/
+    ├── planet-stats.mjs       validazione statistica dei biomi (node)
+    └── shot-server.mjs        cattura frame dal browser in sviluppo
 ```
 
 ---
@@ -146,8 +176,10 @@ Nessun backend. L'applicazione è **statica** e può essere pubblicata su GitHub
 - Niente allocazioni per-vertice nei loop caldi: usare oggetti scratch riutilizzati.
 - `SEA_LEVEL = 0`, quote in **metri**, raggi in **metri** dentro il livello `planet/`.
   La scena 3D usa `SCENE_SCALE` per portare i metri in unità di scena.
-- Il campionamento del pianeta **deve essere identico** tra FarGlobe e TerrainLOD:
+- Il campionamento del pianeta **deve essere identico** per ogni consumatore:
   una sola funzione `Planet.sample()` come sorgente di verità.
+- Il colore può dipendere dal LOD (`spacingKm`), la **quota no**: la geometria deve restare
+  continua tra livelli, altrimenti si aprono crepe.
 
 ---
 
@@ -168,3 +200,33 @@ Nessun backend. L'applicazione è **statica** e può essere pubblicata su GitHub
 3. Mantenere l'applicazione **sempre eseguibile** (`npm run dev` senza errori).
 4. Non introdurre dipendenze pesanti senza motivo.
 5. Aggiornare questo file quando cambiano i requisiti.
+
+---
+
+## 9. Stato attuale e limiti noti
+
+Misure fatte sul seed `20261116` (laptop medio, Chrome):
+
+| Voce | Valore |
+|------|--------|
+| Terre emerse | ~39% |
+| Quota massima | ~6240 m |
+| Laghi | ~1.0% della superficie |
+| Fiumi | ~0.3% della superficie |
+| Tile visibili a 900 km | ~410 (max livello 7) |
+| Tile visibili a 6 km | ~1380 (max livello 14) |
+| Costo `lod.update()` | 0.6 - 1.2 ms per frame |
+| Costruzione tile | ~2.3 ms (L7) - ~4.5 ms (L12) |
+| Riempimento a freddo | 900 km: ~0.4 s di calcolo · 6 km: ~2.7 s |
+
+Limiti noti / prossimi passi tecnici:
+
+- **Generazione sul thread principale**: scendendo velocemente a bassa quota le tile
+  arrivano in streaming (budget 6.5 ms/frame). Rimedio previsto: pool di Web Worker con
+  `ArrayBuffer` trasferibili.
+- **Nessuna texture di dettaglio**: a 6 km il suolo è liscio (solo colore per vertice).
+  Rimedio previsto: micro-rilievo nel fragment shader con attenuazione per distanza.
+- **Nessun LOD di colore**: il passaggio di bioma è per vertice, quindi i confini tra biomi
+  sono a scalini di una maglia.
+- **Il tasto "salva" salva solo seed + camera**: quando arriveranno piante e animali andrà
+  versionato lo stato dell'ecosistema (lo schema è già versionato).

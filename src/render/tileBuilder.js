@@ -26,16 +26,16 @@ export function cubeFaceDir(face, u, v, out) {
 export function tileResForLevel(level) {
   if (level <= 1) return 10
   if (level <= 3) return 14
-  if (level <= 5) return 18
-  if (level <= 7) return 24
-  return 32
+  if (level <= 5) return 20
+  if (level <= 7) return 28
+  if (level <= 9) return 36
+  return 44
 }
 
-/** Quanto dettaglio del rumore calcolare: il LOD basso non ha bisogno di micro-rilievo. */
+/** Quanto dettaglio del rumore calcolare.
+ *  Deve essere identico a tutti i livelli: quote diverse tra LOD adiacenti
+ *  produrrebbero gradini visibili sulle giunzioni. */
 export function qualityForLevel(level) {
-  if (level <= 2) return 0.18
-  if (level <= 4) return 0.5
-  if (level <= 7) return 0.85
   return 1
 }
 
@@ -55,10 +55,6 @@ export function buildTileMesh(planet, face, level, ix, iy, material) {
   const res = tileResForLevel(level)
   const quality = qualityForLevel(level)
   const div = 1 << level
-  const u0 = (ix / div) * 2 - 1
-  const u1 = ((ix + 1) / div) * 2 - 1
-  const v0 = (iy / div) * 2 - 1
-  const v1 = ((iy + 1) / div) * 2 - 1
 
   const row = res + 1
   const gridVerts = row * row
@@ -70,13 +66,26 @@ export function buildTileMesh(planet, face, level, ix, iy, material) {
   const colors = new Float32Array(total * 3)
   const water = new Float32Array(total)
 
-  // --- vertici della griglia ---
-  for (let gy = 0; gy < row; gy++) {
-    const v = v0 + (v1 - v0) * (gy / res)
-    for (let gx = 0; gx < row; gx++) {
-      const u = u0 + (u1 - u0) * (gx / res)
+  // --- griglia estesa di una cella per lato ---
+  // Le normali sui bordi devono usare lo stesso stencil della tile vicina:
+  // con differenze unilaterali ogni tile otteneva una normale diversa sul
+  // confine, e il toon shading la trasformava in una riga scura.
+  // Le coordinate usano una formula globale, così due tile adiacenti
+  // calcolano vertici identici bit per bit.
+  const ext = res + 3
+  const extPos = new Float32Array(ext * ext * 3)
+  const extCol = new Float32Array(ext * ext * 3)
+  const extWater = new Float32Array(ext * ext)
+
+  // lato della maglia in km: serve al pianeta per esagerare i fiumi
+  const spacingKm = (Math.PI * 0.5 * SCENE_RADIUS) / (div * res)
+
+  for (let gv = 0; gv < ext; gv++) {
+    const v = ((iy + (gv - 1) / res) / div) * 2 - 1
+    for (let gu = 0; gu < ext; gu++) {
+      const u = ((ix + (gu - 1) / res) / div) * 2 - 1
       cubeFaceDir(face, u, v, _dir)
-      planet.sample(_dir.x, _dir.y, _dir.z, quality, _sample)
+      planet.sample(_dir.x, _dir.y, _dir.z, quality, _sample, spacingKm)
 
       let h = _sample.height
       let w = _sample.water
@@ -88,37 +97,45 @@ export function buildTileMesh(planet, face, level, ix, iy, material) {
       if (w > 0 && h < 0) h = 0
 
       const r = SCENE_RADIUS + h * SCENE_SCALE
-      const i3 = (gy * row + gx) * 3
-      positions[i3] = _dir.x * r
-      positions[i3 + 1] = _dir.y * r
-      positions[i3 + 2] = _dir.z * r
-
-      colors[i3] = _sample.r
-      colors[i3 + 1] = _sample.g
-      colors[i3 + 2] = _sample.b
-      water[gy * row + gx] = w
+      const e3 = (gv * ext + gu) * 3
+      extPos[e3] = _dir.x * r
+      extPos[e3 + 1] = _dir.y * r
+      extPos[e3 + 2] = _dir.z * r
+      extCol[e3] = _sample.r
+      extCol[e3 + 1] = _sample.g
+      extCol[e3 + 2] = _sample.b
+      extWater[gv * ext + gu] = w
     }
   }
 
-  // --- normali dalla griglia ---
+  // --- vertici e normali della griglia ---
   for (let gy = 0; gy < row; gy++) {
-    const gym = gy > 0 ? gy - 1 : 0
-    const gyp = gy < res ? gy + 1 : res
-    for (let gx = 0; gx < res + 1; gx++) {
-      const gxm = gx > 0 ? gx - 1 : 0
-      const gxp = gx < res ? gx + 1 : res
+    const ev = gy + 1
+    for (let gx = 0; gx < row; gx++) {
+      const eu = gx + 1
+      const src = (ev * ext + eu) * 3
+      const i3 = (gy * row + gx) * 3
 
-      const ia = (gy * row + gxm) * 3
-      const ib = (gy * row + gxp) * 3
-      const ic = (gym * row + gx) * 3
-      const id = (gyp * row + gx) * 3
+      positions[i3] = extPos[src]
+      positions[i3 + 1] = extPos[src + 1]
+      positions[i3 + 2] = extPos[src + 2]
+      colors[i3] = extCol[src]
+      colors[i3 + 1] = extCol[src + 1]
+      colors[i3 + 2] = extCol[src + 2]
+      water[gy * row + gx] = extWater[ev * ext + eu]
 
-      const ax = positions[ib] - positions[ia]
-      const ay = positions[ib + 1] - positions[ia + 1]
-      const az = positions[ib + 2] - positions[ia + 2]
-      const bx = positions[id] - positions[ic]
-      const by = positions[id + 1] - positions[ic + 1]
-      const bz = positions[id + 2] - positions[ic + 2]
+      // differenze centrali: stencil identico in ogni tile
+      const ia = (ev * ext + eu + 1) * 3
+      const ib = (ev * ext + eu - 1) * 3
+      const ic = ((ev - 1) * ext + eu) * 3
+      const id = ((ev + 1) * ext + eu) * 3
+
+      const ax = extPos[ia] - extPos[ib]
+      const ay = extPos[ia + 1] - extPos[ib + 1]
+      const az = extPos[ia + 2] - extPos[ib + 2]
+      const bx = extPos[id] - extPos[ic]
+      const by = extPos[id + 1] - extPos[ic + 1]
+      const bz = extPos[id + 2] - extPos[ic + 2]
 
       let nx = ay * bz - az * by
       let ny = az * bx - ax * bz
@@ -128,7 +145,6 @@ export function buildTileMesh(planet, face, level, ix, iy, material) {
       ny /= len
       nz /= len
 
-      const i3 = (gy * row + gx) * 3
       normals[i3] = nx
       normals[i3 + 1] = ny
       normals[i3 + 2] = nz

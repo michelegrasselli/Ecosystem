@@ -46,8 +46,10 @@ export function createTerrainMaterial(sunDir) {
       varying float vWater;
 
       void main() {
+        // Niente inversione sulle facce posteriori: le "gonne" che chiudono le
+        // crepe tra tile si vedono di taglio dal lato interno e, se invertite,
+        // il toon shading le spezzerebbe in righe scure sui confini del LOD.
         vec3 N = normalize(vNormalW);
-        if (!gl_FrontFacing) N = -N;
         vec3 V = normalize(uCameraPos - vWorld);
 
         float ndl = dot(N, uSunDir);
