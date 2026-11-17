@@ -44,6 +44,9 @@ export class GlobeControls {
     this.tHeading = this.heading
 
     this.fov = 50
+    // quota (esagerata) del terreno sotto la camera, in km: la quota della
+    // camera è misurata dal suolo, come in Google Earth
+    this.groundKm = 0
     this.autoPitch = true
 
     this._dragging = 0 // 1 = pan, 2 = tilt
@@ -92,6 +95,7 @@ export class GlobeControls {
 
   _groundHit() {
     this._raycaster.setFromCamera(this._pointer, this.camera)
+    _sphere.radius = SCENE_RADIUS + this.groundKm
     const p = new THREE.Vector3()
     const hit = this._raycaster.ray.intersectSphere(_sphere, p)
     return hit ? p : null
@@ -223,7 +227,9 @@ export class GlobeControls {
     // inclinazione automatica in base alla quota
     if (this.autoPitch) {
       const close = smoothstep(900, 30, this.altitude)
-      this.tPitch = 90 - 24 * close
+      // vicino al suolo la vista diventa radente, per guardare il paesaggio
+      const ground = smoothstep(6, 0.06, this.altitude)
+      this.tPitch = 90 - 24 * close - 46 * ground
     }
 
     const lambda = this._dragging ? 22 : 9
@@ -271,7 +277,7 @@ export class GlobeControls {
     // ri-ortogonalizza l'alto per sicurezza
     _sup.crossVectors(_right, _fwd).normalize()
 
-    _pos.copy(_dir).multiplyScalar(SCENE_RADIUS + this.altitude)
+    _pos.copy(_dir).multiplyScalar(SCENE_RADIUS + this.groundKm + this.altitude)
 
     _basis.makeBasis(_right, _sup, _fwd.clone().negate())
     this.camera.quaternion.setFromRotationMatrix(_basis)

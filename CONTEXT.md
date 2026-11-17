@@ -23,11 +23,11 @@ distribuzione di mari/continenti, laghi, fiumi, fasce climatiche e temperature.
 | # | Requisito | Stato |
 |---|-----------|-------|
 | R1 | Vista della Terra in stile Google Earth, con **lo stesso stile di navigazione** (drag per ruotare, scroll per zoomare, tilt, fly-to) | **fatto** |
-| R2 | Zoom **multi-scala**: dallo spazio fino a scala regionale (es. Sahara) | **fatto** (LOD 0→15) |
-| R3 | A scala regionale si devono poter vedere animali e piante **senza appesantire la grafica** | rimandato (fase 2) |
+| R2 | Zoom **multi-scala**: dallo spazio fino a scala regionale (es. Sahara) | **fatto** (LOD 0→17, fino a 25 m dal suolo) |
+| R3 | A scala regionale si devono poter vedere animali e piante **senza appesantire la grafica** | zoom pronto (25 m dal suolo, chiome disegnate nello shader); piante/animali 3D in fase 2 |
 | R4 | Contenuto **ragionevolmente fedele**: ambienti, temperature, conformazione territoriale | **fatto** per il pianeta |
 | R5 | **Per ora**: solo modello del pianeta — continenti, mari, oceani, laghi, fiumi, rilievi. **Niente piante né animali.** | **fatto** |
-| R6 | Stile grafico **cartoon**, tipo Animal Crossing ma **meno bambinesco e più maturo** | **fatto** (toon a bande morbide, palette spenta) |
+| R6 | Stile grafico **cartoon**, tipo Animal Crossing ma **meno bambinesco e più maturo** | **fatto** (illustrato: bande morbide, ombre fredde, chiome tonde, dune, rocce a strati) |
 | R7 | Tasto **poco visibile "Salva"** che salva lo stato del pianeta | **fatto** |
 | R8 | Lo stato salvato viene **ricaricato automaticamente** al prossimo avvio | **fatto** (verificato) |
 | R9 | Repository GitHub con **commit + push dopo ogni prompt** | attivo |
@@ -61,12 +61,50 @@ distribuzione di mari/continenti, laghi, fiumi, fasce climatiche e temperature.
   bastano i livelli 0-3. Vantaggi: una sola `Planet.sample()` come verità, nessun pop
   nel passaggio tra "globo lontano" e "terreno vicino".
 - LOD: una tile si suddivide quando supera `SPLIT_PIXELS = 110` pixel a schermo; livello
-  massimo 15. Budget di generazione per frame (`buildBudgetMs`), priorità alle tile vicine.
+  massimo 17 (tile di ~76 m, maglie di ~1.7 m). Budget di generazione per frame (`buildBudgetMs`), priorità alle tile vicine.
 - Risoluzione per tile (`tileResForLevel`): 10 → 44 vertici per lato secondo il livello,
   scelta per tenere ~2 pixel per maglia a schermo.
 - `qualityForLevel()` restituisce sempre `1`: le quote devono essere **identiche a tutti i
   livelli LOD**, altrimenti sulle giunzioni compaiono gradini.
 - **Skirt** (gonna) lungo i bordi di ogni tile per chiudere le crepe tra livelli diversi.
+- **Invariante anti-buchi** (`terrainLOD.js`): `visit()` viene chiamata solo su nodi con
+  mesh. Le 6 radici sono costruite subito; un nodo scende nei figli solo se tutti e quattro
+  sono pronti, altrimenti disegna se stesso. Ogni nodo attraversato è marcato come usato
+  nel frame, quindi la cache non scarica mai un antenato di ciò che è a schermo. La
+  visibilità si basa sulla lista `drawn` del frame, non sulla cache. (Bug storico: radici
+  mai costruite e nodi scaricati "disegnati" senza mesh e mai rimessi in coda → buchi.)
+- **Vertici relativi al centro della tile** (`mesh.position`) e griglia estesa in Float64:
+  con coordinate assolute in float32 (~6371 km) l'errore è ~0.5 m, inaccettabile a 25 m.
+
+### 3.8 Rilievo esagerato (`render/relief.js`)
+
+- Le tile sono costruite a esagerazione 1; il vertex shader sposta ogni vertice lungo la
+  verticale di `aHeight * (k - 1)`. `k` dipende dalla quota della camera: 1.5 vicino al
+  suolo, 4.2 dallo spazio. Cambia ogni frame senza ricostruire nulla.
+- Le normali di illuminazione usano un'esagerazione ancora maggiore (`shadingExaggeration`),
+  ricavata dalla normale a k=1: `N = normalize(R - (R - N1/dot(N1,R)) * kS)`.
+- Luce: sole reale + "sole radente" con lo stesso azimut, così i pendii si leggono anche
+  a mezzogiorno. Ombre fredde (bluastre), luce calda.
+- La camera misura la quota **dal terreno** (`controls.groundKm`, stessa esagerazione):
+  piante e animali dovranno usare `reliefExaggeration()` per appoggiarsi al suolo.
+- Il generatore ha creste secondarie deformate sulle montagne (valli di ~2.5 km), colline
+  di 6 km / 2 km e dossi di 400 m / 80 m. I laghi stanno al livello del bacino
+  (`baseLevel - 200`), non scavati fino al livello del mare.
+
+### 3.9 Dettaglio nello shader (`render/materials.js`)
+
+- Posizione passata al fragment **relativa alla camera** (calcolata in view space) e
+  rumore su reticolo ancorato al mondo: `uOrigin` è un multiplo di 64 km, le frequenze
+  sono potenze di due ≥ 1/64, quindi l'offset del reticolo è un intero esatto. Il rumore è
+  letto da una texture 3D 64³ (un accesso per ottava); le chiome usano un hash intero.
+- Ogni scala si spegne in base al lato del pixel sul terreno (`scaleW(lambda, foot)`):
+  niente moiré. Le ottave sono calcolate una volta e riusate da tutti gli strati.
+- Strati: confini di bioma sfrangiati (`aSurf` = foresta, sabbia, roccia, neve),
+  prati a due toni, chiome tonde con ombra portata (Worley 2×2×2 proiettato sul piano
+  tangente), dune con lato al sole/sottovento, roccia a strati, neve e roccia d'alta quota
+  dalla quota del fragment (isoipse, non scalini di maglia), acqua con battigia.
+- **Risoluzione adattiva** in `main.js`: il pixel ratio scende fino a 0.6 se il frame
+  supera ~26 ms e risale quando c'è margine.
 
 ### 3.5 Cuciture tra tile (importante)
 
@@ -79,7 +117,7 @@ Tre accorgimenti, tutti necessari, altrimenti compaiono righe scure sui confini:
 2. **Nessuna inversione di normale sulle facce posteriori**: le skirt, viste di taglio dal
    lato interno attraversando una crepa, venivano illuminate al contrario. Il fragment
    shader usa `N` così com'è.
-3. **Skirt poco profonde** (`min(max(lato*0.06, 0.6), 26)` unità): gonne troppo profonde
+3. **Skirt proporzionate** (maglia × 0.35 + quota massima della tile × 0.18, max 40 unità, scalate con l'esagerazione nello shader): gonne troppo profonde
    bucano il terreno delle tile vicine.
 
 ### 3.6 Colore e LOD (importante)
@@ -250,10 +288,11 @@ Limiti noti / prossimi passi tecnici:
 - **Generazione sul thread principale**: scendendo velocemente a bassa quota le tile
   arrivano in streaming (budget 6.5 ms/frame). Rimedio previsto: pool di Web Worker con
   `ArrayBuffer` trasferibili.
-- **Nessuna texture di dettaglio**: a 6 km il suolo è liscio (solo colore per vertice).
-  Rimedio previsto: micro-rilievo nel fragment shader con attenuazione per distanza.
-- **Colore filtrato per area solo sui LOD grossi (≤ 5)**: i biomi restano per vertice, quindi
-  a scala regionale i confini tra biomi sono ancora a scalini di una maglia. Rimedio
-  previsto: rumore di bioma nel fragment shader.
+- **Alberi dipinti sul terreno**: da 25-100 m le chiome sono dischi piatti. In fase 2 vanno
+  affiancate da alberi 3D istanziati vicino alla camera, posizionati con lo stesso hash
+  di `canopy()` (stessi punti) e la stessa esagerazione del rilievo.
+- **Costo GPU da vicino**: su GPU integrata ~25-50 ms/frame a 1280×960 prima della
+  risoluzione adattiva. Il log depth buffer scrive `gl_FragDepth` e disattiva l'early-z:
+  l'overdraw costa. Possibile rimedio: reversed-Z invece del log depth.
 - **Il tasto "salva" salva solo seed + camera**: quando arriveranno piante e animali andrà
   versionato lo stato dell'ecosistema (lo schema è già versionato).

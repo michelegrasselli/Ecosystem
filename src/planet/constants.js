@@ -18,14 +18,14 @@ export const MAX_LAND_RISE = 1450
 export const MAX_MOUNTAIN_HEIGHT = 7200
 
 /** Limiti di navigazione della camera (metri sopra la superficie). */
-export const MIN_ALTITUDE = 260
+export const MIN_ALTITUDE = 25 // abbastanza vicino da vedere piante e animali
 export const MAX_ALTITUDE = 42_000_000
 
 /** Quota sotto la quale si attiva il terreno LOD (metri). */
 export const LOD_ACTIVATE_ALTITUDE = 2_600_000
 
 /** Livello massimo del quadtree. */
-export const MAX_LOD_LEVEL = 15
+export const MAX_LOD_LEVEL = 17 // tile di ~76 m, maglie di ~1.7 m
 
 /** Seed predefinito del pianeta. */
 export const DEFAULT_SEED = 20261116

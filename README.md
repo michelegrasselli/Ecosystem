@@ -1,12 +1,14 @@
 # Ecosystem Planet
 
-Simulazione esplorabile di un pianeta: si parte dallo spazio e si scende fino a scala
-regionale, su un pianeta generato proceduralmente (continenti, oceani, mari, laghi, fiumi,
+Simulazione esplorabile di un pianeta: si parte dallo spazio e si scende fino a
+25 m dal suolo, su un pianeta generato proceduralmente (continenti, oceani, mari, laghi, fiumi,
 rilievi, biomi e clima). Per ora il pianeta è **disabitato**: piante e animali arriveranno
 nelle fasi successive.
 
-Lo stile è cartoon ma adulto: palette spenta, ombre a bande morbide, nessuna texture
-fotografica.
+Lo stile è illustrato ma adulto (tipo Animal Crossing, più serio): palette terrosa, luce a
+bande morbide con ombre fredde, chiome degli alberi tonde, dune e rocce a strati, nessuna
+texture fotografica. Il rilievo è esagerato in funzione della quota (come Google Earth),
+così montagne e valli si leggono anche dallo spazio.
 
 ## Avvio
 
@@ -42,7 +44,7 @@ avvio. Il salvataggio automatico della sola camera avviene anche alla chiusura d
 - Il pianeta è una funzione deterministica: `Planet.sample(direzione) → quota, clima, bioma, colore`.
   Lo stesso seed produce sempre lo stesso pianeta, a qualunque risoluzione.
 - Il terreno è un **quadtree su cubo-sfera** con LOD continuo dallo spazio alla scala
-  regionale (fino al livello 15), normali coerenti tra tile adiacenti e gonne di chiusura
+  al suolo (fino al livello 17), normali coerenti tra tile adiacenti e gonne di chiusura
   sulle crepe.
 - Il rumore è un simplex 3D scritto a mano (`src/core/noise.js`): nessuna dipendenza esterna.
 

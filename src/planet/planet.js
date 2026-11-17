@@ -95,6 +95,9 @@ export class Planet {
 
     const threshold = this.continentThreshold
     let height
+    // quota "di fondo" del continente, che varia su migliaia di km: è il pelo
+    // dell'acqua dei laghi (quasi piatto sulla scala di un lago)
+    let baseLevel = 0
     let isSea = cont <= threshold
 
     if (isSea) {
@@ -105,12 +108,15 @@ export class Planet {
     } else {
       const l = clamp((cont - threshold) / (1 - threshold), 0, 1)
       height = Math.pow(l, 1.3) * MAX_LAND_RISE
+      baseLevel = height
 
       // ---------- 4. Catene montuose ----------
       const orogeny = smoothstep(0.02, 0.46, fbm(n, px * 2.7 - 13.1, py * 2.7 + 5.3, pz * 2.7 - 9.7, 3))
       const ridge = ridged(n, px * 3.6 + 2.4, py * 3.6 - 8.8, pz * 3.6 + 4.2, 5)
       const inland = smoothstep(0.015, 0.24, l)
       height += ridge * orogeny * inland * MAX_MOUNTAIN_HEIGHT
+      // quota a grande scala (continente + catene): varia su centinaia di km
+      baseLevel = height
 
       // ---------- 5. Colline e micro-rilievo ----------
       if (q > 0.22) {
@@ -130,6 +136,41 @@ export class Planet {
           nd.noise(px * 235 + 4.7, py * 235 - 2.3, pz * 235 + 9.1) * 0.72 +
           nd.noise(px * 690 - 8.2, py * 690 + 5.5, pz * 690 - 1.4) * 0.28
         height += hills * 170 * inland
+      }
+
+      // ---------- 5b. Dettaglio locale ----------
+      // Serve quando si scende a poche centinaia di metri dal suolo: senza,
+      // il terreno da vicino è una superficie liscia. Creste secondarie sulle
+      // montagne (~30-8 km), ondulazioni di ~2 km, dossi di ~400 m e ~80 m.
+      // Come tutto il resto non dipende dal LOD.
+      if (q > 0.5) {
+        // Valli e crinali: senza, le catene sono altipiani lisci con pendenze
+        // di pochi gradi e il rilievo non si legge. Ampiezza di ~2.5 km come
+        // il dislivello tipico tra fondovalle e cresta.
+        const mtn = ridge * orogeny * inland
+        const mtnMask = smoothstep(0.03, 0.32, mtn)
+        if (mtnMask > 0.001) {
+          // coordinate deformate: crinali lunghi e sinuosi invece di bozze
+          // tutte uguali a "cartone delle uova"
+          const wx = nd.noise(px * 38 + 1.1, py * 38 - 2.7, pz * 38 + 4.4) * 0.007
+          const wy = nd.noise(px * 38 - 5.3, py * 38 + 3.9, pz * 38 - 0.6) * 0.007
+          const wz = nd.noise(px * 38 + 7.6, py * 38 + 0.2, pz * 38 - 8.1) * 0.007
+          const crest = ridged(
+            nd,
+            (px + wx) * 105 + 3.3,
+            (py + wy) * 105 - 7.1,
+            (pz + wz) * 105 + 1.9,
+            4
+          )
+          height += (crest - 0.4) * 2400 * mtnMask
+        }
+        // sulla costa il rilievo si spegne: niente pozze sotto il livello del mare
+        const rough = (0.3 + 0.7 * inland + mtn * 5) * smoothstep(0.0, 0.04, l)
+        // colline dolci (~6 km e ~2 km): il paesaggio visto da 1-5 km di quota
+        height += nd.noise(px * 1050 - 2.4, py * 1050 + 6.6, pz * 1050 - 9.2) * 75 * rough
+        height += nd.noise(px * 3200 + 1.3, py * 3200 - 4.1, pz * 3200 + 7.7) * 34 * rough
+        height += nd.noise(px * 16000 - 6.2, py * 16000 + 2.8, pz * 16000 - 3.5) * 5.5 * rough
+        height += nd.noise(px * 80000 + 9.4, py * 80000 - 1.6, pz * 80000 + 5.2) * 1.3 * rough
       }
     }
 
@@ -172,9 +213,12 @@ export class Planet {
       const lakeMask = smoothstep(0.36, 0.68, lakeNoise) * flatness
       if (lakeMask > 0.5) {
         const bowl = smoothstep(0.5, 0.92, lakeMask)
-        height = lerp(height, -14 - 130 * bowl, bowl)
-        if (height <= 0) {
-          height = 0
+        // Il lago è al livello del bacino, non scavato fino al livello del
+        // mare: con l'esagerazione del rilievo diventava un cratere
+        const lakeLevel = Math.max(baseLevel - 200, 0)
+        height = lerp(height, lakeLevel - 14 - 130 * bowl, bowl)
+        if (height <= lakeLevel) {
+          height = lakeLevel
           water = 1
           isLake = true
           biome = BIOME.LAKE
@@ -233,7 +277,10 @@ export class Planet {
     }
 
     // ---------- 11. Colore ----------
-    const col = rgbFor(biome)
+    // Roccia e neve d'alta quota le disegna lo shader seguendo la quota del
+    // terreno: qui il colore di base resta quello del prato alpino, altrimenti
+    // il bianco per vertice comparirebbe a scalini di maglia.
+    const col = rgbFor(biome === BIOME.ROCK || biome === BIOME.SNOW ? BIOME.TUNDRA : biome)
     let r = col[0]
     let g = col[1]
     let b = col[2]

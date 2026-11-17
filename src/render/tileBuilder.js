@@ -1,7 +1,14 @@
 // Costruzione della geometria di una tile del quadtree cubo-sfera.
+//
+// Le tile sono costruite a esagerazione verticale 1: il vertex shader sposta
+// ogni vertice lungo la verticale di `aHeight * (k - 1)` (vedi relief.js).
+// I vertici sono espressi rispetto al centro della tile (mesh.position):
+// con coordinate assolute (~6371 km in float32) la precisione è di ~0.5 m e
+// vicino al suolo i vertici "tremano".
 
 import * as THREE from 'three'
 import { Planet } from '../planet/planet.js'
+import { BIOME } from '../planet/biomes.js'
 import { PLANET_RADIUS, SCENE_RADIUS, SCENE_SCALE } from '../planet/constants.js'
 
 /** Direzione unitaria sul cubo per la faccia `face` e coordinate (u,v) in [-1,1]. */
@@ -39,6 +46,30 @@ export function qualityForLevel(level) {
   return 1
 }
 
+/**
+ * Classi di superficie per lo shader (foresta, sabbia, roccia, neve).
+ * Sono pesi continui: interpolati tra i vertici e "sfrangiati" dal rumore nel
+ * fragment shader, danno confini di bioma organici invece che a scalini.
+ */
+const SURFACE = (() => {
+  const s = {}
+  const set = (b, f, sand, rock, snow) => (s[b] = [f, sand, rock, snow])
+  for (const k of Object.values(BIOME)) set(k, 0, 0, 0, 0)
+  set(BIOME.TEMPERATE_FOREST, 1, 0, 0, 0)
+  set(BIOME.RAINFOREST, 1, 0, 0, 0)
+  set(BIOME.BOREAL_FOREST, 0.9, 0, 0, 0)
+  set(BIOME.SAVANNA, 0.22, 0.1, 0, 0)
+  set(BIOME.SHRUBLAND, 0.3, 0.05, 0, 0)
+  set(BIOME.DESERT, 0, 1, 0, 0)
+  set(BIOME.SEMI_DESERT, 0.04, 0.55, 0.1, 0)
+  set(BIOME.BEACH, 0, 1, 0, 0)
+  set(BIOME.TUNDRA, 0, 0, 0.3, 0.1)
+  // roccia d'alta quota e neve perenne le calcola lo shader dalla quota del
+  // fragment (linee continue che seguono il terreno, non scalini di maglia);
+  // le calotte arrivano da `sample.ice`, che è già continuo
+  return s
+})()
+
 const _dir = { x: 0, y: 0, z: 0 }
 const _dirSub = { x: 0, y: 0, z: 0 }
 const _sample = Planet.createSample()
@@ -63,21 +94,35 @@ export function buildTileMesh(planet, face, level, ix, iy, material) {
   const skirtCount = 4 * row
   const total = gridVerts + skirtCount
 
+  // origine locale della tile: centro sulla sfera a livello del mare
+  cubeFaceDir(face, ((ix + 0.5) / div) * 2 - 1, ((iy + 0.5) / div) * 2 - 1, _dir)
+  const ox = _dir.x * SCENE_RADIUS
+  const oy = _dir.y * SCENE_RADIUS
+  const oz = _dir.z * SCENE_RADIUS
+
   const positions = new Float32Array(total * 3)
   const normals = new Float32Array(total * 3)
   const colors = new Float32Array(total * 3)
   const water = new Float32Array(total)
+  const heights = new Float32Array(total)
+  const surf = new Float32Array(total * 4)
+  const skirt = new Float32Array(total)
 
   // --- griglia estesa di una cella per lato ---
   // Le normali sui bordi devono usare lo stesso stencil della tile vicina:
   // con differenze unilaterali ogni tile otteneva una normale diversa sul
   // confine, e il toon shading la trasformava in una riga scura.
   // Le coordinate usano una formula globale, così due tile adiacenti
-  // calcolano vertici identici bit per bit.
+  // calcolano vertici identici bit per bit. Float64: ai livelli profondi le
+  // maglie sono di pochi metri e in float32 le normali diventerebbero rumore.
   const ext = res + 3
-  const extPos = new Float32Array(ext * ext * 3)
+  const extPos = new Float64Array(ext * ext * 3)
   const extCol = new Float32Array(ext * ext * 3)
   const extWater = new Float32Array(ext * ext)
+  const extHeight = new Float32Array(ext * ext)
+  const extSurf = new Float32Array(ext * ext * 4)
+
+  let hMax = 0
 
   for (let gv = 0; gv < ext; gv++) {
     const v = ((iy + (gv - 1) / res) / div) * 2 - 1
@@ -86,25 +131,23 @@ export function buildTileMesh(planet, face, level, ix, iy, material) {
       cubeFaceDir(face, u, v, _dir)
       planet.sample(_dir.x, _dir.y, _dir.z, quality, _sample)
 
-      let h = _sample.height
+      const rawH = _sample.height
+      let h = rawH
       let w = _sample.water
       if (h < 0) {
         // il fondale non viene disegnato: il mare è una superficie piatta a quota 0
         h = 0
         w = 1
       }
-      if (w > 0 && h < 0) h = 0
 
       // Colore: sui LOD grossi una sola lettura per vertice "pesca" fiumi,
-      // spiagge e laghi larghi pochi km e li spalma su tutta la maglia: si
-      // vedono macchie chiare in mezzo al mare e blocchi di colore diverso tra
-      // livelli adiacenti. Mediando 4 sotto-campioni per cella il colore
-      // diventa una media d'area (antialiasing), come una mipmap.
+      // spiagge e laghi larghi pochi km e li spalma su tutta la maglia.
+      // Mediando 4 sotto-campioni per cella il colore diventa una media
+      // d'area (antialiasing), come una mipmap.
       let cr = _sample.r
       let cg = _sample.g
       let cb = _sample.b
       if (level <= 5) {
-        // 4 punti dentro la cella: antialiasing senza sfocare le coste
         const off = (2 / (div * res)) * 0.25
         cr = 0
         cg = 0
@@ -124,14 +167,25 @@ export function buildTileMesh(planet, face, level, ix, iy, material) {
       }
 
       const r = SCENE_RADIUS + h * SCENE_SCALE
-      const e3 = (gv * ext + gu) * 3
+      const ei = gv * ext + gu
+      const e3 = ei * 3
       extPos[e3] = _dir.x * r
       extPos[e3 + 1] = _dir.y * r
       extPos[e3 + 2] = _dir.z * r
       extCol[e3] = cr
       extCol[e3 + 1] = cg
       extCol[e3 + 2] = cb
-      extWater[gv * ext + gu] = w
+      extWater[ei] = w
+      // quota reale (negativa sul mare): lo shader la usa per la profondità
+      // dell'acqua; lo spostamento verticale usa solo la parte positiva
+      extHeight[ei] = rawH
+      const sc = SURFACE[_sample.biome]
+      const e4 = ei * 4
+      extSurf[e4] = sc[0]
+      extSurf[e4 + 1] = sc[1]
+      extSurf[e4 + 2] = sc[2]
+      extSurf[e4 + 3] = Math.max(sc[3], _sample.ice)
+      if (h > hMax) hMax = h
     }
   }
 
@@ -140,22 +194,29 @@ export function buildTileMesh(planet, face, level, ix, iy, material) {
     const ev = gy + 1
     for (let gx = 0; gx < row; gx++) {
       const eu = gx + 1
-      const src = (ev * ext + eu) * 3
-      const i3 = (gy * row + gx) * 3
+      const ei = ev * ext + eu
+      const src = ei * 3
+      const vi = gy * row + gx
+      const i3 = vi * 3
 
-      positions[i3] = extPos[src]
-      positions[i3 + 1] = extPos[src + 1]
-      positions[i3 + 2] = extPos[src + 2]
+      positions[i3] = extPos[src] - ox
+      positions[i3 + 1] = extPos[src + 1] - oy
+      positions[i3 + 2] = extPos[src + 2] - oz
       colors[i3] = extCol[src]
       colors[i3 + 1] = extCol[src + 1]
       colors[i3 + 2] = extCol[src + 2]
-      water[gy * row + gx] = extWater[ev * ext + eu]
+      water[vi] = extWater[ei]
+      heights[vi] = extHeight[ei]
+      surf[vi * 4] = extSurf[ei * 4]
+      surf[vi * 4 + 1] = extSurf[ei * 4 + 1]
+      surf[vi * 4 + 2] = extSurf[ei * 4 + 2]
+      surf[vi * 4 + 3] = extSurf[ei * 4 + 3]
 
       // differenze centrali: stencil identico in ogni tile
-      const ia = (ev * ext + eu + 1) * 3
-      const ib = (ev * ext + eu - 1) * 3
-      const ic = ((ev - 1) * ext + eu) * 3
-      const id = ((ev + 1) * ext + eu) * 3
+      const ia = (ei + 1) * 3
+      const ib = (ei - 1) * 3
+      const ic = (ei - ext) * 3
+      const id = (ei + ext) * 3
 
       const ax = extPos[ia] - extPos[ib]
       const ay = extPos[ia + 1] - extPos[ib + 1]
@@ -168,21 +229,19 @@ export function buildTileMesh(planet, face, level, ix, iy, material) {
       let ny = az * bx - ax * bz
       let nz = ax * by - ay * bx
       const len = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1
-      nx /= len
-      ny /= len
-      nz /= len
-
-      normals[i3] = nx
-      normals[i3 + 1] = ny
-      normals[i3 + 2] = nz
+      normals[i3] = nx / len
+      normals[i3 + 1] = ny / len
+      normals[i3 + 2] = nz / len
     }
   }
 
   // --- gonna (skirt) per nascondere le crepe tra livelli diversi ---
   const tileSizeKm = (Math.PI * 0.5 * SCENE_RADIUS) / div
-  // la gonna deve coprire sia il rilievo sia la corda tra LOD adiacenti
-  const skirtDepth = Math.min(Math.max(tileSizeKm * 0.06, 0.6), 26)
-  const skirtScale = (SCENE_RADIUS - skirtDepth) / SCENE_RADIUS
+  // La crepa tra due livelli è al massimo la differenza tra la quota vera e
+  // quella interpolata sulla maglia grossa: la gonna deve coprire anche le
+  // montagne, quindi la sua profondità cresce con il dislivello della tile.
+  const cellKm = tileSizeKm / res
+  const skirtDepth = Math.min(Math.max(cellKm * 0.35, 0.02) + hMax * SCENE_SCALE * 0.18, 40)
 
   const edgeIndices = []
   for (let gx = 0; gx < row; gx++) edgeIndices.push(gx) // bordo sud (gy=0)
@@ -195,9 +254,14 @@ export function buildTileMesh(planet, face, level, ix, iy, material) {
     const dst = gridVerts + i
     const s3 = src * 3
     const d3 = dst * 3
-    positions[d3] = positions[s3] * skirtScale
-    positions[d3 + 1] = positions[s3 + 1] * skirtScale
-    positions[d3 + 2] = positions[s3 + 2] * skirtScale
+    // direzione radiale del vertice di bordo
+    const px = positions[s3] + ox
+    const py = positions[s3 + 1] + oy
+    const pz = positions[s3 + 2] + oz
+    const pl = Math.sqrt(px * px + py * py + pz * pz)
+    positions[d3] = positions[s3] - (px / pl) * skirtDepth
+    positions[d3 + 1] = positions[s3 + 1] - (py / pl) * skirtDepth
+    positions[d3 + 2] = positions[s3 + 2] - (pz / pl) * skirtDepth
     normals[d3] = normals[s3]
     normals[d3 + 1] = normals[s3 + 1]
     normals[d3 + 2] = normals[s3 + 2]
@@ -205,6 +269,9 @@ export function buildTileMesh(planet, face, level, ix, iy, material) {
     colors[d3 + 1] = colors[s3 + 1]
     colors[d3 + 2] = colors[s3 + 2]
     water[dst] = water[src]
+    heights[dst] = heights[src]
+    for (let c = 0; c < 4; c++) surf[dst * 4 + c] = surf[src * 4 + c]
+    skirt[dst] = skirtDepth
   }
 
   // --- indici ---
@@ -223,12 +290,12 @@ export function buildTileMesh(planet, face, level, ix, iy, material) {
     }
   }
 
-  // strips della gonna
+  // strisce della gonna
   const borders = [
-    [0, 1, false], // sud: avanza in +x
-    [res * row, 1, false],
-    [0, row, true],
-    [res, row, true]
+    [0, 1],
+    [res * row, 1],
+    [0, row],
+    [res, row]
   ]
   for (let b = 0; b < 4; b++) {
     const [start, stride] = borders[b]
@@ -248,12 +315,18 @@ export function buildTileMesh(planet, face, level, ix, iy, material) {
   geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3))
   geo.setAttribute('aColor', new THREE.BufferAttribute(colors, 3))
   geo.setAttribute('aWater', new THREE.BufferAttribute(water, 1))
+  geo.setAttribute('aHeight', new THREE.BufferAttribute(heights, 1))
+  geo.setAttribute('aSurf', new THREE.BufferAttribute(surf, 4))
+  geo.setAttribute('aSkirt', new THREE.BufferAttribute(skirt, 1))
   geo.setIndex(new THREE.BufferAttribute(indices, 1))
   geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), SCENE_RADIUS * 2)
 
   const mesh = new THREE.Mesh(geo, material)
   mesh.frustumCulled = false
+  mesh.position.set(ox, oy, oz)
   mesh.matrixAutoUpdate = false
+  mesh.updateMatrix()
+  mesh.userData.hMax = hMax
   return mesh
 }
 
@@ -284,11 +357,11 @@ export function tileBounds(face, level, ix, iy) {
     const d = Math.hypot(p[0] - cx, p[1] - cy, p[2] - cz)
     if (d > rad) rad = d
   }
-  // margine per il rilievo (max ~9 km)
-  rad += 10
 
   return {
     center: new THREE.Vector3(cx, cy, cz),
+    // raggio geometrico a livello del mare: il margine per il rilievo
+    // (che dipende dall'esagerazione corrente) lo aggiunge il LOD
     radius: rad,
     surfaceCenter: new THREE.Vector3(pts[4][0], pts[4][1], pts[4][2])
   }

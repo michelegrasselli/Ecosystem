@@ -4,7 +4,9 @@ import * as THREE from 'three'
 import './ui/styles.css'
 
 import { Planet } from './planet/planet.js'
-import { DEFAULT_SEED, SUN_DIRECTION, SCENE_RADIUS } from './planet/constants.js'
+import { DEFAULT_SEED, SUN_DIRECTION, SCENE_RADIUS, MIN_ALTITUDE } from './planet/constants.js'
+import { reliefExaggeration, shadingExaggeration } from './render/relief.js'
+import { damp } from './core/math.js'
 import { createTerrainMaterial } from './render/materials.js'
 import { TerrainLOD } from './render/terrainLOD.js'
 import { createSky } from './render/sky.js'
@@ -25,7 +27,8 @@ const renderer = new THREE.WebGLRenderer({
   powerPreference: 'high-performance',
   stencil: false
 })
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75))
+const MAX_PIXEL_RATIO = Math.min(window.devicePixelRatio || 1, 1.75)
+renderer.setPixelRatio(MAX_PIXEL_RATIO)
 renderer.outputColorSpace = THREE.LinearSRGBColorSpace
 renderer.setClearColor(0x05080c, 1)
 
@@ -72,7 +75,7 @@ const hud = createHud({
   onSave: doSave,
   onHome: () => controls.goHome(),
   onZoomIn: () => {
-    controls.tAltitude = Math.max(controls.tAltitude * 0.62, 0.28)
+    controls.tAltitude = Math.max(controls.tAltitude * 0.62, MIN_ALTITUDE / 1000)
   },
   onZoomOut: () => {
     controls.tAltitude = Math.min(controls.tAltitude / 0.62, SCENE_RADIUS * 6)
@@ -174,12 +177,21 @@ const sunDir = new THREE.Vector3(SUN_DIRECTION.x, SUN_DIRECTION.y, SUN_DIRECTION
 terrainMaterial.uniforms.uSunDir.value.copy(sunDir)
 atmosphere.material.uniforms.uSunDir.value.copy(sunDir)
 
+const groundSample = Planet.createSample()
 let last = performance.now()
 let frameCount = 0
 
 function frame(now) {
   const dt = Math.min((now - last) / 1000, 0.1)
   last = now
+
+  // quota del terreno sotto la camera (con la stessa esagerazione dello shader)
+  const exag = reliefExaggeration(controls.altitude)
+  const gs = planet.sampleLatLon(controls.lat, controls.lon, 1, groundSample)
+  const groundTarget = Math.max(gs.height, 0) * 0.001 * exag
+  // sale subito (mai dentro una collina), scende con dolcezza
+  controls.groundKm =
+    groundTarget > controls.groundKm ? groundTarget : damp(controls.groundKm, groundTarget, 5, dt)
 
   controls.update(dt)
 
@@ -188,10 +200,21 @@ function frame(now) {
 
   // budget di costruzione: generoso durante il caricamento, poi contenuto
   lod.buildBudgetMs = ready ? 6.5 : 46
+  lod.exaggeration = reliefExaggeration(altitudeKm)
   lod.update(camera, viewportPx)
 
   // uniform del terreno
-  terrainMaterial.uniforms.uCameraPos.value.copy(camera.position)
+  const u = terrainMaterial.uniforms
+  u.uCameraPos.value.copy(camera.position)
+  // origine del reticolo del rumore: multiplo di 64 km (vedi materials.js)
+  u.uOrigin.value.set(
+    Math.floor(camera.position.x / 64) * 64,
+    Math.floor(camera.position.y / 64) * 64,
+    Math.floor(camera.position.z / 64) * 64
+  )
+  u.uCamLocal.value.copy(camera.position).sub(u.uOrigin.value)
+  u.uExag.value = reliefExaggeration(altitudeKm)
+  u.uShadeExag.value = shadingExaggeration(altitudeKm)
   terrainMaterial.uniforms.uTime.value = now * 0.001
   terrainMaterial.uniforms.uHazeDensity.value = 1 / (altitudeKm * 7.5 + 55)
 
@@ -208,6 +231,7 @@ function frame(now) {
   )
 
   renderer.render(scene, camera)
+  adaptResolution(dt)
 
   frameCount++
   if (!ready && frameCount > 1 && lod.stats.built === 0 && lod.stats.visible > 0) {
@@ -221,3 +245,28 @@ requestAnimationFrame(frame)
 
 // debug in console
 window.__planet = { planet, controls, lod, scene, camera, renderer }
+
+// ------------------------------------------------- risoluzione adattiva
+// Da vicino lo shader del terreno disegna chiome, dune e prati per pixel: su
+// GPU integrate il frame può superare il budget. Si riduce la risoluzione di
+// rendering finché il frame non torna fluido, e la si rialza quando c'è margine.
+
+const MIN_PIXEL_RATIO = 0.6
+let frameEma = 1 / 60
+let adaptTimer = 0
+
+function adaptResolution(dt) {
+  if (!ready || document.hidden) return
+  frameEma += (dt - frameEma) * 0.08
+  adaptTimer += dt
+  if (adaptTimer < 0.8) return
+  adaptTimer = 0
+  const pr = renderer.getPixelRatio()
+  let next = pr
+  if (frameEma > 1 / 38) next = Math.max(MIN_PIXEL_RATIO, pr * 0.85)
+  else if (frameEma < 1 / 55) next = Math.min(MAX_PIXEL_RATIO, pr * 1.08)
+  if (Math.abs(next - pr) > 0.01) {
+    renderer.setPixelRatio(next)
+    resize()
+  }
+}
