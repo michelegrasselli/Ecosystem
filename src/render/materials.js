@@ -15,6 +15,8 @@ export function createTerrainMaterial(sunDir) {
       uWaterTint: { value: new THREE.Color(0.42, 0.62, 0.74) }
     },
     vertexShader: /* glsl */ `
+      #include <common>
+      #include <logdepthbuf_pars_vertex>
       attribute vec3 aColor;
       attribute float aWater;
 
@@ -30,9 +32,12 @@ export function createTerrainMaterial(sunDir) {
         vWorld = wp.xyz;
         vNormalW = normalize(mat3(modelMatrix) * normal);
         gl_Position = projectionMatrix * viewMatrix * wp;
+        #include <logdepthbuf_vertex>
       }
     `,
     fragmentShader: /* glsl */ `
+      #include <common>
+      #include <logdepthbuf_pars_fragment>
       uniform vec3 uSunDir;
       uniform vec3 uCameraPos;
       uniform vec3 uHazeColor;
@@ -46,6 +51,7 @@ export function createTerrainMaterial(sunDir) {
       varying float vWater;
 
       void main() {
+        #include <logdepthbuf_fragment>
         // Niente inversione sulle facce posteriori: le "gonne" che chiudono le
         // crepe tra tile si vedono di taglio dal lato interno e, se invertite,
         // il toon shading le spezzerebbe in righe scure sui confini del LOD.

@@ -10,7 +10,7 @@ export const SCENE_RADIUS = PLANET_RADIUS * SCENE_SCALE // 6371 unità
 export const SEA_LEVEL = 0
 
 /** Soglia del campo di continentalità che separa terra e oceano. */
-export const CONTINENT_THRESHOLD = 0.052
+export const CONTINENT_THRESHOLD = 0.09
 
 /** Massime profondità / altezze generate. */
 export const MAX_OCEAN_DEPTH = 9200

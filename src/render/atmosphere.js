@@ -13,15 +13,20 @@ export function createAtmosphere() {
       uSunDir: { value: new THREE.Vector3(0.6, 0.4, 0.7).normalize() }
     },
     vertexShader: /* glsl */ `
+      #include <common>
+      #include <logdepthbuf_pars_vertex>
       varying vec3 vNormalV;
       varying vec3 vNormalW;
       void main() {
         vNormalW = normalize(mat3(modelMatrix) * normal);
         vNormalV = normalize(normalMatrix * normal);
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        #include <logdepthbuf_vertex>
       }
     `,
     fragmentShader: /* glsl */ `
+      #include <common>
+      #include <logdepthbuf_pars_fragment>
       uniform vec3 uColor;
       uniform float uPower;
       uniform float uIntensity;
@@ -30,6 +35,7 @@ export function createAtmosphere() {
       varying vec3 vNormalW;
 
       void main() {
+        #include <logdepthbuf_fragment>
         // alone sul bordo del disco visto dalla camera
         float rim = pow(1.0 - abs(vNormalV.z), uPower);
         // più luminoso sul lato illuminato dal sole

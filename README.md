@@ -52,5 +52,6 @@ Dettagli, decisioni e limiti noti sono in [CONTEXT.md](CONTEXT.md).
 
 ```bash
 node tools/planet-stats.mjs        # statistiche di biomi, quote, laghi e fiumi
+node tools/continents.mjs          # terre emerse e dimensione delle masse continentali
 node tools/shot-server.mjs 7788    # server locale per catturare frame dal browser
 ```

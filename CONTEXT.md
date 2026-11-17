@@ -82,19 +82,42 @@ Tre accorgimenti, tutti necessari, altrimenti compaiono righe scure sui confini:
 3. **Skirt poco profonde** (`min(max(lato*0.06, 0.6), 26)` unità): gonne troppo profonde
    bucano il terreno delle tile vicine.
 
-### 3.6 Leggibilità cartografica dei fiumi
+### 3.6 Colore e LOD (importante)
 
-A LOD basso la maglia della mesh è più larga del letto del fiume (~2 km) e l'acqua si
-sgretona in puntini. `Planet.sample()` riceve quindi anche `spacingKm` (lato della maglia)
-e usa un`mapScale` per **allargare solo il colore** del fiume, mai la sua incisione:
-le quote restano identiche a ogni livello, quindi nessuna crepa. Le linee esagerate sono
-anche più tenui, come su una carta geografica.
+Il **colore non dipende dal livello LOD**. All'inizio i fiumi venivano allargati solo nel
+colore sui LOD grossi (per renderli visibili), ma questo faceva comparire un **quadrato di
+colore diverso** al confine tra tile di livello 2 e 3: una singola lettura per vertice
+"pescava" un fiume largo pochi km e lo spalmava su tutta la maglia (89-178 km).
+
+Ora:
+
+- fiumi con **letto fisico di ~3.2 km** (più fascia valliva colorata di ~7 km), uguale a
+  ogni livello: a scala regionale si leggono, dallo spazio restano invisibili (come in
+  natura);
+- **mottle di albedo a bassa frequenza** (periodo ~600 km): le maglie da 178 km non la
+  aliasano;
+- sui livelli grossolani (≤ 5) il colore per vertice è la **media d'area di 4 sotto-campioni
+  per cella**: fiumi e spiagge sottili contribuiscono in proporzione all'area che coprono
+  invece di diventare macchie. È un filtro anti-aliasing del colore (come una mipmap);
+  la quota resta quella del centro cella, quindi la geometria è identica tra LOD.
+
+### 3.7 Profondità logaritmica e materiali custom
+
+Il renderer usa `logarithmicDepthBuffer` per gestire la scala (raggio 6371 → quota 42 000).
+I materiali `ShaderMaterial` custom (terreno e atmosfera) devono includere i chunk
+`<logdepthbuf_pars_vertex/fragment>` e `<logdepthbuf_vertex/fragment>`: senza, scrivono una
+profondità "normale" non confrontabile con quella dei materiali built-in e le stelle
+comparivano come puntini bianchi **sopra** il pianeta.
 
 ### 3.3 Fedeltà geografica (R4 + R5)
 
 Generazione **procedurale deterministica** da un seed:
 
-- **Continenti**: fBm a bassa frequenza su sfera (3D noise → niente distorsione ai poli).
+- **Continenti**: tre scale di fBm su sfera (3D noise → niente distorsione ai poli) con
+  pesi `0.55 / 0.45 / 0.05` (`CONTINENT_TUNING` in `planet.js`) e soglia mare/terra `0.09`.
+  Calibrati con `tools/continents.mjs` per ottenere **poche masse grandi** invece di un
+  arcipelago: ~30% di terre emerse, due continenti che coprono ~46% e ~34% della terraferma,
+  più qualche massa minore.
 - **Catene montuose**: *ridged multifractal* mascherato da un campo di "orogenesi".
 - **Oceani**: quota 0 = livello del mare, profondità fino a ~-8000 m.
 - **Laghi**: bacini chiusi portati sotto il livello del mare → si riempiono.
@@ -163,6 +186,7 @@ Nessun backend. L'applicazione è **statica** e può essere pubblicata su GitHub
 │       ├── hud.js             HUD + tasto "Salva"
 │       └── styles.css
 └── tools/
+    ├── continents.mjs         taratura terre emerse / masse continentali (node)
     ├── planet-stats.mjs       validazione statistica dei biomi (node)
     └── shot-server.mjs        cattura frame dal browser in sviluppo
 ```
@@ -178,8 +202,9 @@ Nessun backend. L'applicazione è **statica** e può essere pubblicata su GitHub
   La scena 3D usa `SCENE_SCALE` per portare i metri in unità di scena.
 - Il campionamento del pianeta **deve essere identico** per ogni consumatore:
   una sola funzione `Planet.sample()` come sorgente di verità.
-- Il colore può dipendere dal LOD (`spacingKm`), la **quota no**: la geometria deve restare
-  continua tra livelli, altrimenti si aprono crepe.
+- Il colore **non dipende dal LOD**: geometria e colore devono restare continui tra livelli,
+  altrimenti il confine tra tile si vede come un blocco. Sulle maglie grosse il colore viene
+  filtrato per area (4 sotto-campioni), non alterato con soglie legate allo spacing.
 
 ---
 
@@ -209,15 +234,16 @@ Misure fatte sul seed `20261116` (laptop medio, Chrome):
 
 | Voce | Valore |
 |------|--------|
-| Terre emerse | ~39% |
-| Quota massima | ~6240 m |
-| Laghi | ~1.0% della superficie |
-| Fiumi | ~0.3% della superficie |
+| Terre emerse | ~30% |
+| Quota massima | ~6430 m |
+| Massi continentali | 2 maggiori (~46% e ~34% della terraferma) + 4 minori |
+| Laghi | ~0.8% della superficie |
+| Fiumi | ~0.6% della superficie |
 | Tile visibili a 900 km | ~410 (max livello 7) |
 | Tile visibili a 6 km | ~1380 (max livello 14) |
 | Costo `lod.update()` | 0.6 - 1.2 ms per frame |
 | Costruzione tile | ~2.3 ms (L7) - ~4.5 ms (L12) |
-| Riempimento a freddo | 900 km: ~0.4 s di calcolo · 6 km: ~2.7 s |
+| Riempimento a freddo | spazio (16 000 km): ~0.5 s · 900 km: ~0.4 s · 6 km: ~2.7 s |
 
 Limiti noti / prossimi passi tecnici:
 
@@ -226,7 +252,8 @@ Limiti noti / prossimi passi tecnici:
   `ArrayBuffer` trasferibili.
 - **Nessuna texture di dettaglio**: a 6 km il suolo è liscio (solo colore per vertice).
   Rimedio previsto: micro-rilievo nel fragment shader con attenuazione per distanza.
-- **Nessun LOD di colore**: il passaggio di bioma è per vertice, quindi i confini tra biomi
-  sono a scalini di una maglia.
+- **Colore filtrato per area solo sui LOD grossi (≤ 5)**: i biomi restano per vertice, quindi
+  a scala regionale i confini tra biomi sono ancora a scalini di una maglia. Rimedio
+  previsto: rumore di bioma nel fragment shader.
 - **Il tasto "salva" salva solo seed + camera**: quando arriveranno piante e animali andrà
   versionato lo stato dell'ecosistema (lo schema è già versionato).

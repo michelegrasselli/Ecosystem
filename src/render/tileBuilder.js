@@ -40,7 +40,9 @@ export function qualityForLevel(level) {
 }
 
 const _dir = { x: 0, y: 0, z: 0 }
+const _dirSub = { x: 0, y: 0, z: 0 }
 const _sample = Planet.createSample()
+const _sampleSub = Planet.createSample()
 
 /**
  * Crea la mesh di una tile.
@@ -77,15 +79,12 @@ export function buildTileMesh(planet, face, level, ix, iy, material) {
   const extCol = new Float32Array(ext * ext * 3)
   const extWater = new Float32Array(ext * ext)
 
-  // lato della maglia in km: serve al pianeta per esagerare i fiumi
-  const spacingKm = (Math.PI * 0.5 * SCENE_RADIUS) / (div * res)
-
   for (let gv = 0; gv < ext; gv++) {
     const v = ((iy + (gv - 1) / res) / div) * 2 - 1
     for (let gu = 0; gu < ext; gu++) {
       const u = ((ix + (gu - 1) / res) / div) * 2 - 1
       cubeFaceDir(face, u, v, _dir)
-      planet.sample(_dir.x, _dir.y, _dir.z, quality, _sample, spacingKm)
+      planet.sample(_dir.x, _dir.y, _dir.z, quality, _sample)
 
       let h = _sample.height
       let w = _sample.water
@@ -96,14 +95,42 @@ export function buildTileMesh(planet, face, level, ix, iy, material) {
       }
       if (w > 0 && h < 0) h = 0
 
+      // Colore: sui LOD grossi una sola lettura per vertice "pesca" fiumi,
+      // spiagge e laghi larghi pochi km e li spalma su tutta la maglia: si
+      // vedono macchie chiare in mezzo al mare e blocchi di colore diverso tra
+      // livelli adiacenti. Mediando 4 sotto-campioni per cella il colore
+      // diventa una media d'area (antialiasing), come una mipmap.
+      let cr = _sample.r
+      let cg = _sample.g
+      let cb = _sample.b
+      if (level <= 5) {
+        // 4 punti dentro la cella: antialiasing senza sfocare le coste
+        const off = (2 / (div * res)) * 0.25
+        cr = 0
+        cg = 0
+        cb = 0
+        for (let sy = -1; sy <= 1; sy += 2) {
+          for (let sx = -1; sx <= 1; sx += 2) {
+            cubeFaceDir(face, u + sx * off, v + sy * off, _dirSub)
+            planet.sample(_dirSub.x, _dirSub.y, _dirSub.z, quality, _sampleSub)
+            cr += _sampleSub.r
+            cg += _sampleSub.g
+            cb += _sampleSub.b
+          }
+        }
+        cr *= 0.25
+        cg *= 0.25
+        cb *= 0.25
+      }
+
       const r = SCENE_RADIUS + h * SCENE_SCALE
       const e3 = (gv * ext + gu) * 3
       extPos[e3] = _dir.x * r
       extPos[e3 + 1] = _dir.y * r
       extPos[e3 + 2] = _dir.z * r
-      extCol[e3] = _sample.r
-      extCol[e3 + 1] = _sample.g
-      extCol[e3 + 2] = _sample.b
+      extCol[e3] = cr
+      extCol[e3 + 1] = cg
+      extCol[e3 + 2] = cb
       extWater[gv * ext + gu] = w
     }
   }

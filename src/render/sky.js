@@ -78,7 +78,9 @@ export function createSky() {
       vertexColors: true,
       transparent: true,
       depthWrite: false,
-      depthTest: false,
+      // le stelle disegnano dopo il terreno (passata trasparente): senza test
+      // di profondità comparivano come puntini bianchi sopra il pianeta
+      depthTest: true,
       opacity: 1
     })
   )

@@ -12,11 +12,27 @@ import {
 } from './constants.js'
 import { BIOME, classifyLandBiome, classifySeaBiome, rgbFor } from './biomes.js'
 
+/**
+ * Parametri del campo di continentalità. Valori pensati per ottenere qualche
+ * massa continentale grande (non un supercontinente, non un arcipelago).
+ * Tenuti qui perché li usa anche tools/continents.mjs per la taratura.
+ */
+export const CONTINENT_TUNING = {
+  bigScale: 0.6,
+  medScale: 1.0,
+  fineScale: 3.6,
+  bigWeight: 0.55,
+  medWeight: 0.45,
+  fineWeight: 0.05
+}
+
 export class Planet {
-  constructor(seed = 1) {
+  constructor(seed = 1, options = {}) {
     this.seed = seed | 0
     this.noise = new Noise3D(this.seed)
     this.noiseDetail = new Noise3D((this.seed ^ 0x9e3779b9) >>> 0)
+    this.continentThreshold =
+      options.continentThreshold ?? CONTINENT_THRESHOLD
     this._out = createSample()
   }
 
@@ -27,19 +43,17 @@ export class Planet {
 
   /**
    * Campiona il pianeta in una direzione unitaria.
+   * Il risultato NON dipende dal livello LOD: geometria e colore devono essere
+   * identici ovunque, altrimenti il confine tra tile di livello diverso si vede
+   * come un quadrato di colore diverso (aliasando i fiumi sulle maglie grosse).
    * @param {number} x @param {number} y @param {number} z direzione unitaria
    * @param {number} quality 0..1 — quanto dettaglio calcolare (LOD)
    * @param {object} [out] oggetto di output riutilizzabile
-   * @param {number} [spacingKm] lato della maglia della mesh che userà il campione.
-   *   Serve solo a esagerare i corsi d'acqua quando la griglia è grossa:
-   *   non influenza le quote, quindi non crea crepe tra livelli LOD.
    */
-  sample(x, y, z, quality = 1, out = this._out, spacingKm = 0) {
+  sample(x, y, z, quality = 1, out = this._out) {
     const n = this.noise
     const nd = this.noiseDetail
     const q = quality
-    // esagerazione cartografica dei fiumi per griglie grossolane
-    const mapScale = spacingKm > 0 ? clamp(spacingKm / 1.0, 1, 10) : 1
 
     // ---------- 1. Domain warping ----------
     // Deforma le coordinate per ottenere coste organiche invece che "a bolle".
@@ -55,23 +69,41 @@ export class Planet {
     pz *= pl
 
     // ---------- 2. Continentalità ----------
-    const base = fbm(n, px * 1.05, py * 1.05, pz * 1.05, 4)
-    const macro = fbm(n, px * 0.48 + 31.7, py * 0.48 - 12.3, pz * 0.48 + 5.9, 2)
-    const cont = base * 0.55 + macro * 0.45
+    // Tre scale con pesi molto diversi: le "placche" grandi decidono DOVE sta la
+    // terraferma, le scale minori incidono solo la costa. Con pesi più simili tra
+    // le ottave il pianeta diventava un arcipelago di macchie.
+    const ct = CONTINENT_TUNING
+    const big = fbm(n, px * ct.bigScale, py * ct.bigScale, pz * ct.bigScale, 2)
+    const med = fbm(
+      n,
+      px * ct.medScale + 31.7,
+      py * ct.medScale - 12.3,
+      pz * ct.medScale + 5.9,
+      3
+    )
+    const fine = fbm(
+      n,
+      px * ct.fineScale - 8.1,
+      py * ct.fineScale + 4.4,
+      pz * ct.fineScale - 2.7,
+      3
+    )
+    const cont = big * ct.bigWeight + med * ct.medWeight + fine * ct.fineWeight
 
     // ---------- 3. Latitudine ----------
     const absLat = Math.abs(radToDeg(Math.asin(clamp(y, -1, 1))))
 
+    const threshold = this.continentThreshold
     let height
-    let isSea = cont <= CONTINENT_THRESHOLD
+    let isSea = cont <= threshold
 
     if (isSea) {
-      const t = clamp((CONTINENT_THRESHOLD - cont) / (1 + CONTINENT_THRESHOLD), 0, 1)
+      const t = clamp((threshold - cont) / (1 + threshold), 0, 1)
       height = -Math.pow(t, 0.82) * MAX_OCEAN_DEPTH
       // piattaforme continentali: acque basse vicino alle coste
       height *= lerp(0.55, 1, smoothstep(0.0, 0.16, t))
     } else {
-      const l = clamp((cont - CONTINENT_THRESHOLD) / (1 - CONTINENT_THRESHOLD), 0, 1)
+      const l = clamp((cont - threshold) / (1 - threshold), 0, 1)
       height = Math.pow(l, 1.3) * MAX_LAND_RISE
 
       // ---------- 4. Catene montuose ----------
@@ -156,17 +188,16 @@ export class Planet {
     if (!isSea && !isLake && q > 0.42 && height > 4 && height < 2600) {
       const riverField = fbm(nd, px * 13.0 + 41.5, py * 13.0 - 3.2, pz * 13.0 + 19.7, 2)
       const d = Math.abs(riverField)
-      // Letto largo ~2 km: abbastanza da coprire più maglie della griglia,
-      // così il fiume resta una linea continua invece di una fila di puntini.
-      const width = (2200 / PLANET_RADIUS) * 13.0
-      const mapWidth = width * mapScale
+      // Letto fisico di ~3.2 km: abbastanza da coprire un paio di maglie anche
+      // a scala regionale. La larghezza NON dipende dal LOD.
+      const width = (3200 / PLANET_RADIUS) * 13.0
+      // Fascia valliva un po' più larga, per il tint del colore.
+      const mapWidth = width * 2.2
       const corridor = smoothstep(0.0, 0.2, moist + 0.35) * smoothstep(2800, 1400, height)
 
-      // l'acqua (colore) è esagerata sulle griglie grossolane...
       riverAmount = (1 - smoothstep(0, mapWidth, d)) * corridor
 
-      // ...l'incisione del terreno invece resta alla sua larghezza reale,
-      // così le quote sono identiche a ogni livello LOD
+      // incisione del terreno alla larghezza del letto
       const carve = (1 - smoothstep(0, width, d)) * corridor
       if (carve > 0.02) {
         height = lerp(height, Math.max(height - 26, 1.5), carve)
@@ -208,10 +239,11 @@ export class Planet {
     let b = col[2]
 
     // variazione di albedo: senza, il terreno sembra un tappeto di colore piatto.
-    // Su maglie grossolane va spenta, altrimenti aliasa e i blocchi LOD si vedono.
-    const mottleFade = spacingKm > 0 ? clamp(1 - (spacingKm - 12) / 90, 0, 1) : 1
-    const mottle = fbm(nd, px * 150 + 17.3, py * 150 - 9.8, pz * 150 + 3.6, 2)
-    const v = 1 + 0.05 * moistNoise + 0.07 * mottle * mottleFade
+    // Frequenza bassa (periodo ~600 km) di proposito: le maglie grosse (L2-L3,
+    // 89-178 km) non devono aliasarla, altrimenti il confine tra livelli LOD
+    // diventa un quadrato di colore diverso.
+    const mottle = fbm(nd, px * 62 + 17.3, py * 62 - 9.8, pz * 62 + 3.6, 1)
+    const v = 1 + 0.05 * moistNoise + 0.07 * mottle
     if (biome === BIOME.OCEAN_DEEP) {
       r = lerp(col[0], 0.05, smoothstep(0, 1, clamp((-height - 2600) / 6000, 0, 1)))
       g = lerp(col[1], 0.11, smoothstep(0, 1, clamp((-height - 2600) / 6000, 0, 1)))
@@ -239,8 +271,7 @@ export class Planet {
     if (!isSea && riverAmount > 0.02) {
       const rc = RIVER_RGB
       const k = Math.min(riverAmount * 1.25, 1)
-      // le linee esagerate per il LOD basso restano più tenui, come su una mappa
-      const blend = 0.85 / Math.pow(mapScale, 0.35)
+      const blend = 0.85
       r = lerp(r, rc[0], blend * k)
       g = lerp(g, rc[1], blend * k)
       b = lerp(b, rc[2], blend * k)
