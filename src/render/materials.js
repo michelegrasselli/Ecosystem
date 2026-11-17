@@ -255,7 +255,7 @@ export function createTerrainMaterial(sunDir) {
         float waterF = vWater + edgeN * 0.35;
         // da lontano le soglie si allargano: una soglia netta su valori
         // interpolati tra maglie di decine di km disegna scalini lungo i triangoli
-        float soft = smoothstep(1.5, 25.0, foot) * 0.45;
+        float soft = smoothstep(4.0, 40.0, foot) * 0.18;
         float isWater = smoothstep(0.42 - soft, 0.58 + soft, waterF);
         // densità di alberi (savana e macchia: radi; foreste: chioma chiusa)
         float trees = clamp(vSurf.x + edgeN * 0.5, 0.0, 1.0);
@@ -373,8 +373,8 @@ export function createTerrainMaterial(sunDir) {
           vec3 rc = mix(rockA, rockB, smoothstep(-0.3, 0.3, strata) * scaleW(0.12, foot) + 0.5 * (1.0 - scaleW(0.12, foot)));
           rc = mix(rc, vColor, 0.25);
           if (w03 > 0.0) {
-            float crack = smoothstep(0.08, 0.0, abs(n4 - 0.5));
-            rc *= 1.0 - crack * 0.25 * w03;
+            float crack = smoothstep(0.035, 0.0, abs(n4 - 0.5));
+            rc *= 1.0 - crack * 0.14 * w03;
           }
           base = mix(base, rc, rock);
         }
@@ -458,8 +458,17 @@ export function createTerrainMaterial(sunDir) {
         }
 
         // ============================================================ FOSCHIA
+        // foschia leggera: solo in lontananza, verso l'orizzonte
         float fog = 1.0 - exp(-dist * uHazeDensity);
-        color = mix(color, uHazeColor * mix(0.3, 1.0, day), fog * 0.72);
+        fog = fog * fog;
+        color = mix(color, uHazeColor * mix(0.3, 1.0, day), fog * 0.55);
+
+        // correzione colore finale: un po' di contrasto e saturazione, per
+        // un'immagine netta e non slavata
+        float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
+        color = mix(vec3(luma), color, 1.14);
+        color = (color - 0.42) * 1.08 + 0.42;
+        color = max(color, 0.0);
 
         gl_FragColor = vec4(color, 1.0);
       }

@@ -152,10 +152,11 @@ comparivano come puntini bianchi **sopra** il pianeta.
 Generazione **procedurale deterministica** da un seed:
 
 - **Continenti**: tre scale di fBm su sfera (3D noise → niente distorsione ai poli) con
-  pesi `0.55 / 0.45 / 0.05` (`CONTINENT_TUNING` in `planet.js`) e soglia mare/terra `0.09`.
-  Calibrati con `tools/continents.mjs` per ottenere **poche masse grandi** invece di un
-  arcipelago: ~30% di terre emerse, due continenti che coprono ~46% e ~34% della terraferma,
-  più qualche massa minore.
+  pesi `0.35 / 0.65 / 0.2`, scale `0.6 / 1.9 / 4.5` (`CONTINENT_TUNING` in `planet.js`),
+  warp del dominio `0.17` e soglia mare/terra `0.08`. Calibrati con `tools/continents.mjs`
+  (variabile `VARIANTS` per provare combinazioni): ~41% di terre emerse in 13 masse
+  (la maggiore ~37%, poi 17%, 16%, 5%…), né un supercontinente né un arcipelago. Con un
+  warp più forte (0.3) le coste diventavano "pennellate" stirate.
 - **Catene montuose**: *ridged multifractal* mascherato da un campo di "orogenesi".
 - **Oceani**: quota 0 = livello del mare, profondità fino a ~-8000 m.
 - **Laghi**: bacini chiusi portati sotto il livello del mare → si riempiono.
@@ -164,9 +165,14 @@ Generazione **procedurale deterministica** da un seed:
   umidità da fasce latitudinali (ITCZ umida, alte subtropicali secche, westerlies umide)
   + distanza dal mare.
 - **Biomi**: diagramma di Whittaker (temperatura × umidità) → tundra, taiga, foreste
-  temperate, praterie, savana, deserto, foresta pluviale, ghiacciai d'alta quota.
+  temperate, praterie, savana, deserto, foresta pluviale, ghiacciai d'alta quota, più biomi
+  "rari" guidati da un rumore di varietà regionale: paludi (con pozze), calanchi rossi,
+  saline, praterie alpine. Il colore varia con continuità dentro ogni bioma (più verde dove
+  è umido, più bruno dove è secco, più spento dove è freddo).
   Il deserto del Sahara deve emergere naturalmente dalla fascia secca subtropicale.
-- **Calotte polari** oltre i ~68-72° di latitudine.
+- **Due calotte polari**: a nord terre ghiacciate, a sud un continente polare (tipo
+  Antartide) aggiunto al campo di continentalità oltre i ~64-80°. In entrambi i poli il
+  mare gelato diventa **banchisa** (lastra di ghiaccio piatta, bioma `ICE`).
 
 ### 3.4 Persistenza (R7 + R8)
 
@@ -212,7 +218,11 @@ Nessun backend. L'applicazione è **statica** e può essere pubblicata su GitHub
 │   │   └── constants.js       costanti fisiche e geografiche
 │   ├── render/
 │   │   ├── terrainLOD.js      quadtree cubo-sfera
-│   │   ├── tileBuilder.js     costruzione geometria tile (griglia estesa + skirt)
+│   │   ├── tileData.js        dati di una tile (puro, griglia estesa + skirt)
+│   │   ├── tileBuilder.js     mesh three.js dai dati di tileData
+│   │   ├── tileWorker.js      Web Worker che calcola le tile
+│   │   ├── tilePool.js        pool di worker con priorità
+│   │   ├── relief.js          esagerazione del rilievo
 │   │   ├── materials.js       shader toon del terreno/acqua
 │   │   ├── atmosphere.js      alone atmosferico
 │   │   └── sky.js             sfondo + stelle
@@ -272,11 +282,12 @@ Misure fatte sul seed `20261116` (laptop medio, Chrome):
 
 | Voce | Valore |
 |------|--------|
-| Terre emerse | ~30% |
-| Quota massima | ~6430 m |
-| Massi continentali | 2 maggiori (~46% e ~34% della terraferma) + 4 minori |
-| Laghi | ~0.8% della superficie |
-| Fiumi | ~0.6% della superficie |
+| Terre emerse | ~41% (+ banchisa polare) |
+| Quota massima | ~7300 m |
+| Masse continentali | 13 (37%, 17%, 16%, 5% della terraferma, poi minori) |
+| Laghi | ~1.3% della superficie |
+| Fiumi | ~1.0% della superficie |
+| Primo caricamento | ~0.9 s (6 worker) |
 | Tile visibili a 900 km | ~410 (max livello 7) |
 | Tile visibili a 6 km | ~1380 (max livello 14) |
 | Costo `lod.update()` | 0.6 - 1.2 ms per frame |
@@ -285,9 +296,15 @@ Misure fatte sul seed `20261116` (laptop medio, Chrome):
 
 Limiti noti / prossimi passi tecnici:
 
-- **Generazione sul thread principale**: scendendo velocemente a bassa quota le tile
-  arrivano in streaming (budget 6.5 ms/frame). Rimedio previsto: pool di Web Worker con
-  `ArrayBuffer` trasferibili.
+- **Generazione in Web Worker** (`tilePool.js`): fino a 6 worker, 2 richieste in volo
+  per worker, scelte ogni frame in ordine di priorità (livelli grossi, poi vicini). Gli
+  array tornano come `ArrayBuffer` trasferibili. Un risultato viene scartato se il nodo
+  è stato scaricato o richiesto di nuovo (`requestId`). Senza worker si torna alla
+  generazione nel thread principale con budget per frame. Le tabelle di costo qui sopra
+  per tile e riempimento sono quelle pre-worker.
+- **Nitidezza**: maglie fitte anche sui livelli grossi (24-36 vertici per lato), split a
+  96 px, foschia leggera solo verso l'orizzonte, correzione di contrasto e saturazione a
+  fine shader, risoluzione adattiva mai sotto 0.85.
 - **Alberi dipinti sul terreno**: da 25-100 m le chiome sono dischi piatti. In fase 2 vanno
   affiancate da alberi 3D istanziati vicino alla camera, posizionati con lo stesso hash
   di `canopy()` (stessi punti) e la stessa esagerazione del rilievo.

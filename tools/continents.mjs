@@ -86,18 +86,23 @@ const fmt = (r) =>
   `terre ${r.land.toFixed(1).padStart(5)}%  masse ${String(r.masses).padStart(2)}  ` +
   `max ${String(Math.round(r.largest)).padStart(3)}%  top ${r.top.map((v) => String(v).padStart(3)).join(' ')}`
 
-// combinazioni da provare: [bigWeight, medWeight, medScale]
-const variants = [[0.55, 0.45, 1.0]]
+// combinazioni da provare: [bigWeight, medWeight, medScale, fineWeight, fineScale]
+// (sovrascrivibili con la variabile d'ambiente VARIANTS, JSON)
+const variants = process.env.VARIANTS
+  ? JSON.parse(process.env.VARIANTS)
+  : [[CONTINENT_TUNING.bigWeight, CONTINENT_TUNING.medWeight, CONTINENT_TUNING.medScale, CONTINENT_TUNING.fineWeight, CONTINENT_TUNING.fineScale]]
 
-for (const [bw, mw, ms] of variants) {
+for (const [bw, mw, ms, fw = CONTINENT_TUNING.fineWeight, fs = CONTINENT_TUNING.fineScale] of variants) {
   CONTINENT_TUNING.bigWeight = bw
   CONTINENT_TUNING.medWeight = mw
   CONTINENT_TUNING.medScale = ms
+  CONTINENT_TUNING.fineWeight = fw
+  CONTINENT_TUNING.fineScale = fs
   for (const t of thresholds) {
     const planet = new Planet(seed, t === undefined ? {} : { continentThreshold: t })
     const r = analyse(planet)
     console.log(
-      `big ${bw} med ${mw} (scala ${ms})  ` + fmt(r) + `  soglia ${planet.continentThreshold}`
+      `big ${bw} med ${mw} (scala ${ms}) fine ${fw}@${fs}  ` + fmt(r) + `  soglia ${planet.continentThreshold}`
     )
   }
 }

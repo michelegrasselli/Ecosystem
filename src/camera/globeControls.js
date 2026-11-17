@@ -70,6 +70,10 @@ export class GlobeControls {
     domElement.addEventListener('pointerup', this._onPointerUp)
     domElement.addEventListener('pointercancel', this._onPointerUp)
     domElement.addEventListener('dblclick', this._onDblClick)
+    this._onMouseDown = (e) => {
+      if (e.button === 1) e.preventDefault()
+    }
+    domElement.addEventListener('mousedown', this._onMouseDown)
     domElement.addEventListener('keydown', this._onKeyDown)
     domElement.tabIndex = 0
 
@@ -122,7 +126,11 @@ export class GlobeControls {
 
   _onPointerDown(e) {
     if (e.button === 0 && !e.shiftKey) this._dragging = 1
-    else if (e.button === 2 || (e.button === 0 && e.shiftKey)) this._dragging = 2
+    else if (e.button === 1) {
+      // rotella premuta: traslazione della vista (senza l'autoscroll del browser)
+      e.preventDefault()
+      this._dragging = 3
+    } else if (e.button === 2 || (e.button === 0 && e.shiftKey)) this._dragging = 2
     this._lastX = e.clientX
     this._lastY = e.clientY
     this.dom.setPointerCapture?.(e.pointerId)
@@ -139,6 +147,8 @@ export class GlobeControls {
 
     if (this._dragging === 1) {
       this._pan(dx, dy)
+    } else if (this._dragging === 3) {
+      this._translate(dx, dy)
     } else {
       this.autoPitch = false
       this.tHeading = (this.tHeading - dx * 0.25) % 360
@@ -162,6 +172,30 @@ export class GlobeControls {
     this.tLon = wrapLon(this.tLon - radToDeg(dx * radPerPixel) / cosLat)
 
     // durante il pan la camera segue subito: niente ritardo
+    this.lat = this.tLat
+    this.lon = this.tLon
+  }
+
+  /**
+   * Traslazione con la rotella premuta: il terreno segue il cursore nelle
+   * direzioni dello schermo (tiene conto di orientamento e inclinazione),
+   * come trascinare una mappa.
+   */
+  _translate(dx, dy) {
+    const h = this.dom.clientHeight || 1
+    const worldPerPixel = (2 * this.altitude * Math.tan(degToRad(this.fov) / 2)) / h
+    const radPerPixel = worldPerPixel / SCENE_RADIUS
+    const hRad = degToRad(this.heading)
+    // in vista inclinata un pixel verticale copre più terreno
+    const fwdScale = 1 / Math.max(Math.sin(degToRad(this.pitch)), 0.35)
+    const ch = Math.cos(hRad)
+    const sh = Math.sin(hRad)
+    const dEast = -dx * ch + dy * sh * fwdScale
+    const dNorth = dx * sh + dy * ch * fwdScale
+
+    const cosLat = Math.max(Math.cos(degToRad(this.lat)), 0.12)
+    this.tLat = clamp(this.tLat + radToDeg(dNorth * radPerPixel), -89.9, 89.9)
+    this.tLon = wrapLon(this.tLon + radToDeg(dEast * radPerPixel) / cosLat)
     this.lat = this.tLat
     this.lon = this.tLon
   }
@@ -301,6 +335,7 @@ export class GlobeControls {
     d.removeEventListener('pointerup', this._onPointerUp)
     d.removeEventListener('pointercancel', this._onPointerUp)
     d.removeEventListener('dblclick', this._onDblClick)
+    d.removeEventListener('mousedown', this._onMouseDown)
     d.removeEventListener('keydown', this._onKeyDown)
   }
 }

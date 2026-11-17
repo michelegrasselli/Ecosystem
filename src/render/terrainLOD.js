@@ -12,18 +12,22 @@
 
 import * as THREE from 'three'
 import { SCENE_RADIUS, SCENE_SCALE, MAX_LOD_LEVEL } from '../planet/constants.js'
-import { buildTileMesh, tileBounds } from './tileBuilder.js'
+import { buildTileMesh, createTileMesh, tileBounds } from './tileBuilder.js'
 
 const MAX_CACHED_TILES = 4200
-const SPLIT_PIXELS = 110
+const SPLIT_PIXELS = 96
 const MAX_TILES_PER_FRAME = 24
+// mesh create per frame dai risultati dei worker (la creazione è economica,
+// il caricamento sulla GPU avviene al primo render)
+const MAX_MESHES_PER_FRAME = 64
 
 const _sphere = new THREE.Sphere()
 const _v = new THREE.Vector3()
 
 export class TerrainLOD {
-  constructor(planet, scene, material) {
+  constructor(planet, scene, material, pool = null) {
     this.planet = planet
+    this.pool = pool
     this.scene = scene
     this.material = material
     this.group = new THREE.Group()
@@ -37,7 +41,7 @@ export class TerrainLOD {
     this._prevDrawn = []
     this.buildBudgetMs = 7
     this.exaggeration = 1
-    this.stats = { tiles: 0, visible: 0, built: 0, queued: 0, maxLevel: 0 }
+    this.stats = { tiles: 0, visible: 0, built: 0, queued: 0, inFlight: 0, maxLevel: 0 }
 
     this._frustum = new THREE.Frustum()
     this._projScreen = new THREE.Matrix4()
@@ -77,6 +81,7 @@ export class TerrainLOD {
       radius: b.radius,
       hMax: 0,
       mesh: null,
+      requestId: 0,
       children: null,
       lastUsed: this.frame
     }
@@ -97,14 +102,15 @@ export class TerrainLOD {
   }
 
   buildNode(node) {
-    node.mesh = buildTileMesh(
-      this.planet,
-      node.face,
-      node.level,
-      node.x,
-      node.y,
-      this.material
+    this._attach(
+      node,
+      buildTileMesh(this.planet, node.face, node.level, node.x, node.y, this.material)
     )
+  }
+
+  _attach(node, mesh) {
+    node.mesh = mesh
+    node.requestId = 0
     node.hMax = node.mesh.userData.hMax
     node.mesh.visible = false
     this.group.add(node.mesh)
@@ -200,8 +206,27 @@ export class TerrainLOD {
   }
 
   buildNeeded() {
+    // 1. risultati arrivati dai worker
+    let built = 0
+    if (this.pool) {
+      const results = this.pool.drain()
+      for (let i = 0; i < results.length; i++) {
+        const r = results[i]
+        if (built >= MAX_MESHES_PER_FRAME) {
+          this.pool.done.push(r) // al prossimo frame
+          continue
+        }
+        const node = this.cache.get(r.key)
+        // nodo scaricato o richiesta superata: si scarta
+        if (!node || node.mesh || node.requestId !== r.id) continue
+        this._attach(node, createTileMesh(r.data, this.material))
+        built++
+      }
+      this.stats.inFlight = this.pool.inFlight
+    }
+
     if (this.needed.length === 0) {
-      this.stats.built = 0
+      this.stats.built = built
       return
     }
 
@@ -216,15 +241,28 @@ export class TerrainLOD {
         : 0
     })
 
-    const start = performance.now()
-    let built = 0
-    for (let i = 0; i < this.needed.length; i++) {
-      if (built >= MAX_TILES_PER_FRAME) break
-      if (built > 0 && performance.now() - start > this.buildBudgetMs) break
-      const node = this.needed[i]
-      if (node.mesh) continue
-      this.buildNode(node)
-      built++
+    // 2. nuove richieste in ordine di priorità
+    if (this.pool && this.pool.ok) {
+      for (let i = 0; i < this.needed.length; i++) {
+        if (!this.pool.hasCapacity()) break
+        const node = this.needed[i]
+        if (node.mesh || node.requestId) continue
+        node.requestId = this.pool.request(node.key, node.face, node.level, node.x, node.y)
+      }
+      this.stats.inFlight = this.pool.inFlight
+    } else {
+      // senza worker: generazione nel thread principale con un budget
+      const start = performance.now()
+      let local = 0
+      for (let i = 0; i < this.needed.length; i++) {
+        if (local >= MAX_TILES_PER_FRAME) break
+        if (local > 0 && performance.now() - start > this.buildBudgetMs) break
+        const node = this.needed[i]
+        if (node.mesh) continue
+        this.buildNode(node)
+        local++
+      }
+      built += local
     }
     this.stats.built = built
 

@@ -25,7 +25,8 @@ Serve Node 18+ (o 20+).
 
 | Azione | Comando |
 |--------|---------|
-| Ruotare / spostarsi | trascinamento con il tasto sinistro |
+| Ruotare il globo | trascinamento con il tasto sinistro |
+| Traslare la vista | trascinamento tenendo premuta la rotella |
 | Zoom verso il cursore | rotella del mouse |
 | Inclinare e ruotare la vista | trascinamento con tasto destro o `Shift` + sinistro |
 | Volo rapido su un punto | doppio clic |
@@ -46,6 +47,7 @@ avvio. Il salvataggio automatico della sola camera avviene anche alla chiusura d
 - Il terreno è un **quadtree su cubo-sfera** con LOD continuo dallo spazio alla scala
   al suolo (fino al livello 17), normali coerenti tra tile adiacenti e gonne di chiusura
   sulle crepe.
+- Le tile sono calcolate in un pool di **Web Worker**: il thread principale non si blocca.
 - Il rumore è un simplex 3D scritto a mano (`src/core/noise.js`): nessuna dipendenza esterna.
 
 Dettagli, decisioni e limiti noti sono in [CONTEXT.md](CONTEXT.md).

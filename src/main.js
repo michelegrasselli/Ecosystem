@@ -9,6 +9,7 @@ import { reliefExaggeration, shadingExaggeration } from './render/relief.js'
 import { damp } from './core/math.js'
 import { createTerrainMaterial } from './render/materials.js'
 import { TerrainLOD } from './render/terrainLOD.js'
+import { TilePool } from './render/tilePool.js'
 import { createSky } from './render/sky.js'
 import { createAtmosphere } from './render/atmosphere.js'
 import { GlobeControls } from './camera/globeControls.js'
@@ -43,7 +44,9 @@ const seed = Number.isFinite(bootState.seed) ? bootState.seed : DEFAULT_SEED
 
 const planet = new Planet(seed)
 const terrainMaterial = createTerrainMaterial(SUN_DIRECTION)
-const lod = new TerrainLOD(planet, scene, terrainMaterial)
+// generazione delle tile in Web Worker (stesso seed: pianeta identico)
+const tilePool = new TilePool(seed)
+const lod = new TerrainLOD(planet, scene, terrainMaterial, tilePool)
 
 const sky = createSky()
 scene.add(sky.group)
@@ -199,7 +202,7 @@ function frame(now) {
   const viewportPx = window.innerHeight
 
   // budget di costruzione: generoso durante il caricamento, poi contenuto
-  lod.buildBudgetMs = ready ? 6.5 : 46
+  lod.buildBudgetMs = ready ? 6.5 : 46 // usato solo senza Web Worker
   lod.exaggeration = reliefExaggeration(altitudeKm)
   lod.update(camera, viewportPx)
 
@@ -216,7 +219,7 @@ function frame(now) {
   u.uExag.value = reliefExaggeration(altitudeKm)
   u.uShadeExag.value = shadingExaggeration(altitudeKm)
   terrainMaterial.uniforms.uTime.value = now * 0.001
-  terrainMaterial.uniforms.uHazeDensity.value = 1 / (altitudeKm * 7.5 + 55)
+  terrainMaterial.uniforms.uHazeDensity.value = 1 / (altitudeKm * 14 + 160)
 
   sky.update(camera, altitudeKm, Math.max(altitudeKm, 60))
   atmosphere.update(altitudeKm)
@@ -234,7 +237,7 @@ function frame(now) {
   adaptResolution(dt)
 
   frameCount++
-  if (!ready && frameCount > 1 && lod.stats.built === 0 && lod.stats.visible > 0) {
+  if (!ready && frameCount > 1 && lod.stats.queued === 0 && lod.stats.inFlight === 0 && lod.stats.visible > 0) {
     finishLoading()
   }
 
@@ -251,7 +254,8 @@ window.__planet = { planet, controls, lod, scene, camera, renderer }
 // GPU integrate il frame può superare il budget. Si riduce la risoluzione di
 // rendering finché il frame non torna fluido, e la si rialza quando c'è margine.
 
-const MIN_PIXEL_RATIO = 0.6
+// non sotto 0.85: più in basso l'immagine diventa visibilmente sfocata
+const MIN_PIXEL_RATIO = Math.min(0.85, MAX_PIXEL_RATIO)
 let frameEma = 1 / 60
 let adaptTimer = 0
 
@@ -263,8 +267,8 @@ function adaptResolution(dt) {
   adaptTimer = 0
   const pr = renderer.getPixelRatio()
   let next = pr
-  if (frameEma > 1 / 38) next = Math.max(MIN_PIXEL_RATIO, pr * 0.85)
-  else if (frameEma < 1 / 55) next = Math.min(MAX_PIXEL_RATIO, pr * 1.08)
+  if (frameEma > 1 / 30) next = Math.max(MIN_PIXEL_RATIO, pr * 0.9)
+  else if (frameEma < 1 / 50) next = Math.min(MAX_PIXEL_RATIO, pr * 1.1)
   if (Math.abs(next - pr) > 0.01) {
     renderer.setPixelRatio(next)
     resize()

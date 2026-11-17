@@ -19,11 +19,11 @@ import { BIOME, classifyLandBiome, classifySeaBiome, rgbFor } from './biomes.js'
  */
 export const CONTINENT_TUNING = {
   bigScale: 0.6,
-  medScale: 1.0,
-  fineScale: 3.6,
-  bigWeight: 0.55,
-  medWeight: 0.45,
-  fineWeight: 0.05
+  medScale: 1.9,
+  fineScale: 4.5,
+  bigWeight: 0.35,
+  medWeight: 0.65,
+  fineWeight: 0.2
 }
 
 export class Planet {
@@ -60,9 +60,9 @@ export class Planet {
     const w1 = n.noise(x * 1.15 + 11.2, y * 1.15 + 3.7, z * 1.15 - 5.1)
     const w2 = n.noise(x * 1.15 - 7.3, y * 1.15 + 9.1, z * 1.15 + 2.9)
     const w3 = n.noise(x * 1.15 + 1.7, y * 1.15 - 6.2, z * 1.15 + 8.4)
-    let px = x + 0.3 * w1
-    let py = y + 0.3 * w2
-    let pz = z + 0.3 * w3
+    let px = x + 0.17 * w1
+    let py = y + 0.17 * w2
+    let pz = z + 0.17 * w3
     const pl = 1 / Math.sqrt(px * px + py * py + pz * pz)
     px *= pl
     py *= pl
@@ -88,10 +88,17 @@ export class Planet {
       pz * ct.fineScale - 2.7,
       3
     )
-    const cont = big * ct.bigWeight + med * ct.medWeight + fine * ct.fineWeight
+    let cont = big * ct.bigWeight + med * ct.medWeight + fine * ct.fineWeight
 
     // ---------- 3. Latitudine ----------
     const absLat = Math.abs(radToDeg(Math.asin(clamp(y, -1, 1))))
+
+    // Continente polare australe (tipo Antartide): il polo nord ha già terre
+    // ghiacciate, quello sud era solo oceano. Il bordo è inciso dal rumore.
+    if (y < 0) {
+      const polar = smoothstep(64, 80, absLat + fine * 9)
+      cont = Math.max(cont, lerp(cont, 0.32, polar))
+    }
 
     const threshold = this.continentThreshold
     let height
@@ -198,7 +205,13 @@ export class Planet {
       ice = smoothstep(-4, -16, temp)
       if (ice > 0) height = lerp(height, Math.max(height, 900) + 500, ice)
     } else {
-      ice = smoothstep(-6, -18, temp)
+      // banchisa: il mare gelato diventa una lastra di ghiaccio piatta
+      ice = smoothstep(-6, -16, temp + fine * 4)
+    }
+    let seaIce = false
+    if (isSea && ice > 0.55) {
+      seaIce = true
+      height = 6
     }
 
     // ---------- 8. Laghi ----------
@@ -260,7 +273,9 @@ export class Planet {
     }
 
     // ---------- 10. Bioma ----------
-    if (isSea) {
+    if (seaIce) {
+      biome = BIOME.ICE
+    } else if (isSea) {
       biome = classifySeaBiome(-height)
     } else if (isLake) {
       biome = BIOME.LAKE
@@ -272,7 +287,10 @@ export class Planet {
       } else if (height < 12 && absLat < 68 && moistureSandy(moistNoise, absLat)) {
         biome = BIOME.BEACH
       } else {
-        biome = classifyLandBiome(height, temp, moist, absLat)
+        // rumore di "varietà" regionale: decide dove compaiono biomi più rari
+        // (paludi, calanchi, saline) dentro le grandi fasce climatiche
+        const variety = fbm(nd, px * 7.5 + 13.7, py * 7.5 - 4.2, pz * 7.5 + 8.8, 2)
+        biome = classifyLandBiome(height, temp, moist, absLat, variety)
       }
     }
 
@@ -296,6 +314,13 @@ export class Planet {
       g = lerp(col[1], 0.11, smoothstep(0, 1, clamp((-height - 2600) / 6000, 0, 1)))
       b = lerp(col[2], 0.19, smoothstep(0, 1, clamp((-height - 2600) / 6000, 0, 1)))
     } else if (!isSea && water === 0 && biome !== BIOME.LAKE && biome !== BIOME.BEACH) {
+      // gradienti continui dentro il bioma: più verde dove è umido, più
+      // giallo-bruno dove è secco, più spento dove è freddo
+      const wet = clamp(moist - 0.45, -0.45, 0.45)
+      const cold = smoothstep(8, -10, temp)
+      r *= 1 - 0.18 * wet - 0.06 * cold
+      g *= 1 + 0.06 * wet - 0.03 * cold
+      b *= 1 - 0.10 * wet + 0.05 * cold
       r *= v
       g *= v
       b *= v

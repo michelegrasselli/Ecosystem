@@ -21,7 +21,11 @@ export const BIOME = {
   TUNDRA: 14,
   ROCK: 15,
   SNOW: 16,
-  ICE: 17
+  ICE: 17,
+  WETLAND: 18,
+  BADLANDS: 19,
+  SALT_FLAT: 20,
+  ALPINE_MEADOW: 21
 }
 
 export const BIOME_NAME = {
@@ -42,7 +46,11 @@ export const BIOME_NAME = {
   [BIOME.TUNDRA]: 'Tundra',
   [BIOME.ROCK]: 'Roccia d\u2019alta quota',
   [BIOME.SNOW]: 'Neve perenne',
-  [BIOME.ICE]: 'Calotta glaciale'
+  [BIOME.ICE]: 'Calotta glaciale',
+  [BIOME.WETLAND]: 'Palude',
+  [BIOME.BADLANDS]: 'Calanchi',
+  [BIOME.SALT_FLAT]: 'Salina',
+  [BIOME.ALPINE_MEADOW]: 'Prateria alpina'
 }
 
 // Colori sRGB lineari, in [0,1]
@@ -66,7 +74,11 @@ export const PALETTE = {
   [BIOME.TUNDRA]: C(138, 140, 122),
   [BIOME.ROCK]: C(122, 115, 105),
   [BIOME.SNOW]: C(233, 238, 241),
-  [BIOME.ICE]: C(214, 228, 235)
+  [BIOME.ICE]: C(214, 228, 235),
+  [BIOME.WETLAND]: C(84, 108, 82),
+  [BIOME.BADLANDS]: C(178, 112, 76),
+  [BIOME.SALT_FLAT]: C(224, 217, 200),
+  [BIOME.ALPINE_MEADOW]: C(128, 142, 92)
 }
 
 /**
@@ -75,13 +87,23 @@ export const PALETTE = {
  * @param {number} temp temperatura media annua in °C
  * @param {number} moist umidità 0..1
  * @param {number} absLat latitudine assoluta in gradi
+ * @param {number} [variety] rumore regionale in [-1, 1] per i biomi più rari
  * @returns {number} id del bioma
  */
-export function classifyLandBiome(height, temp, moist, absLat) {
+export function classifyLandBiome(height, temp, moist, absLat, variety = 0) {
   // Altitudine: sopra la linea degli alberi prevale la roccia, poi la neve
   const snowLine = 5400 - absLat * 26
   if (height > snowLine + 260) return BIOME.SNOW
   if (height > snowLine) return BIOME.ROCK
+  // prati d'alta quota sotto la fascia rocciosa
+  if (height > snowLine - 1300 && temp > -6) return BIOME.ALPINE_MEADOW
+
+  // biomi "rari" dentro le fasce climatiche, guidati dal rumore di varietà
+  if (temp > 2 && moist > 0.52 && height < 260 && variety > 0.22) return BIOME.WETLAND
+  if (temp > 14 && moist < 0.32 && moist > 0.08 && height > 450 && variety > 0.18) {
+    return BIOME.BADLANDS
+  }
+  if (temp > 12 && moist < 0.16 && height < 500 && variety < -0.3) return BIOME.SALT_FLAT
 
   if (temp < -12) return BIOME.ICE
   if (temp < -3) return BIOME.TUNDRA
