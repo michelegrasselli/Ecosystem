@@ -15,7 +15,7 @@ export const CONTINENT_THRESHOLD = 0.08
 /** Massime profondità / altezze generate. */
 export const MAX_OCEAN_DEPTH = 9200
 export const MAX_LAND_RISE = 1450
-export const MAX_MOUNTAIN_HEIGHT = 7200
+export const MAX_MOUNTAIN_HEIGHT = 7800
 
 /** Limiti di navigazione della camera (metri sopra la superficie). */
 export const MIN_ALTITUDE = 25 // abbastanza vicino da vedere piante e animali

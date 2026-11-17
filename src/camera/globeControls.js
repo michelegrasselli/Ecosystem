@@ -215,18 +215,34 @@ export class GlobeControls {
 
   // --------------------------------------------------------------- azioni
 
-  flyTo(lat, lon, altitude, duration = 1.6) {
+  flyTo(lat, lon, altitude, duration) {
+    // durata proporzionale al "salto": cambio di scala (in ottave di quota) e
+    // distanza angolare. Un volo dallo spazio a un singolo luogo dura ~3-4 s,
+    // abbastanza perché le tile arrivino mentre si scende.
+    if (duration === undefined) {
+      const scale = Math.abs(Math.log2(Math.max(altitude, 0.01) / Math.max(this.tAltitude, 0.01)))
+      const dLat = lat - this.tLat
+      const dLon = shortestLonDelta(this.tLon, lon) * Math.cos(degToRad((lat + this.tLat) / 2))
+      const ang = Math.sqrt(dLat * dLat + dLon * dLon)
+      duration = clamp(1.2 + scale * 0.24 + ang * 0.012, 1.3, 5.5)
+    }
     this._fly = {
       t: 0,
       duration,
       from: { lat: this.tLat, lon: this.tLon, alt: this.tAltitude },
       to: { lat, lon: wrapLon(this.tLon + shortestLonDelta(this.tLon, lon)), alt: altitude }
     }
+    {
+      const dLat = lat - this.tLat
+      const dLon = shortestLonDelta(this.tLon, lon)
+      const ang = Math.sqrt(dLat * dLat + dLon * dLon)
+      this._fly.bump = clamp(ang / 40, 0, 1) * 0.6
+    }
   }
 
   goHome() {
     this.autoPitch = true
-    this.flyTo(18, 12, SCENE_RADIUS * 2.6, 2.0)
+    this.flyTo(18, 12, SCENE_RADIUS * 2.6)
     this.tHeading = 0
   }
 
@@ -247,14 +263,24 @@ export class GlobeControls {
       const f = this._fly
       f.t += dt
       const k = clamp(f.t / f.duration, 0, 1)
-      const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2
-      this.tLat = f.from.lat + (f.to.lat - f.from.lat) * e
-      this.tLon = f.from.lon + (f.to.lon - f.from.lon) * e
-      // zoom "a campana": si allontana prima di scendere
-      const bump = Math.sin(Math.PI * e) * 0.45
+      // smootherstep: velocità e accelerazione nulle agli estremi
+      const e = k * k * k * (k * (k * 6 - 15) + 10)
+      // Lo spostamento orizzontale avviene soprattutto quando si è in alto
+      // (inizio del volo in discesa): da vicino il punto è già centrato e si
+      // scende in verticale, senza "scivolare" sul terreno.
+      const descending = f.to.alt < f.from.alt
+      const ePos = descending ? 1 - Math.pow(1 - e, 2.2) : Math.pow(e, 2.2)
+      this.tLat = f.from.lat + (f.to.lat - f.from.lat) * ePos
+      this.tLon = f.from.lon + (f.to.lon - f.from.lon) * ePos
+      // zoom "a campana" solo per spostamenti lunghi: si allontana prima di scendere
+      const bump = Math.sin(Math.PI * e) * f.bump
       const altLog =
         Math.log(f.from.alt) * (1 - e) + Math.log(f.to.alt) * e + bump
       this.tAltitude = clamp(Math.exp(altLog), MIN_ALT_KM, MAX_ALT_KM)
+      // durante il volo la camera segue il bersaglio senza ulteriore ritardo
+      this.altitude = this.tAltitude
+      this.lat = this.tLat
+      this.lon = this.tLon
       if (k >= 1) this._fly = null
     }
 
@@ -266,8 +292,13 @@ export class GlobeControls {
       this.tPitch = 90 - 24 * close - 46 * ground
     }
 
-    const lambda = this._dragging ? 22 : 9
-    this.altitude = damp(this.altitude, this.tAltitude, lambda, dt)
+    // Quota smorzata in scala logaritmica: la velocità percepita dello zoom è
+    // la stessa dallo spazio e a pochi metri dal suolo (smorzando la quota
+    // lineare lo zoom era rapidissimo in alto e lentissimo vicino a terra).
+    const lambda = this._dragging ? 22 : 7
+    this.altitude = Math.exp(
+      damp(Math.log(this.altitude), Math.log(this.tAltitude), lambda, dt)
+    )
     this.pitch = damp(this.pitch, this.tPitch, 8, dt)
     this.heading = damp(this.heading, this.tHeading, 10, dt)
     this.lat = damp(this.lat, this.tLat, 16, dt)

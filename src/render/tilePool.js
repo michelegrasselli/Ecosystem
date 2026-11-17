@@ -7,7 +7,7 @@ export class TilePool {
   constructor(seed, options = {}) {
     const cores = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 4
     this.size = Math.max(1, Math.min(6, cores - 1))
-    this.slots = 2
+    this.slots = 3
     this.workers = []
     this.load = []
     this.pending = new Map() // id -> { worker, key }
@@ -39,7 +39,10 @@ export class TilePool {
 
   /** C'è posto per un'altra richiesta? */
   hasCapacity() {
-    return this.ok && this.pending.size < this.size * this.slots
+    // conta anche i risultati non ancora trasformati in mesh: altrimenti i
+    // worker producono più di quanto il thread principale consumi e la coda
+    // cresce senza limite (con risultati ormai vecchi e fuori priorità)
+    return this.ok && this.pending.size + this.done.length < this.size * this.slots
   }
 
   /** Richiede la tile; restituisce l'id della richiesta. */

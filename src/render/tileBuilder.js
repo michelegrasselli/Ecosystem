@@ -15,7 +15,7 @@ export { cubeFaceDir, tileResForLevel, qualityForLevel } from './tileData.js'
 
 /** Crea la mesh dai dati di una tile. */
 export function createTileMesh(d, material) {
-  const { positions, normals, colors, water, heights, surf, skirt, indices, hMax } = d
+  const { positions, normals, colors, water, heights, surf, skirt, morph, indices, hMax } = d
   const [ox, oy, oz] = d.origin
   const geo = new THREE.BufferGeometry()
   geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
@@ -25,6 +25,7 @@ export function createTileMesh(d, material) {
   geo.setAttribute('aHeight', new THREE.BufferAttribute(heights, 1))
   geo.setAttribute('aSurf', new THREE.BufferAttribute(surf, 4))
   geo.setAttribute('aSkirt', new THREE.BufferAttribute(skirt, 1))
+  geo.setAttribute('aMorph', new THREE.BufferAttribute(morph, 1))
   geo.setIndex(new THREE.BufferAttribute(indices, 1))
   geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), SCENE_RADIUS * 2)
 
@@ -34,7 +35,20 @@ export function createTileMesh(d, material) {
   mesh.matrixAutoUpdate = false
   mesh.updateMatrix()
   mesh.userData.hMax = hMax
+  // avanzamento del morph (0 = forma del padre, 1 = forma propria), aggiornato
+  // dal LOD; caricato nello shader solo quando cambia rispetto al draw prima
+  mesh.userData.morph = 1
+  mesh.onBeforeRender = onBeforeRenderTile
   return mesh
+}
+
+function onBeforeRenderTile(renderer, scene, camera, geometry, material) {
+  const u = material.uniforms.uMorph
+  const m = this.userData.morph
+  if (u.value !== m) {
+    u.value = m
+    material.uniformsNeedUpdate = true
+  }
 }
 
 /** Calcola e crea la mesh nel thread principale (radici, fallback senza worker). */

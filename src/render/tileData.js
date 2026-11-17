@@ -35,10 +35,12 @@ export function tileResForLevel(level) {
   // Con la generazione nei worker ci si può permettere maglie fitte anche
   // sui livelli grossi: dallo spazio una maglia resta sotto i ~2 pixel e
   // coste e biomi non si sfocano nell'interpolazione tra vertici.
-  if (level <= 1) return 24
-  if (level <= 3) return 32
-  if (level <= 7) return 36
-  return 44
+  // Tile grandi con molti vertici invece di tante tile piccole: a parità di
+  // densità di maglia a schermo le draw call si dimezzano. Risoluzioni pari
+  // (servono al morph verso il padre).
+  if (level <= 1) return 40
+  if (level <= 3) return 48
+  return 64
 }
 
 /** Quanto dettaglio del rumore calcolare.
@@ -108,6 +110,7 @@ export function computeTileData(planet, face, level, ix, iy) {
   const heights = new Float32Array(total)
   const surf = new Float32Array(total * 4)
   const skirt = new Float32Array(total)
+  const morph = new Float32Array(total)
 
   // --- griglia estesa di una cella per lato ---
   // Le normali sui bordi devono usare lo stesso stencil della tile vicina:
@@ -148,7 +151,9 @@ export function computeTileData(planet, face, level, ix, iy) {
       let cr = _sample.r
       let cg = _sample.g
       let cb = _sample.b
-      if (level <= 5) {
+      // solo sui livelli più grossi: con maglie fitte dal livello 4 in su il
+      // singolo campione basta, e la tile costa 9 ms invece di 30
+      if (level <= 3) {
         const off = (2 / (div * res)) * 0.25
         cr = 0
         cg = 0
@@ -239,6 +244,29 @@ export function computeTileData(planet, face, level, ix, iy) {
     }
   }
 
+  // --- morph verso il padre ---
+  // Per ogni vertice, la differenza (m) tra la quota che avrebbe la tile
+  // padre in quel punto e la quota vera. Il padre ha maglie larghe il doppio:
+  // sui vertici pari coincide, sui dispari è la media dei vicini pari lungo
+  // il lato o lungo la diagonale del quad del padre (b-c, come negli indici).
+  // Lo shader parte dalla forma del padre e si raffina in pochi decimi di
+  // secondo: niente "scatto" quando una tile più fine sostituisce la grossa.
+  {
+    const hAt = (gx, gy) => Math.max(heights[gy * row + gx], 0)
+    for (let gy = 0; gy < row; gy++) {
+      for (let gx = 0; gx < row; gx++) {
+        const ox2 = gx & 1
+        const oy2 = gy & 1
+        let hc
+        if (!ox2 && !oy2) hc = hAt(gx, gy)
+        else if (ox2 && !oy2) hc = 0.5 * (hAt(gx - 1, gy) + hAt(gx + 1, gy))
+        else if (!ox2 && oy2) hc = 0.5 * (hAt(gx, gy - 1) + hAt(gx, gy + 1))
+        else hc = 0.5 * (hAt(gx + 1, gy - 1) + hAt(gx - 1, gy + 1))
+        morph[gy * row + gx] = hc - hAt(gx, gy)
+      }
+    }
+  }
+
   // --- gonna (skirt) per nascondere le crepe tra livelli diversi ---
   const tileSizeKm = (Math.PI * 0.5 * SCENE_RADIUS) / div
   // La crepa tra due livelli è al massimo la differenza tra la quota vera e
@@ -274,6 +302,7 @@ export function computeTileData(planet, face, level, ix, iy) {
     colors[d3 + 2] = colors[s3 + 2]
     water[dst] = water[src]
     heights[dst] = heights[src]
+    morph[dst] = morph[src]
     for (let c = 0; c < 4; c++) surf[dst * 4 + c] = surf[src * 4 + c]
     skirt[dst] = skirtDepth
   }
@@ -315,7 +344,7 @@ export function computeTileData(planet, face, level, ix, iy) {
   }
 
   return {
-    positions, normals, colors, water, heights, surf, skirt, indices,
+    positions, normals, colors, water, heights, surf, skirt, morph, indices,
     origin: [ox, oy, oz],
     hMax
   }
@@ -324,5 +353,5 @@ export function computeTileData(planet, face, level, ix, iy) {
 /** Buffer da trasferire (zero-copy) da un worker. */
 export function tileTransferables(d) {
   return [d.positions.buffer, d.normals.buffer, d.colors.buffer, d.water.buffer,
-    d.heights.buffer, d.surf.buffer, d.skirt.buffer, d.indices.buffer]
+    d.heights.buffer, d.surf.buffer, d.skirt.buffer, d.morph.buffer, d.indices.buffer]
 }

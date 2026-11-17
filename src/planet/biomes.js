@@ -90,9 +90,14 @@ export const PALETTE = {
  * @param {number} [variety] rumore regionale in [-1, 1] per i biomi più rari
  * @returns {number} id del bioma
  */
+/** Linea delle nevi: quota in metri all'equatore e calo per grado di latitudine. */
+export const SNOW_LINE_BASE = 4500
+export const SNOW_LINE_LAT = 30
+
 export function classifyLandBiome(height, temp, moist, absLat, variety = 0) {
   // Altitudine: sopra la linea degli alberi prevale la roccia, poi la neve
-  const snowLine = 5400 - absLat * 26
+  // linea delle nevi (stessa formula dello shader: render/materials.js)
+  const snowLine = SNOW_LINE_BASE - absLat * SNOW_LINE_LAT
   if (height > snowLine + 260) return BIOME.SNOW
   if (height > snowLine) return BIOME.ROCK
   // prati d'alta quota sotto la fascia rocciosa

@@ -28,8 +28,11 @@ const renderer = new THREE.WebGLRenderer({
   powerPreference: 'high-performance',
   stencil: false
 })
-const MAX_PIXEL_RATIO = Math.min(window.devicePixelRatio || 1, 1.75)
-renderer.setPixelRatio(MAX_PIXEL_RATIO)
+// risoluzione nativa all'avvio; se la GPU ha margine si sale fino a un
+// leggero supersampling (bordi più netti), senza mai scendere sotto 1
+const NATIVE_PIXEL_RATIO = Math.max(window.devicePixelRatio || 1, 1)
+const MAX_PIXEL_RATIO = Math.min(NATIVE_PIXEL_RATIO * 1.5, 2)
+renderer.setPixelRatio(NATIVE_PIXEL_RATIO)
 renderer.outputColorSpace = THREE.LinearSRGBColorSpace
 renderer.setClearColor(0x05080c, 1)
 
@@ -254,8 +257,8 @@ window.__planet = { planet, controls, lod, scene, camera, renderer }
 // GPU integrate il frame può superare il budget. Si riduce la risoluzione di
 // rendering finché il frame non torna fluido, e la si rialza quando c'è margine.
 
-// non sotto 0.85: più in basso l'immagine diventa visibilmente sfocata
-const MIN_PIXEL_RATIO = Math.min(0.85, MAX_PIXEL_RATIO)
+// mai sotto la risoluzione nativa del canvas: sotto l'immagine è sfocata
+const MIN_PIXEL_RATIO = 1
 let frameEma = 1 / 60
 let adaptTimer = 0
 

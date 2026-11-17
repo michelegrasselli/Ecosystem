@@ -118,10 +118,16 @@ export class Planet {
       baseLevel = height
 
       // ---------- 4. Catene montuose ----------
-      const orogeny = smoothstep(0.02, 0.46, fbm(n, px * 2.7 - 13.1, py * 2.7 + 5.3, pz * 2.7 - 9.7, 3))
+      // Fasce orogenetiche più estese di prima (più catene, anche vicino alle
+      // coste, come Ande o Alpi scandinave) e un secondo sistema di sierre
+      // minori a scala più piccola: più dislivelli e più cime sopra le nevi.
+      const orogeny = smoothstep(-0.14, 0.36, fbm(n, px * 2.7 - 13.1, py * 2.7 + 5.3, pz * 2.7 - 9.7, 3))
       const ridge = ridged(n, px * 3.6 + 2.4, py * 3.6 - 8.8, pz * 3.6 + 4.2, 5)
-      const inland = smoothstep(0.015, 0.24, l)
+      const inland = smoothstep(0.01, 0.16, l)
       height += ridge * orogeny * inland * MAX_MOUNTAIN_HEIGHT
+      const sierraBelt = smoothstep(0.05, 0.4, fbm(n, px * 5.2 + 7.7, py * 5.2 - 1.9, pz * 5.2 + 3.3, 2))
+      const sierra = ridged(n, px * 9.0 - 4.4, py * 9.0 + 6.1, pz * 9.0 - 2.8, 4)
+      height += sierra * sierra * sierraBelt * inland * 3400
       // quota a grande scala (continente + catene): varia su centinaia di km
       baseLevel = height
 
@@ -242,22 +248,29 @@ export class Planet {
     // ---------- 9. Fiumi ----------
     let valley = 0
     let riverAmount = 0
-    if (!isSea && !isLake && q > 0.42 && height > 4 && height < 2600) {
-      const riverField = fbm(nd, px * 13.0 + 41.5, py * 13.0 - 3.2, pz * 13.0 + 19.7, 2)
-      const d = Math.abs(riverField)
-      // Letto fisico di ~3.2 km: abbastanza da coprire un paio di maglie anche
-      // a scala regionale. La larghezza NON dipende dal LOD.
-      const width = (3200 / PLANET_RADIUS) * 13.0
-      // Fascia valliva un po' più larga, per il tint del colore.
-      const mapWidth = width * 2.2
-      const corridor = smoothstep(0.0, 0.2, moist + 0.35) * smoothstep(2800, 1400, height)
+    if (!isSea && !isLake && q > 0.42 && height > 4 && height < 3800) {
+      // Due reticoli fluviali sovrapposti: fiumi maggiori (letto ~3.2 km) e
+      // affluenti più fitti (letto ~2 km). Per ciascuno conta la distanza
+      // dall'isolinea in unità di larghezza del letto; vince la più vicina.
+      // La larghezza NON dipende dal LOD.
+      const f1 = Math.abs(fbm(nd, px * 13.0 + 41.5, py * 13.0 - 3.2, pz * 13.0 + 19.7, 2))
+      const f2 = Math.abs(fbm(nd, px * 24.0 - 17.3, py * 24.0 + 28.6, pz * 24.0 - 6.4, 2))
+      const t1 = f1 / ((3200 / PLANET_RADIUS) * 13.0)
+      const t2 = f2 / ((2000 / PLANET_RADIUS) * 24.0)
+      const minor = t2 < t1
+      const t = minor ? t2 : t1
+      // gli affluenti nascono più in alto e solo dove c'è abbastanza pioggia
+      const corridor =
+        smoothstep(0.0, 0.2, moist + (minor ? 0.2 : 0.35)) *
+        smoothstep(3800, 2200, height)
 
-      riverAmount = (1 - smoothstep(0, mapWidth, d)) * corridor
-
-      // incisione del terreno alla larghezza del letto
-      const carve = (1 - smoothstep(0, width, d)) * corridor
+      // fascia del letto (x2.2) per il colore, incisione alla larghezza vera
+      riverAmount = (1 - smoothstep(0, 2.2, t)) * corridor
+      const carve = (1 - smoothstep(0, 1, t)) * corridor
       if (carve > 0.02) {
-        height = lerp(height, Math.max(height - 26, 1.5), carve)
+        // in montagna il fiume scava una valle più profonda
+        const depth = 26 + Math.max(height - 400, 0) * 0.05
+        height = lerp(height, Math.max(height - depth, 1.5), carve)
       }
       if (riverAmount > 0.18) {
         water = Math.max(water, riverAmount)
@@ -266,7 +279,7 @@ export class Planet {
 
       // Fascia valliva: accompagna il corso del fiume anche dove l'acqua è
       // più sottile di una maglia.
-      valley = (1 - smoothstep(mapWidth, mapWidth * 2.5, d)) * corridor
+      valley = (1 - smoothstep(2.2, 5.5, t)) * corridor
       if (!isRiver && valley > 0.05) {
         height = lerp(height, Math.max(height - 7, 1.5), valley)
       }

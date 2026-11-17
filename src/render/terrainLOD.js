@@ -14,12 +14,19 @@ import * as THREE from 'three'
 import { SCENE_RADIUS, SCENE_SCALE, MAX_LOD_LEVEL } from '../planet/constants.js'
 import { buildTileMesh, createTileMesh, tileBounds } from './tileBuilder.js'
 
-const MAX_CACHED_TILES = 4200
-const SPLIT_PIXELS = 96
+const MAX_CACHED_TILES = 6500
+// soglia proporzionale alla risoluzione delle tile (64 maglie): ~2 px per
+// maglia, con meno tile (e meno draw call) rispetto a tile più piccole
+const SPLIT_PIXELS = 132
+// oltre questa frazione della soglia i figli vengono già preparati, così
+// durante uno zoom sono pronti quando servono
+const PREFETCH_FRACTION = 0.62
+// durata del morph di una tile appena comparsa
+const MORPH_MS = 450
 const MAX_TILES_PER_FRAME = 24
 // mesh create per frame dai risultati dei worker (la creazione è economica,
 // il caricamento sulla GPU avviene al primo render)
-const MAX_MESHES_PER_FRAME = 64
+const MAX_MESHES_PER_FRAME = 24
 
 const _sphere = new THREE.Sphere()
 const _v = new THREE.Vector3()
@@ -37,6 +44,7 @@ export class TerrainLOD {
     this.cache = new Map()
     this.frame = 0
     this.needed = []
+    this.prefetch = []
     this.drawn = []
     this._prevDrawn = []
     this.buildBudgetMs = 7
@@ -112,8 +120,7 @@ export class TerrainLOD {
     node.mesh = mesh
     node.requestId = 0
     node.hMax = node.mesh.userData.hMax
-    node.mesh.visible = false
-    this.group.add(node.mesh)
+    // la mesh entra nella scena solo quando va a schermo (vedi update)
   }
 
   /**
@@ -124,6 +131,8 @@ export class TerrainLOD {
   update(camera, viewportHeight) {
     this.frame++
     this.needed.length = 0
+    this.prefetch.length = 0
+    this._now = performance.now()
 
     this._projScreen.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
     this._frustum.setFromProjectionMatrix(this._projScreen)
@@ -139,15 +148,24 @@ export class TerrainLOD {
 
     for (let i = 0; i < this.roots.length; i++) this.visit(this.roots[i], camera)
 
-    // visibilità: solo ciò che è stato disegnato in questo frame
+    // Visibilità: nella scena ci sono SOLO le tile disegnate in questo frame.
+    // Tenere migliaia di mesh nascoste nel grafo costava a three.js un
+    // attraversamento completo a ogni frame.
+    for (let i = 0; i < this.drawn.length; i++) this.drawn[i].drawnFrame = this.frame
     for (let i = 0; i < this._prevDrawn.length; i++) {
-      const m = this._prevDrawn[i].mesh
-      if (m) m.visible = false
+      const n = this._prevDrawn[i]
+      if (n.drawnFrame !== this.frame && n.mesh && n.mesh.parent) this.group.remove(n.mesh)
     }
     let maxLevel = 0
     for (let i = 0; i < this.drawn.length; i++) {
       const n = this.drawn[i]
-      n.mesh.visible = true
+      if (n.mesh.parent !== this.group) this.group.add(n.mesh)
+      // il morph parte la prima volta che la tile va a schermo (una tile
+      // precaricata può essere pronta da tempo)
+      const ud = n.mesh.userData
+      if (ud.born === undefined) ud.born = n.level === 0 ? -1e9 : this._now
+      const mt = Math.min((this._now - ud.born) / MORPH_MS, 1)
+      ud.morph = mt * mt * (3 - 2 * mt)
       if (n.level > maxLevel) maxLevel = n.level
     }
 
@@ -163,7 +181,8 @@ export class TerrainLOD {
     node.lastUsed = this.frame
     if (!this._sphereInFrustum(node)) return
 
-    if (node.level < MAX_LOD_LEVEL && this.shouldSplit(node, camera)) {
+    const px = node.level < MAX_LOD_LEVEL ? this._screenPx(node, camera) : 0
+    if (px > SPLIT_PIXELS) {
       if (!node.children) node.children = this.createChildren(node)
       const ch = node.children
       let ready = true
@@ -171,12 +190,28 @@ export class TerrainLOD {
         ch[i].lastUsed = this.frame
         if (!ch[i].mesh) {
           ready = false
+          // priorità = dimensione a schermo del padre: prima ciò che si vede
+          // più grande (vicino alla camera), non un livello alla volta
+          ch[i].priority = px
           this.needed.push(ch[i])
         }
       }
       if (ready) {
         for (let i = 0; i < 4; i++) this.visit(ch[i], camera)
         return
+      }
+    }
+
+    // precaricamento dei figli quando la tile si avvicina alla soglia
+    if (px > SPLIT_PIXELS * PREFETCH_FRACTION) {
+      if (!node.children) node.children = this.createChildren(node)
+      for (let i = 0; i < 4; i++) {
+        const c = node.children[i]
+        c.lastUsed = this.frame
+        if (!c.mesh && !c.requestId) {
+          c.priority = px
+          this.prefetch.push(c)
+        }
       }
     }
 
@@ -189,14 +224,29 @@ export class TerrainLOD {
   }
 
   shouldSplit(node, camera) {
+    return this._screenPx(node, camera) > SPLIT_PIXELS
+  }
+
+  /** Lato della tile in pixel a schermo. */
+  _screenPx(node, camera) {
     // distanza dal centro della tile alla quota media del suo rilievo
     const lift = (SCENE_RADIUS + this._reliefKm(node) * 0.5) / SCENE_RADIUS
     _v.copy(node.surfaceCenter).multiplyScalar(lift)
     const dist = camera.position.distanceTo(_v)
-    if (dist <= 0.0001) return true
+    if (dist <= 0.0001) return 1e9
     const sizeKm = (Math.PI * 0.5 * SCENE_RADIUS) / (1 << node.level)
-    const px = (sizeKm / dist) * this._screenFactor
-    return px > SPLIT_PIXELS
+    // Scorcio: una tile vista di taglio (verso l'orizzonte) occupa pochi pixel
+    // in verticale. Senza questo fattore le viste radenti chiedevano migliaia
+    // di tile lontane e il dettaglio vicino arrivava in ritardo.
+    // La tile più grande non viene mai penalizzata oltre 0.4.
+    const cx = camera.position.x - _v.x
+    const cy = camera.position.y - _v.y
+    const cz = camera.position.z - _v.z
+    const facing =
+      (cx * node.surfaceCenter.x + cy * node.surfaceCenter.y + cz * node.surfaceCenter.z) /
+      (dist * SCENE_RADIUS)
+    const fore = 0.4 + 0.6 * Math.min(Math.max(facing, 0), 1)
+    return (sizeKm / dist) * this._screenFactor * fore
   }
 
   _sphereInFrustum(node) {
@@ -210,9 +260,10 @@ export class TerrainLOD {
     let built = 0
     if (this.pool) {
       const results = this.pool.drain()
+      const t0 = performance.now()
       for (let i = 0; i < results.length; i++) {
         const r = results[i]
-        if (built >= MAX_MESHES_PER_FRAME) {
+        if (built >= MAX_MESHES_PER_FRAME || (built > 0 && performance.now() - t0 > 4)) {
           this.pool.done.push(r) // al prossimo frame
           continue
         }
@@ -230,16 +281,11 @@ export class TerrainLOD {
       return
     }
 
-    // priorità: prima i livelli più grossi (chiudono subito lo schermo), poi
-    // le tile più vicine alla camera
-    const cam = this._cameraRef
-    this.needed.sort((a, b) => {
-      if (a.level !== b.level) return a.level - b.level
-      return cam
-        ? cam.position.distanceToSquared(a.surfaceCenter) -
-            cam.position.distanceToSquared(b.surfaceCenter)
-        : 0
-    })
+    // Raffinamento "in profondità" vicino alla camera: la tile che occupa più
+    // pixel a schermo viene servita per prima. Con l'ordine per livello (tutto
+    // il livello 4, poi tutto il 5…) durante un volo dallo spazio il dettaglio
+    // sotto la camera arrivava secondi dopo l'atterraggio.
+    this.needed.sort((a, b) => b.priority - a.priority)
 
     // 2. nuove richieste in ordine di priorità
     if (this.pool && this.pool.ok) {
@@ -248,6 +294,16 @@ export class TerrainLOD {
         const node = this.needed[i]
         if (node.mesh || node.requestId) continue
         node.requestId = this.pool.request(node.key, node.face, node.level, node.x, node.y)
+      }
+      // poi i precaricamenti, se resta capacità (prima i più grossi/vicini)
+      if (this.pool.hasCapacity() && this.prefetch.length) {
+        this.prefetch.sort((a, b) => b.priority - a.priority)
+        for (let i = 0; i < this.prefetch.length; i++) {
+          if (!this.pool.hasCapacity()) break
+          const node = this.prefetch[i]
+          if (node.mesh || node.requestId) continue
+          node.requestId = this.pool.request(node.key, node.face, node.level, node.x, node.y)
+        }
       }
       this.stats.inFlight = this.pool.inFlight
     } else {

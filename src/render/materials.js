@@ -30,12 +30,15 @@ export function createTerrainMaterial(sunDir) {
       uTime: { value: 0 },
       uExag: { value: 1 },
       uShadeExag: { value: 1.5 },
+      uMorph: { value: 1 },
       uNoiseTex: { value: createNoiseTexture() }
     },
     vertexShader: /* glsl */ `
       #include <common>
-      #include <logdepthbuf_pars_vertex>
+      uniform float logDepthBufFC; // impostato da three.js come per i suoi materiali
       uniform float uExag;
+      uniform float uMorph;
+      attribute float aMorph;
 
       attribute vec3 aColor;
       attribute float aWater;
@@ -61,8 +64,10 @@ export function createTerrainMaterial(sunDir) {
         // verticale locale (la mesh è solo traslata: niente rotazione)
         vec3 up = normalize((modelMatrix * vec4(position, 1.0)).xyz);
         float hKm = max(aHeight, 0.0) * 0.001;
-        float lift = (hKm - aSkirt) * (uExag - 1.0);
-        vElev = hKm * uExag;
+        // morph: la tile appena comparsa parte dalla forma del padre
+        float morphKm = aMorph * 0.001 * (1.0 - uMorph) * uExag;
+        float lift = (hKm - aSkirt) * (uExag - 1.0) + morphKm;
+        vElev = hKm * uExag + morphKm;
         vec3 p = position + up * lift;
 
         vec4 mv = modelViewMatrix * vec4(p, 1.0);
@@ -70,12 +75,19 @@ export function createTerrainMaterial(sunDir) {
         // coordinate assolute (6371 km in float32 = ~0.5 m di errore)
         vRel = (vec4(mv.xyz, 0.0) * viewMatrix).xyz;
         gl_Position = projectionMatrix * mv;
-        #include <logdepthbuf_vertex>
+        // Profondità logaritmica calcolata per vertice (stessa formula del
+        // chunk di three.js) invece che per pixel: senza scrittura di
+        // gl_FragDepth la GPU può scartare in anticipo i frammenti nascosti
+        // (early-z) e lo shader non viene eseguito sul terreno coperto. Le maglie
+        // vicino alla camera sono piccole, quindi l'interpolazione lineare è
+        // accurata.
+        #ifdef USE_LOGARITHMIC_DEPTH_BUFFER
+          gl_Position.z = (log2(max(1e-6, 1.0 + gl_Position.w)) * logDepthBufFC - 1.0) * gl_Position.w;
+        #endif
       }
     `,
     fragmentShader: /* glsl */ `
       #include <common>
-      #include <logdepthbuf_pars_fragment>
       uniform vec3 uSunDir;
       uniform vec3 uCameraPos;
       uniform vec3 uOrigin;
@@ -198,7 +210,6 @@ export function createTerrainMaterial(sunDir) {
       }
 
       void main() {
-        #include <logdepthbuf_fragment>
 
         vec3 world = uCameraPos + vRel;
         vec3 R = normalize(world);
@@ -266,7 +277,7 @@ export function createTerrainMaterial(sunDir) {
 
         // fasce d'alta quota dalla quota del fragment (stessa linea delle nevi
         // di classifyLandBiome): seguono valli e crinali come isoipse
-        float snowLine = 5400.0 - absLat * 26.0;
+        float snowLine = 4500.0 - absLat * 30.0; // = SNOW_LINE_BASE/LAT in biomes.js
         float hJit = vHeight + edgeN * 420.0;
         float alpineRock = smoothstep(snowLine - 650.0, snowLine - 250.0, hJit);
         float alpineSnow = smoothstep(snowLine + 60.0, snowLine + 200.0, hJit);

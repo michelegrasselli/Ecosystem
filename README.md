@@ -48,6 +48,8 @@ avvio. Il salvataggio automatico della sola camera avviene anche alla chiusura d
   al suolo (fino al livello 17), normali coerenti tra tile adiacenti e gonne di chiusura
   sulle crepe.
 - Le tile sono calcolate in un pool di **Web Worker**: il thread principale non si blocca.
+  Le tile nuove nascono con la forma della tile padre e si raffinano in mezzo secondo
+  (morph), così lo zoom dallo spazio a un singolo luogo è continuo.
 - Il rumore è un simplex 3D scritto a mano (`src/core/noise.js`): nessuna dipendenza esterna.
 
 Dettagli, decisioni e limiti noti sono in [CONTEXT.md](CONTEXT.md).

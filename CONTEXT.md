@@ -60,10 +60,22 @@ distribuzione di mari/continenti, laghi, fiumi, fasce climatiche e temperature.
   a ogni quota. Non esiste una sfera separata per la vista dallo spazio: a quota alta
   bastano i livelli 0-3. Vantaggi: una sola `Planet.sample()` come verità, nessun pop
   nel passaggio tra "globo lontano" e "terreno vicino".
-- LOD: una tile si suddivide quando supera `SPLIT_PIXELS = 110` pixel a schermo; livello
+- LOD: una tile si suddivide quando supera `SPLIT_PIXELS = 132` pixel a schermo (corretti
+  per lo scorcio: una tile vista di taglio verso l'orizzonte conta fino al 40%); livello
   massimo 17 (tile di ~76 m, maglie di ~1.7 m). Budget di generazione per frame (`buildBudgetMs`), priorità alle tile vicine.
-- Risoluzione per tile (`tileResForLevel`): 10 → 44 vertici per lato secondo il livello,
-  scelta per tenere ~2 pixel per maglia a schermo.
+- Risoluzione per tile (`tileResForLevel`): 40 / 48 / 64 maglie per lato (sempre pari, serve
+  al morph), ~2 pixel per maglia a schermo. Poche tile grandi invece di tante piccole: le
+  draw call si dimezzano a parità di densità.
+- **Priorità**: le tile mancanti sono servite in ordine di dimensione a schermo del padre
+  (prima ciò che si vede più grande, cioè vicino alla camera), non un livello alla volta.
+- **Precaricamento**: oltre il 62% della soglia i figli vengono già chiesti ai worker, se
+  resta capacità.
+- **Morph**: ogni vertice porta la differenza tra la quota del padre in quel punto e la
+  propria (`aMorph`); una tile appena comparsa parte dalla forma del padre e si raffina in
+  450 ms (`uMorph` per mesh, caricato in `onBeforeRender` solo quando cambia). Niente
+  scatti durante lo zoom.
+- Nella scena ci sono solo le mesh disegnate nel frame (aggiunte/rimosse dal gruppo),
+  non migliaia di mesh nascoste.
 - `qualityForLevel()` restituisce sempre `1`: le quote devono essere **identiche a tutti i
   livelli LOD**, altrimenti sulle giunzioni compaiono gradini.
 - **Skirt** (gonna) lungo i bordi di ogni tile per chiudere le crepe tra livelli diversi.
@@ -142,7 +154,12 @@ Ora:
 ### 3.7 Profondità logaritmica e materiali custom
 
 Il renderer usa `logarithmicDepthBuffer` per gestire la scala (raggio 6371 → quota 42 000).
-I materiali `ShaderMaterial` custom (terreno e atmosfera) devono includere i chunk
+**Il terreno** calcola la profondità logaritmica **nel vertex shader** (stessa formula del
+chunk di three.js, `logDepthBufFC` dichiarato a mano) e non scrive `gl_FragDepth`: così
+l'early-z scarta il terreno coperto prima dello shader (rendering da ~106 a ~24 ms in una
+vista radente a 2 km). Le maglie vicino alla camera sono piccole, quindi l'interpolazione
+lineare della profondità è accurata.
+Gli altri `ShaderMaterial` custom (atmosfera) devono includere i chunk
 `<logdepthbuf_pars_vertex/fragment>` e `<logdepthbuf_vertex/fragment>`: senza, scrivono una
 profondità "normale" non confrontabile con quella dei materiali built-in e le stelle
 comparivano come puntini bianchi **sopra** il pianeta.
@@ -157,10 +174,14 @@ Generazione **procedurale deterministica** da un seed:
   (variabile `VARIANTS` per provare combinazioni): ~41% di terre emerse in 13 masse
   (la maggiore ~37%, poi 17%, 16%, 5%…), né un supercontinente né un arcipelago. Con un
   warp più forte (0.3) le coste diventavano "pennellate" stirate.
-- **Catene montuose**: *ridged multifractal* mascherato da un campo di "orogenesi".
+- **Catene montuose**: *ridged multifractal* mascherato da un campo di "orogenesi" esteso
+  (anche vicino alle coste), più un secondo sistema di sierre minori (ridged a scala ~700
+  km), creste secondarie deformate e valli. Linea delle nevi `4500 - 30·|lat|` m
+  (`SNOW_LINE_BASE/LAT` in `biomes.js`, ripetuta nello shader).
 - **Oceani**: quota 0 = livello del mare, profondità fino a ~-8000 m.
 - **Laghi**: bacini chiusi portati sotto il livello del mare → si riempiono.
-- **Fiumi**: canali incisi lungo isolinee di un campo di rumore *warpato*.
+- **Fiumi**: canali incisi lungo isolinee di due campi di rumore (fiumi maggiori con letto
+  di ~3.2 km e affluenti più fitti di ~2 km); in montagna scavano valli più profonde.
 - **Clima**: temperatura da latitudine + quota (gradiente -6.5 °C/km) + rumore;
   umidità da fasce latitudinali (ITCZ umida, alte subtropicali secche, westerlies umide)
   + distanza dal mare.
@@ -283,10 +304,11 @@ Misure fatte sul seed `20261116` (laptop medio, Chrome):
 | Voce | Valore |
 |------|--------|
 | Terre emerse | ~41% (+ banchisa polare) |
-| Quota massima | ~7300 m |
+| Quota massima | ~8400 m |
 | Masse continentali | 13 (37%, 17%, 16%, 5% della terraferma, poi minori) |
-| Laghi | ~1.3% della superficie |
-| Fiumi | ~1.0% della superficie |
+| Laghi | ~0.7% della superficie |
+| Fiumi | ~1.7% della superficie |
+| Neve perenne + roccia d'alta quota | ~0.8% (prima 0.1%) |
 | Primo caricamento | ~0.9 s (6 worker) |
 | Tile visibili a 900 km | ~410 (max livello 7) |
 | Tile visibili a 6 km | ~1380 (max livello 14) |
@@ -296,20 +318,29 @@ Misure fatte sul seed `20261116` (laptop medio, Chrome):
 
 Limiti noti / prossimi passi tecnici:
 
-- **Generazione in Web Worker** (`tilePool.js`): fino a 6 worker, 2 richieste in volo
-  per worker, scelte ogni frame in ordine di priorità (livelli grossi, poi vicini). Gli
+- **Generazione in Web Worker** (`tilePool.js`): fino a 6 worker, 3 richieste in volo
+  per worker (contando anche i risultati non ancora trasformati in mesh, altrimenti la coda
+  cresce senza limite), scelte ogni frame in ordine di priorità. Le mesh vengono create con
+  un budget di 4 ms per frame. Gli
   array tornano come `ArrayBuffer` trasferibili. Un risultato viene scartato se il nodo
   è stato scaricato o richiesto di nuovo (`requestId`). Senza worker si torna alla
   generazione nel thread principale con budget per frame. Le tabelle di costo qui sopra
   per tile e riempimento sono quelle pre-worker.
-- **Nitidezza**: maglie fitte anche sui livelli grossi (24-36 vertici per lato), split a
-  96 px, foschia leggera solo verso l'orizzonte, correzione di contrasto e saturazione a
-  fine shader, risoluzione adattiva mai sotto 0.85.
+- **Nitidezza**: maglie fitte anche sui livelli grossi, foschia leggera solo verso
+  l'orizzonte, correzione di contrasto e saturazione a fine shader. Risoluzione di rendering
+  mai sotto quella nativa; se la GPU ha margine sale fino a 1.5× (supersampling, max 2).
+- **Zoom fluido**: la quota è smorzata in scala logaritmica (velocità percepita costante da
+  15 000 km a pochi metri). I voli durano in proporzione al salto di scala e alla distanza
+  (fino a 5.5 s), con smootherstep; lo spostamento orizzontale avviene in quota e la
+  discesa finale è verticale.
+- **Volo dallo spazio a 2 km** (GPU integrata AMD, finestra ~800×700): ~25 fps durante il
+  volo, livello 14 sotto la camera all'atterraggio, ~33 fps a regime. Restano picchi isolati
+  di 100-280 ms durante il volo che non vengono né dall'update del LOD né dal rendering CPU
+  (1-4 ms): da indagare (GC o caricamenti sulla GPU).
 - **Alberi dipinti sul terreno**: da 25-100 m le chiome sono dischi piatti. In fase 2 vanno
   affiancate da alberi 3D istanziati vicino alla camera, posizionati con lo stesso hash
   di `canopy()` (stessi punti) e la stessa esagerazione del rilievo.
-- **Costo GPU da vicino**: su GPU integrata ~25-50 ms/frame a 1280×960 prima della
-  risoluzione adattiva. Il log depth buffer scrive `gl_FragDepth` e disattiva l'early-z:
-  l'overdraw costa. Possibile rimedio: reversed-Z invece del log depth.
+- **Costo GPU**: con l'early-z recuperato il limite ora è il numero di triangoli (~3.5 M
+  in una vista radente a bassa quota).
 - **Il tasto "salva" salva solo seed + camera**: quando arriveranno piante e animali andrà
   versionato lo stato dell'ecosistema (lo schema è già versionato).
