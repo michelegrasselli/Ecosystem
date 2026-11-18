@@ -7,7 +7,9 @@ import { Planet } from './planet/planet.js'
 import { DEFAULT_SEED, SUN_DIRECTION, SCENE_RADIUS, MIN_ALTITUDE } from './planet/constants.js'
 import { reliefExaggeration, shadingExaggeration } from './render/relief.js'
 import { damp } from './core/math.js'
-import { createTerrainMaterial } from './render/materials.js'
+import { createTerrainMaterial, setNations, updateNoiseFrame, RIPPLE_DIR, RIPPLE_K } from './render/materials.js'
+import { Nations } from './planet/nations.js'
+import { createNationLabels } from './ui/labels.js'
 import { TerrainLOD } from './render/terrainLOD.js'
 import { TilePool } from './render/tilePool.js'
 import { createSky } from './render/sky.js'
@@ -47,6 +49,11 @@ const seed = Number.isFinite(bootState.seed) ? bootState.seed : DEFAULT_SEED
 
 const planet = new Planet(seed)
 const terrainMaterial = createTerrainMaterial(SUN_DIRECTION)
+
+// nazioni: deterministiche dal seed, confini nello shader, nomi in sovrimpressione
+const nations = new Nations(planet)
+setNations(terrainMaterial, nations)
+const nationLabels = createNationLabels(nations, planet, document.body)
 // generazione delle tile in Web Worker (stesso seed: pianeta identico)
 const tilePool = new TilePool(seed)
 const lod = new TerrainLOD(planet, scene, terrainMaterial, tilePool)
@@ -78,6 +85,7 @@ controls.applyImmediate()
 
 const hud = createHud({
   planet,
+  nations,
   onSave: doSave,
   onHome: () => controls.goHome(),
   onZoomIn: () => {
@@ -108,6 +116,8 @@ function doSave() {
     hud.toast('salvataggio non disponibile')
   }
 }
+
+canvas.addEventListener('contextmenu', (e) => e.preventDefault())
 
 window.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
@@ -219,12 +229,20 @@ function frame(now) {
     Math.floor(camera.position.z / 64) * 64
   )
   u.uCamLocal.value.copy(camera.position).sub(u.uOrigin.value)
+  updateNoiseFrame(terrainMaterial, u.uOrigin.value)
   u.uExag.value = reliefExaggeration(altitudeKm)
   u.uShadeExag.value = shadingExaggeration(altitudeKm)
+  // fase delle increspature all'origine del reticolo, in doppia precisione
+  const od = u.uOrigin.value.dot(RIPPLE_DIR)
+  u.uRipplePhase.value = (od * RIPPLE_K) % (Math.PI * 2)
+  u.uRipplePhase2.value = (od * (RIPPLE_K / 5)) % (Math.PI * 2)
+  // confini più marcati da vicino, più discreti dallo spazio
+  u.uBorderAlpha.value = 0.7 + 0.2 * (1 - Math.min(Math.log10(Math.max(altitudeKm, 1)) / 4, 1))
   terrainMaterial.uniforms.uTime.value = now * 0.001
   terrainMaterial.uniforms.uHazeDensity.value = 1 / (altitudeKm * 14 + 160)
 
   sky.update(camera, altitudeKm, Math.max(altitudeKm, 60))
+  nationLabels.update(camera, altitudeKm, window.innerWidth, window.innerHeight, dt)
   atmosphere.update(altitudeKm)
 
   hud.update(

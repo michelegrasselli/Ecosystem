@@ -31,6 +31,9 @@ distribuzione di mari/continenti, laghi, fiumi, fasce climatiche e temperature.
 | R7 | Tasto **poco visibile "Salva"** che salva lo stato del pianeta | **fatto** |
 | R8 | Lo stato salvato viene **ricaricato automaticamente** al prossimo avvio | **fatto** (verificato) |
 | R9 | Repository GitHub con **commit + push dopo ogni prompt** | attivo |
+| R10 | Terraferma divisa in **nazioni** grandi con nomi inventati, nomi visibili avvicinandosi e confini a **linea tratteggiata fine** | **fatto** (31 nazioni) |
+| R11 | Texture **realistiche da vicino** (erba, acqua che scorre, sabbia, neve) e **transizioni morbide** tra biomi | **fatto** |
+| R12 | Navigazione: mouse = ruota, **Ctrl + mouse = traslazione rigida** (anche rotella premuta) | **fatto** |
 
 ---
 
@@ -115,8 +118,30 @@ distribuzione di mari/continenti, laghi, fiumi, fasce climatiche e temperature.
   prati a due toni, chiome tonde con ombra portata (Worley 2×2×2 proiettato sul piano
   tangente), dune con lato al sole/sottovento, roccia a strati, neve e roccia d'alta quota
   dalla quota del fragment (isoipse, non scalini di maglia), acqua con battigia.
-- **Risoluzione adattiva** in `main.js`: il pixel ratio scende fino a 0.6 se il frame
-  supera ~26 ms e risale quando c'è margine.
+- **Ottave fini** (da ~2 m a ~6 cm, `lrnoise`) su un reticolo **ruotato**: allineato agli
+  assi, da vicino dava un aspetto a blocchi. L'offset dell'origine ruotata per ciascuna
+  frequenza (`uRotOff[k]`) è calcolato ogni frame in doppia precisione
+  (`updateNoiseFrame`). Per f ≥ 1 l'offset del reticolo normale è nullo (uOrigin è multiplo
+  di 64): così i prodotti oltre 2^24 non perdono gli interi.
+- **Dettaglio realistico da vicino**: micro-rilievo (`hb`) che perturba la normale con il
+  gradiente a schermo (`tangentGrad`, chiamata fuori dai rami): zolle, ciuffi e fili d'erba
+  con chiazze secche/verdi e fiori; increspature del vento sulla sabbia (onde parallele a
+  una direzione fissa `RIPPLE_DIR`, fase all'origine calcolata in doppia precisione) e
+  granuli; neve con solchi del vento e brillii che cambiano con la vista; roccia con licheni
+  e grana. Ogni dettaglio ha un peso tarato sulla sua lunghezza d'onda (niente moiré).
+- **Acqua**: mare e laghi con tre treni d'onda animati (normale perturbata, scintille del
+  sole solo dove le onde sono risolte, schiuma sulla battigia che va e viene). Fiumi con la
+  tecnica della *flow map*: direzione lungo il letto (perpendicolare al gradiente di
+  `vWater`), verso in discesa, due fasi sfalsate che si ripartono a vicenda.
+- **Transizioni tra biomi**: colore e pesi `aSurf` sono la media della classificazione con
+  il clima spostato (±2.5 °C, ±0.05 umidità, ±0.14 varietà, `SOFT_OFFSETS` in
+  `planet.js`), e le soglie dello shader sono più larghe. Niente alberi su neve e roccia.
+- **Confini delle nazioni**: per pixel, distanza dal bisettore tra i due capoluoghi più
+  vicini nello spazio deformato da `nationWarp` (GLSL generato dalle stesse costanti JS).
+  Linea di ~1 px, tratteggio a lunghezza costante sullo schermo (due periodi potenza di due
+  mescolati con lo zoom), solo sulla terraferma.
+- **Risoluzione adattiva** in `main.js`: mai sotto la risoluzione nativa, fino a 1.5× se la
+  GPU ha margine.
 
 ### 3.5 Cuciture tra tile (importante)
 
@@ -191,6 +216,14 @@ Generazione **procedurale deterministica** da un seed:
   saline, praterie alpine. Il colore varia con continuità dentro ogni bioma (più verde dove
   è umido, più bruno dove è secco, più spento dove è freddo).
   Il deserto del Sahara deve emergere naturalmente dalla fascia secca subtropicale.
+- **Nazioni** (`planet/nations.js`): 31 stati, regioni di Voronoi sferiche di capoluoghi
+  scelti sulla terraferma a distanza minima di ~3200 km (in media ~6.8 milioni di km²),
+  con coordinate deformate da sinusoidi 3D per confini sinuosi. Nomi inventati, mescolati
+  in modo deterministico dal seed. Le etichette (`ui/labels.js`, HTML) stanno al
+  centro della parte **visibile** di ogni nazione: ogni 6 frame una griglia di 18×14 raggi
+  dallo schermo trova a quale nazione appartiene la terraferma inquadrata (il baricentro,
+  da vicino, è quasi sempre fuori schermo). Compaiono sotto i ~7000 km di quota; l'HUD
+  mostra la nazione sotto la camera ("acque internazionali" solo sul mare).
 - **Due calotte polari**: a nord terre ghiacciate, a sud un continente polare (tipo
   Antartide) aggiunto al campo di continentalità oltre i ~64-80°. In entrambi i poli il
   mare gelato diventa **banchisa** (lastra di ghiaccio piatta, bioma `ICE`).
@@ -236,6 +269,7 @@ Nessun backend. L'applicazione è **statica** e può essere pubblicata su GitHub
 │   ├── planet/
 │   │   ├── planet.js          campionamento quota/clima/bioma (deterministico)
 │   │   ├── biomes.js          palette e classificazione dei biomi
+│   │   ├── nations.js         nazioni: capoluoghi, confini, nomi
 │   │   └── constants.js       costanti fisiche e geografiche
 │   ├── render/
 │   │   ├── terrainLOD.js      quadtree cubo-sfera
@@ -253,6 +287,7 @@ Nessun backend. L'applicazione è **statica** e può essere pubblicata su GitHub
 │   │   └── saveSystem.js      serializzazione/ripristino stato
 │   └── ui/
 │       ├── hud.js             HUD + tasto "Salva"
+│       ├── labels.js          nomi delle nazioni in sovrimpressione
 │       └── styles.css
 └── tools/
     ├── continents.mjs         taratura terre emerse / masse continentali (node)

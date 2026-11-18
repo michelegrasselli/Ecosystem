@@ -286,6 +286,7 @@ export class Planet {
     }
 
     // ---------- 10. Bioma ----------
+    out.mixCount = 1
     if (seaIce) {
       biome = BIOME.ICE
     } else if (isSea) {
@@ -304,14 +305,47 @@ export class Planet {
         // (paludi, calanchi, saline) dentro le grandi fasce climatiche
         const variety = fbm(nd, px * 7.5 + 13.7, py * 7.5 - 4.2, pz * 7.5 + 8.8, 2)
         biome = classifyLandBiome(height, temp, moist, absLat, variety)
+        // Transizioni morbide: si riclassifica il punto con il clima
+        // leggermente spostato (±2.5 °C, ±0.05 di umidità, ±0.14 di varietà)
+        // e si fa la media. Il confine netto tra due biomi diventa una fascia
+        // sfumata larga qualche centinaio di km, come in natura.
+        out.mix[0] = biome
+        for (let k = 0; k < SOFT_OFFSETS.length; k++) {
+          const o = SOFT_OFFSETS[k]
+          out.mix[k + 1] = classifyLandBiome(
+            height,
+            temp + o[0],
+            clamp(moist + o[1], 0, 1),
+            absLat,
+            variety + o[2]
+          )
+        }
+        out.mixCount = SOFT_OFFSETS.length + 1
       }
     }
+    out.mix[0] = biome
 
     // ---------- 11. Colore ----------
     // Roccia e neve d'alta quota le disegna lo shader seguendo la quota del
     // terreno: qui il colore di base resta quello del prato alpino, altrimenti
     // il bianco per vertice comparirebbe a scalini di maglia.
-    const col = rgbFor(biome === BIOME.ROCK || biome === BIOME.SNOW ? BIOME.TUNDRA : biome)
+    let col = rgbFor(colorBiome(biome))
+    if (out.mixCount > 1) {
+      let mr = 0
+      let mg = 0
+      let mb = 0
+      for (let k = 0; k < out.mixCount; k++) {
+        const c = rgbFor(colorBiome(out.mix[k]))
+        mr += c[0]
+        mg += c[1]
+        mb += c[2]
+      }
+      const inv = 1 / out.mixCount
+      col = _mixCol
+      col[0] = mr * inv
+      col[1] = mg * inv
+      col[2] = mb * inv
+    }
     let r = col[0]
     let g = col[1]
     let b = col[2]
@@ -402,8 +436,26 @@ function moistureSandy(noiseValue, absLat) {
   return noiseValue > -0.05 + (1 - tropic) * 0.45
 }
 
+/** Spostamenti del clima per la classificazione morbida: [°C, umidità, varietà]. */
+const SOFT_OFFSETS = [
+  [2.5, 0, 0],
+  [-2.5, 0, 0],
+  [0, 0.05, 0],
+  [0, -0.05, 0],
+  [1.8, 0.035, 0.14],
+  [-1.8, -0.035, -0.14]
+]
+const _mixCol = [0, 0, 0]
+
+/** Roccia e neve d'alta quota le disegna lo shader: il colore di base è il prato alpino. */
+function colorBiome(b) {
+  return b === BIOME.ROCK || b === BIOME.SNOW ? BIOME.TUNDRA : b
+}
+
 function createSample() {
   return {
+    mix: new Int32Array(8),
+    mixCount: 1,
     height: 0,
     water: 0,
     ice: 0,

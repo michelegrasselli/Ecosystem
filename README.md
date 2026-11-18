@@ -26,7 +26,7 @@ Serve Node 18+ (o 20+).
 | Azione | Comando |
 |--------|---------|
 | Ruotare il globo | trascinamento con il tasto sinistro |
-| Traslare la vista | trascinamento tenendo premuta la rotella |
+| Traslare la vista | `Ctrl` + trascinamento con il tasto sinistro, oppure rotella premuta |
 | Zoom verso il cursore | rotella del mouse |
 | Inclinare e ruotare la vista | trascinamento con tasto destro o `Shift` + sinistro |
 | Volo rapido su un punto | doppio clic |
@@ -38,6 +38,12 @@ Serve Node 18+ (o 20+).
 Lo stato (seed del pianeta e posizione della camera) viene salvato in `localStorage`
 sotto la chiave `ecosystem-planet/state` e ripristinato automaticamente al successivo
 avvio. Il salvataggio automatico della sola camera avviene anche alla chiusura della pagina.
+
+## Nazioni
+
+La terraferma è divisa in 31 nazioni dai nomi inventati. Avvicinandosi (sotto i ~7000 km)
+compaiono i nomi; i confini sono una linea tratteggiata fine. L'HUD indica la nazione
+sotto la camera.
 
 ## Com'è fatto
 

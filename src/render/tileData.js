@@ -188,12 +188,25 @@ export function computeTileData(planet, face, level, ix, iy) {
       // quota reale (negativa sul mare): lo shader la usa per la profondità
       // dell'acqua; lo spostamento verticale usa solo la parte positiva
       extHeight[ei] = rawH
-      const sc = SURFACE[_sample.biome]
+      // pesi di superficie mediati sulla classificazione morbida del pianeta
+      // (stessa media del colore): foreste, sabbia e roccia sfumano insieme
+      let s0 = 0
+      let s1 = 0
+      let s2 = 0
+      let s3 = 0
+      const mc = _sample.mixCount
+      for (let k = 0; k < mc; k++) {
+        const sc = SURFACE[_sample.mix[k]]
+        s0 += sc[0]
+        s1 += sc[1]
+        s2 += sc[2]
+        s3 += sc[3]
+      }
       const e4 = ei * 4
-      extSurf[e4] = sc[0]
-      extSurf[e4 + 1] = sc[1]
-      extSurf[e4 + 2] = sc[2]
-      extSurf[e4 + 3] = Math.max(sc[3], _sample.ice)
+      extSurf[e4] = s0 / mc
+      extSurf[e4 + 1] = s1 / mc
+      extSurf[e4 + 2] = s2 / mc
+      extSurf[e4 + 3] = Math.max(s3 / mc, _sample.ice)
       if (h > hMax) hMax = h
     }
   }

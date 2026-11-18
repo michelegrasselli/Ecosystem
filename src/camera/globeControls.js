@@ -125,7 +125,11 @@ export class GlobeControls {
   }
 
   _onPointerDown(e) {
-    if (e.button === 0 && !e.shiftKey) this._dragging = 1
+    if (e.button === 0 && (e.ctrlKey || e.metaKey)) {
+      // CTRL (o Cmd) + tasto sinistro: traslazione rigida della vista
+      e.preventDefault()
+      this._dragging = 3
+    } else if (e.button === 0 && !e.shiftKey) this._dragging = 1
     else if (e.button === 1) {
       // rotella premuta: traslazione della vista (senza l'autoscroll del browser)
       e.preventDefault()
