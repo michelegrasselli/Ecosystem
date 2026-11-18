@@ -712,7 +712,7 @@ export function createTerrainMaterial(sunDir) {
             float halo = 1.0 - smoothstep(bw * 1.0, bw * 3.2, dKm);
             vec3 alongDir = normalize(cross(sd, R));
             float dash = dashPattern(dot(pl, alongDir), foot);
-            float a = (core * 0.42 + halo * 0.12) * dash * uBorderAlpha * (1.0 - isWater);
+            float a = (core * 0.52 + halo * 0.14) * dash * uBorderAlpha * (1.0 - isWater);
             // scurisce il terreno invece di disegnare un colore piatto: resta
             // leggibile su sabbia, prato, roccia e neve senza sembrare un tratto
             // di pennarello
