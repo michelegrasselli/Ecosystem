@@ -138,10 +138,20 @@ distribuzione di mari/continenti, laghi, fiumi, fasce climatiche e temperature.
   `planet.js`), e le soglie dello shader sono più larghe. Niente alberi su neve e roccia.
 - **Confini delle nazioni**: per pixel, distanza dal bisettore tra i due capoluoghi più
   vicini nello spazio deformato da `nationWarp` (GLSL generato dalle stesse costanti JS).
-  Linea di ~1 px, tratteggio a lunghezza costante sullo schermo (due periodi potenza di due
-  mescolati con lo zoom), solo sulla terraferma.
-- **Risoluzione adattiva** in `main.js`: mai sotto la risoluzione nativa, fino a 1.5× se la
-  GPU ha margine.
+  La linea è **morbida**, non un filo netto: un nucleo stretto (`bw·0.35 … bw·1.7`) più un
+  alone sfumato (`bw·1.0 … bw·3.2`), tratteggio a lunghezza costante sullo schermo (due
+  periodi potenza di due mescolati con lo zoom) con estremità dei trattini sfumate su ~1.8 px
+  e vuoto più lungo del pieno (limite 0.32). Il colore **scurisce il terreno**
+  (`color·0.52 + 0.05`) invece di essere un tratto piatto scuro: resta leggibile su sabbia,
+  prato, roccia e neve senza sembrare nero. Solo sulla terraferma; l'opacità cala con la
+  quota (`uBorderAlpha = 0.68 → 0.24` fra 150 e 2200 km), così dallo spazio non è una fascia
+  sfocata.
+- **Risoluzione adattiva** in `main.js`: mai sotto la risoluzione nativa, fino a 1.85× se la
+  GPU ha margine. La decisione è presa **prima** del render (ridimensionare il drawing buffer
+  dopo aver disegnato mostrava un frame di solo sfondo, cioè un lampo nero), con isteresi
+  (scende se la media mobile supera 1/27 s per 2 finestre, sale sotto 1/56 s per 3 finestre),
+  attesa di 3 s fra un cambio e l'altro e salita solo da fermi (`controls.idleSeconds > 0.6`):
+  altrimenti la risoluzione "pompava" a ogni zoom.
 
 ### 3.5 Cuciture tra tile (importante)
 
@@ -154,8 +164,12 @@ Tre accorgimenti, tutti necessari, altrimenti compaiono righe scure sui confini:
 2. **Nessuna inversione di normale sulle facce posteriori**: le skirt, viste di taglio dal
    lato interno attraversando una crepa, venivano illuminate al contrario. Il fragment
    shader usa `N` così com'è.
-3. **Skirt proporzionate** (maglia × 0.35 + quota massima della tile × 0.18, max 40 unità, scalate con l'esagerazione nello shader): gonne troppo profonde
-   bucano il terreno delle tile vicine.
+3. **Skirt proporzionate** (maglia × 0.6 + quota massima della tile × 0.45, max 60 unità,
+   scalate con l'esagerazione nello shader): gonne troppo profonde bucano il terreno delle
+   tile vicine. **Verso dei triangoli**: la faccia esterna deve guardare fuori dalla tile; i
+   bordi nord e ovest vanno percorsi al contrario rispetto a sud ed est. Con il verso sbagliato
+   il backface culling scartava metà delle gonne e nelle giunzioni tra livelli restavano
+   **crepe nere** (verificato da `tools/check-skirt.mjs`).
 
 ### 3.6 Colore e LOD (importante)
 
@@ -219,11 +233,16 @@ Generazione **procedurale deterministica** da un seed:
 - **Nazioni** (`planet/nations.js`): 31 stati, regioni di Voronoi sferiche di capoluoghi
   scelti sulla terraferma a distanza minima di ~3200 km (in media ~6.8 milioni di km²),
   con coordinate deformate da sinusoidi 3D per confini sinuosi. Nomi inventati, mescolati
-  in modo deterministico dal seed. Le etichette (`ui/labels.js`, HTML) stanno al
-  centro della parte **visibile** di ogni nazione: ogni 6 frame una griglia di 18×14 raggi
-  dallo schermo trova a quale nazione appartiene la terraferma inquadrata (il baricentro,
-  da vicino, è quasi sempre fuori schermo). Compaiono sotto i ~7000 km di quota; l'HUD
-  mostra la nazione sotto la camera ("acque internazionali" solo sul mare).
+  in modo deterministico dal seed. Le etichette (`ui/labels.js`, HTML) sono **ancorate** al
+  baricentro fisso della terraferma di ogni nazione (`n.anchor`, calcolato una volta sola) e
+  ne proiettano solo la posizione a schermo: ricalcolando il centro della parte visibile il
+  nome si spostava di lato durante lo zoom. Quando l'ancora esce dallo schermo il nome passa
+  verso il centro della vista (70% della strada dal baricentro della parte visibile), con una
+  compressione morbida (`tanh`) che gli impedisce di incollarsi al bordo; inseguimento
+  smorzato con velocità massima 800 px/s e nessun movimento sotto il mezzo pixel. Se due
+  nomi si sovrappongono resta quello con più terra inquadrata. La visibilità viene da una
+  griglia di 16×11 raggi spalmata su 3 frame (4 righe per frame): compaiono sotto i ~7000 km
+  di quota; l'HUD mostra la nazione sotto la camera ("acque internazionali" solo sul mare).
 - **Due calotte polari**: a nord terre ghiacciate, a sud un continente polare (tipo
   Antartide) aggiunto al campo di continentalità oltre i ~64-80°. In entrambi i poli il
   mare gelato diventa **banchisa** (lastra di ghiaccio piatta, bioma `ICE`).
@@ -292,6 +311,7 @@ Nessun backend. L'applicazione è **statica** e può essere pubblicata su GitHub
 └── tools/
     ├── continents.mjs         taratura terre emerse / masse continentali (node)
     ├── planet-stats.mjs       validazione statistica dei biomi (node)
+    ├── check-skirt.mjs        controllo del verso delle facce delle gonne (node)
     └── shot-server.mjs        cattura frame dal browser in sviluppo
 ```
 
@@ -368,14 +388,18 @@ Limiti noti / prossimi passi tecnici:
   15 000 km a pochi metri). I voli durano in proporzione al salto di scala e alla distanza
   (fino a 5.5 s), con smootherstep; lo spostamento orizzontale avviene in quota e la
   discesa finale è verticale.
-- **Volo dallo spazio a 2 km** (GPU integrata AMD, finestra ~800×700): ~25 fps durante il
-  volo, livello 14 sotto la camera all'atterraggio, ~33 fps a regime. Restano picchi isolati
-  di 100-280 ms durante il volo che non vengono né dall'update del LOD né dal rendering CPU
-  (1-4 ms): da indagare (GC o caricamenti sulla GPU).
+- **Volo dallo spazio a 2 km** (GPU integrata AMD, finestra ~800×700): ~50-55 fps durante il
+  volo (mediana 12.8 ms a 2300 km, 18.2 ms a 350 km, 21.8 ms a 35 km a 1.8× di risoluzione),
+  livello 14 sotto la camera all'atterraggio. Restano picchi isolati di 25-40 ms in
+  corrispondenza dei cambi di livello LOD (caricamento dei buffer sulla GPU): sono mitigati
+  creando al massimo **8 mesh nuove per frame**. I vecchi picchi di 100-300 ms erano in parte
+  un primo frame di assestamento della scena, non un problema di shader.
+- **Costi dello shader dei confini**: circa **3.3 ms/frame** a schermo pieno (16.8 ms con i
+  confini, 13.2 senza, a 1.45×): il ciclo di Voronoi è ~48 iterazioni per ogni pixel di
+  terraferma. Si può scendere solo disegnando i confini su una passata separata o a
+  risoluzione ridotta; per ora si accetta il costo perché rende leggibile la mappa politica.
 - **Alberi dipinti sul terreno**: da 25-100 m le chiome sono dischi piatti. In fase 2 vanno
   affiancate da alberi 3D istanziati vicino alla camera, posizionati con lo stesso hash
   di `canopy()` (stessi punti) e la stessa esagerazione del rilievo.
-- **Costo GPU**: con l'early-z recuperato il limite ora è il numero di triangoli (~3.5 M
-  in una vista radente a bassa quota).
 - **Il tasto "salva" salva solo seed + camera**: quando arriveranno piante e animali andrà
   versionato lo stato dell'ecosistema (lo schema è già versionato).

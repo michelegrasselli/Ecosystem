@@ -197,10 +197,8 @@ const groundSample = Planet.createSample()
 let last = performance.now()
 let frameCount = 0
 
-function frame(now) {
-  const dt = Math.min((now - last) / 1000, 0.1)
-  last = now
-
+/** Un passo della simulazione (senza richiesta del frame successivo). */
+function step(dt, now) {
   // quota del terreno sotto la camera (con la stessa esagerazione dello shader)
   const exag = reliefExaggeration(controls.altitude)
   const gs = planet.sampleLatLon(controls.lat, controls.lon, 1, groundSample)
@@ -236,8 +234,9 @@ function frame(now) {
   const od = u.uOrigin.value.dot(RIPPLE_DIR)
   u.uRipplePhase.value = (od * RIPPLE_K) % (Math.PI * 2)
   u.uRipplePhase2.value = (od * (RIPPLE_K / 5)) % (Math.PI * 2)
-  // confini più marcati da vicino, più discreti dallo spazio
-  u.uBorderAlpha.value = 0.7 + 0.2 * (1 - Math.min(Math.log10(Math.max(altitudeKm, 1)) / 4, 1))
+  // confini: leggibili da vicino, appena accennati dallo spazio (dove la linea
+  // sarebbe solo una fascia sfocata)
+  u.uBorderAlpha.value = 0.68 - 0.44 * THREE.MathUtils.smoothstep(altitudeKm, 150, 2200)
   terrainMaterial.uniforms.uTime.value = now * 0.001
   terrainMaterial.uniforms.uHazeDensity.value = 1 / (altitudeKm * 14 + 160)
 
@@ -254,8 +253,18 @@ function frame(now) {
     dt
   )
 
-  renderer.render(scene, camera)
+  // risoluzione adattiva PRIMA del render: ridimensionare il drawing buffer
+  // dopo aver disegnato mostra un frame con lo sfondo (lampo nero)
   adaptResolution(dt)
+
+  renderer.render(scene, camera)
+}
+
+function frame(now) {
+  const dt = Math.min((now - last) / 1000, 0.1)
+  last = now
+
+  step(dt, now)
 
   frameCount++
   if (!ready && frameCount > 1 && lod.stats.queued === 0 && lod.stats.inFlight === 0 && lod.stats.visible > 0) {
@@ -268,30 +277,76 @@ function frame(now) {
 requestAnimationFrame(frame)
 
 // debug in console
-window.__planet = { planet, controls, lod, scene, camera, renderer }
+// `step` avanza la scena senza requestAnimationFrame (anteprima non visibile,
+// catture di immagini): le catture restano possibili anche a finestra nascosta.
+window.__planet = {
+  planet,
+  nations,
+  nationLabels,
+  controls,
+  lod,
+  scene,
+  camera,
+  renderer,
+  step(frames = 1, dt = 1 / 60) {
+    for (let i = 0; i < frames; i++) {
+      const now = performance.now()
+      last = now
+      step(dt, now)
+    }
+  }
+}
 
 // ------------------------------------------------- risoluzione adattiva
 // Da vicino lo shader del terreno disegna chiome, dune e prati per pixel: su
 // GPU integrate il frame può superare il budget. Si riduce la risoluzione di
 // rendering finché il frame non torna fluido, e la si rialza quando c'è margine.
+//
+// Cambiare risoluzione ricrea il drawing buffer: se la decisione avvenisse dopo
+// il render, per un frame lo schermo mostrerebbe solo il colore di fondo (un
+// lampo nero). Per questo la decisione viene presa prima di disegnare, e i
+// cambi sono radi (isteresi + attesa) invece di inseguire ogni variazione.
 
 // mai sotto la risoluzione nativa del canvas: sotto l'immagine è sfocata
 const MIN_PIXEL_RATIO = 1
 let frameEma = 1 / 60
 let adaptTimer = 0
+let adaptCooldown = 0
+let slowWindows = 0
+let fastWindows = 0
 
 function adaptResolution(dt) {
   if (!ready || document.hidden) return
   frameEma += (dt - frameEma) * 0.08
   adaptTimer += dt
-  if (adaptTimer < 0.8) return
+  adaptCooldown = Math.max(0, adaptCooldown - dt)
+  if (adaptTimer < 1) return
   adaptTimer = 0
+
   const pr = renderer.getPixelRatio()
+  // scendere è sempre concesso (protegge la fluidità); salire solo da fermi,
+  // altrimenti la risoluzione "pompa" a ogni zoom
+  const idle = controls.idleSeconds
+  if (frameEma > 1 / 27) {
+    slowWindows++
+    fastWindows = 0
+  } else if (frameEma < 1 / 56) {
+    fastWindows++
+    slowWindows = 0
+  } else {
+    slowWindows = 0
+    fastWindows = 0
+  }
+
   let next = pr
-  if (frameEma > 1 / 30) next = Math.max(MIN_PIXEL_RATIO, pr * 0.9)
-  else if (frameEma < 1 / 50) next = Math.min(MAX_PIXEL_RATIO, pr * 1.1)
-  if (Math.abs(next - pr) > 0.01) {
+  if (slowWindows >= 2) next = Math.max(MIN_PIXEL_RATIO, pr - 0.15)
+  else if (fastWindows >= 3 && idle > 0.6) next = Math.min(MAX_PIXEL_RATIO, pr + 0.1)
+
+  if (Math.abs(next - pr) > 0.001 && adaptCooldown === 0) {
     renderer.setPixelRatio(next)
     resize()
+    adaptCooldown = 3
+    slowWindows = 0
+    fastWindows = 0
   }
 }

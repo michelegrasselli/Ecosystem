@@ -296,17 +296,19 @@ export function createTerrainMaterial(sunDir) {
       }
 
       // Tratteggio a lunghezza costante sullo schermo: due periodi (potenze di
-      // due in km) mescolati con continuità mentre si zooma.
+      // due in km) mescolati con continuità mentre si zooma. I trattini hanno i
+      // bordi sfumati (larghi più o meno un pixel) e il vuoto è più lungo del
+      // pieno: una linea a puntini netti sembrava un artefatto.
       float dashPattern(float along, float foot) {
-        float lp = log2(foot * 10.0);
+        float lp = log2(max(foot, 1e-6) * 10.0);
         float L = floor(lp);
         float fr = lp - L;
         float p1 = exp2(L);
         float p2 = p1 * 2.0;
-        float a1 = clamp(foot / p1, 0.02, 0.3);
-        float a2 = clamp(foot / p2, 0.02, 0.3);
-        float d1 = 1.0 - smoothstep(0.55 - a1, 0.55 + a1, fract(along / p1));
-        float d2 = 1.0 - smoothstep(0.55 - a2, 0.55 + a2, fract(along / p2));
+        float a1 = clamp(foot / p1 * 1.8, 0.05, 0.45);
+        float a2 = clamp(foot / p2 * 1.8, 0.05, 0.45);
+        float d1 = 1.0 - smoothstep(0.32 - a1, 0.32 + a1, fract(along / p1));
+        float d2 = 1.0 - smoothstep(0.32 - a2, 0.32 + a2, fract(along / p2));
         return mix(d1, d2, fr);
       }
 
@@ -680,9 +682,12 @@ export function createTerrainMaterial(sunDir) {
         }
 
         // ============================================================ CONFINI
-        // Confini tra nazioni: linea fine tratteggiata, solo sulla terraferma.
+        // Confini tra nazioni: linea sottile e morbida, solo sulla terraferma.
         // Distanza dal bisettore tra i due capoluoghi più vicini, nello spazio
         // deformato da nationWarp (la stessa funzione usata in JS).
+        //
+        // La linea è un nucleo stretto più un alone sfumato (circa 1 + 2 px):
+        // un filo netto a un pixel "vibrava" durante lo zoom e sembrava nero.
         if (uNationCount > 1 && isWater < 0.98) {
           vec3 q = nationWarp(R);
           float b1 = -2.0;
@@ -699,12 +704,20 @@ export function createTerrainMaterial(sunDir) {
           vec3 s2 = uNationSeeds[i2];
           vec3 sd = s1 - s2;
           float dKm = (b1 - b2) / max(length(sd), 1e-6) * 6371.0;
-          float line = 1.0 - smoothstep(foot * 0.55, foot * 1.25, dKm);
-          if (line > 0.0) {
+          // larghezza in km di un pixel (limitata: all'orizzonte fwidth esplode
+          // e la fascia diventerebbe una macchia larga)
+          float bw = min(foot, 25.0);
+          float core = 1.0 - smoothstep(bw * 0.35, bw * 1.7, dKm);
+          if (core > 0.0) {
+            float halo = 1.0 - smoothstep(bw * 1.0, bw * 3.2, dKm);
             vec3 alongDir = normalize(cross(sd, R));
             float dash = dashPattern(dot(pl, alongDir), foot);
-            float a = line * dash * uBorderAlpha * (1.0 - isWater);
-            color = mix(color, vec3(0.10, 0.08, 0.07), a);
+            float a = (core * 0.42 + halo * 0.12) * dash * uBorderAlpha * (1.0 - isWater);
+            // scurisce il terreno invece di disegnare un colore piatto: resta
+            // leggibile su sabbia, prato, roccia e neve senza sembrare un tratto
+            // di pennarello
+            vec3 bc = color * 0.52 + vec3(0.05, 0.042, 0.034);
+            color = mix(color, bc, clamp(a, 0.0, 0.62));
           }
         }
 

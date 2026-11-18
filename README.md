@@ -42,8 +42,9 @@ avvio. Il salvataggio automatico della sola camera avviene anche alla chiusura d
 ## Nazioni
 
 La terraferma è divisa in 31 nazioni dai nomi inventati. Avvicinandosi (sotto i ~7000 km)
-compaiono i nomi; i confini sono una linea tratteggiata fine. L'HUD indica la nazione
-sotto la camera.
+compaiono i nomi, ancorati al centro geografico di ogni nazione: restano fermi sul terreno
+anche durante lo zoom. I confini sono una linea tratteggiata morbida che scurisce il terreno
+invece di disegnare un tratto nero. L'HUD indica la nazione sotto la camera.
 
 ## Com'è fatto
 
@@ -65,5 +66,6 @@ Dettagli, decisioni e limiti noti sono in [CONTEXT.md](CONTEXT.md).
 ```bash
 node tools/planet-stats.mjs        # statistiche di biomi, quote, laghi e fiumi
 node tools/continents.mjs          # terre emerse e dimensione delle masse continentali
+node tools/check-skirt.mjs         # verso delle facce delle gonne (crepe nere)
 node tools/shot-server.mjs 7788    # server locale per catturare frame dal browser
 ```

@@ -286,7 +286,7 @@ export function computeTileData(planet, face, level, ix, iy) {
   // quella interpolata sulla maglia grossa: la gonna deve coprire anche le
   // montagne, quindi la sua profondità cresce con il dislivello della tile.
   const cellKm = tileSizeKm / res
-  const skirtDepth = Math.min(Math.max(cellKm * 0.35, 0.02) + hMax * SCENE_SCALE * 0.18, 40)
+  const skirtDepth = Math.min(Math.max(cellKm * 0.6, 0.04) + hMax * SCENE_SCALE * 0.45, 60)
 
   const edgeIndices = []
   for (let gx = 0; gx < row; gx++) edgeIndices.push(gx) // bordo sud (gy=0)
@@ -337,22 +337,31 @@ export function computeTileData(planet, face, level, ix, iy) {
   }
 
   // strisce della gonna
+  // L'ordine dei triangoli deve lasciare la faccia esterna verso l'esterno
+  // della tile: con i bordi sud/est il verso di percorrenza è già giusto, per
+  // nord/ovest va invertito. Quando era sbagliato la gonna veniva scartata dal
+  // backface culling e nelle giunzioni tra livelli diversi restavano crepe nere.
   const borders = [
-    [0, 1],
-    [res * row, 1],
-    [0, row],
-    [res, row]
+    [0, 1, false], // bordo sud (gy=0)
+    [res * row, 1, true], // bordo nord
+    [0, row, true], // bordo ovest
+    [res, row, false] // bordo est
   ]
   for (let b = 0; b < 4; b++) {
-    const [start, stride] = borders[b]
+    const [start, stride, flip] = borders[b]
     const skirtBase = gridVerts + b * row
     for (let i = 0; i < res; i++) {
       const t0 = start + stride * i
       const t1 = start + stride * (i + 1)
       const s0 = skirtBase + i
       const s1 = skirtBase + i + 1
-      indices[o++] = t0; indices[o++] = s0; indices[o++] = t1
-      indices[o++] = t1; indices[o++] = s0; indices[o++] = s1
+      if (flip) {
+        indices[o++] = t0; indices[o++] = t1; indices[o++] = s0
+        indices[o++] = t1; indices[o++] = s1; indices[o++] = s0
+      } else {
+        indices[o++] = t0; indices[o++] = s0; indices[o++] = t1
+        indices[o++] = t1; indices[o++] = s0; indices[o++] = s1
+      }
     }
   }
 

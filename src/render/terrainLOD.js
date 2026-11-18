@@ -25,8 +25,9 @@ const PREFETCH_FRACTION = 0.62
 const MORPH_MS = 450
 const MAX_TILES_PER_FRAME = 24
 // mesh create per frame dai risultati dei worker (la creazione è economica,
-// il caricamento sulla GPU avviene al primo render)
-const MAX_MESHES_PER_FRAME = 24
+// il caricamento sulla GPU avviene al primo render): poche per volta, perché
+// ogni mesh nuova carica i suoi buffer e un gruppo numeroso produce uno scatto
+const MAX_MESHES_PER_FRAME = 8
 
 const _sphere = new THREE.Sphere()
 const _v = new THREE.Vector3()

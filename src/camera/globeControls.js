@@ -52,6 +52,7 @@ export class GlobeControls {
     this._dragging = 0 // 1 = pan, 2 = tilt
     this._lastX = 0
     this._lastY = 0
+    this.lastInputAt = -1e9
     this._raycaster = new THREE.Raycaster()
     this._pointer = new THREE.Vector2()
     this._fly = null
@@ -84,6 +85,11 @@ export class GlobeControls {
     return this.altitude
   }
 
+  /** Secondi dall'ultimo input dell'utente (rotella, trascinamento, tasti). */
+  get idleSeconds() {
+    return (performance.now() - this.lastInputAt) / 1000
+  }
+
   /** Quota approssimativa della superficie sotto la camera, in km. */
   get groundRadius() {
     return SCENE_RADIUS
@@ -107,6 +113,7 @@ export class GlobeControls {
 
   _onWheel(e) {
     e.preventDefault()
+    this.lastInputAt = performance.now()
     const delta = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY
     const factor = Math.exp(clamp(delta, -400, 400) * 0.0016)
 
@@ -125,6 +132,7 @@ export class GlobeControls {
   }
 
   _onPointerDown(e) {
+    this.lastInputAt = performance.now()
     if (e.button === 0 && (e.ctrlKey || e.metaKey)) {
       // CTRL (o Cmd) + tasto sinistro: traslazione rigida della vista
       e.preventDefault()
@@ -144,6 +152,7 @@ export class GlobeControls {
 
   _onPointerMove(e) {
     if (!this._dragging) return
+    this.lastInputAt = performance.now()
     const dx = e.clientX - this._lastX
     const dy = e.clientY - this._lastY
     this._lastX = e.clientX
@@ -213,6 +222,7 @@ export class GlobeControls {
   }
 
   _onKeyDown(e) {
+    this.lastInputAt = performance.now()
     if (e.key === 'PageUp' || e.key === '+') this.tAltitude = clamp(this.tAltitude * 0.7, MIN_ALT_KM, MAX_ALT_KM)
     if (e.key === 'PageDown' || e.key === '-') this.tAltitude = clamp(this.tAltitude / 0.7, MIN_ALT_KM, MAX_ALT_KM)
   }
