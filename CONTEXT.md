@@ -31,9 +31,10 @@ distribuzione di mari/continenti, laghi, fiumi, fasce climatiche e temperature.
 | R7 | Tasto **poco visibile "Salva"** che salva lo stato del pianeta | **fatto** |
 | R8 | Lo stato salvato viene **ricaricato automaticamente** al prossimo avvio | **fatto** (verificato) |
 | R9 | Repository GitHub con **commit + push dopo ogni prompt** | attivo |
-| R10 | Terraferma divisa in **nazioni** grandi con nomi inventati, nomi visibili avvicinandosi e confini a **linea tratteggiata fine** | **fatto** (31 nazioni) |
+| R10 | Terraferma divisa in **nazioni** grandi con nomi inventati (fantasy), nomi visibili avvicinandosi e confini a **linea tratteggiata grigia sottile** | **fatto** (31 nazioni) |
 | R11 | Texture **realistiche da vicino** (erba, acqua che scorre, sabbia, neve) e **transizioni morbide** tra biomi | **fatto** |
 | R12 | Navigazione: mouse = ruota, **Ctrl + mouse = traslazione rigida** (anche rotella premuta) | **fatto** |
+| R13 | Interfaccia (HUD, caricamento, messaggi) **in inglese** | **fatto** |
 
 ---
 
@@ -138,14 +139,14 @@ distribuzione di mari/continenti, laghi, fiumi, fasce climatiche e temperature.
   `planet.js`), e le soglie dello shader sono più larghe. Niente alberi su neve e roccia.
 - **Confini delle nazioni**: per pixel, distanza dal bisettore tra i due capoluoghi più
   vicini nello spazio deformato da `nationWarp` (GLSL generato dalle stesse costanti JS).
-  La linea è **morbida**, non un filo netto: un nucleo stretto (`bw·0.35 … bw·1.7`) più un
-  alone sfumato (`bw·1.0 … bw·3.2`), tratteggio a lunghezza costante sullo schermo (due
-  periodi potenza di due mescolati con lo zoom) con estremità dei trattini sfumate su ~1.8 px
-  e vuoto più lungo del pieno (limite 0.32). Il colore **scurisce il terreno**
-  (`color·0.52 + 0.05`) invece di essere un tratto piatto scuro: resta leggibile su sabbia,
-  prato, roccia e neve senza sembrare nero. Solo sulla terraferma; l'opacità cala con la
-  quota (`uBorderAlpha = 0.68 → 0.24` fra 150 e 2200 km), così dallo spazio non è una fascia
-  sfocata.
+  Sono una **sottile linea tratteggiata grigia** (`vec3(0.50, 0.50, 0.48)`), larga circa un
+  pixel e antialiasata su due (`smoothstep(bw·0.55, bw·2.2, dKm)`, con `bw = min(foot, 25)`):
+  si legge come confine senza diventare un tratto da pennarello. Tratteggio a lunghezza
+  costante sullo schermo (due periodi potenza di due mescolati con lo zoom), pieno ~0.56 del
+  periodo e vuoto più lungo, estremità sfumate su ~1.2 px. Il grigio neutro si stacca sia
+  dalla sabbia chiara sia dal bosco scuro. Solo sulla terraferma; l'opacità cala con la quota
+  (`uBorderAlpha = 0.82 → 0.16` fra 800 e 4200 km), così a scala regionale è ben visibile e
+  dallo spazio è appena un accenno.
 - **Risoluzione adattiva** in `main.js`: mai sotto la risoluzione nativa, fino a 1.85× se la
   GPU ha margine. La decisione è presa **prima** del render (ridimensionare il drawing buffer
   dopo aver disegnato mostrava un frame di solo sfondo, cioè un lampo nero), con isteresi
@@ -232,17 +233,23 @@ Generazione **procedurale deterministica** da un seed:
   Il deserto del Sahara deve emergere naturalmente dalla fascia secca subtropicale.
 - **Nazioni** (`planet/nations.js`): 31 stati, regioni di Voronoi sferiche di capoluoghi
   scelti sulla terraferma a distanza minima di ~3200 km (in media ~6.8 milioni di km²),
-  con coordinate deformate da sinusoidi 3D per confini sinuosi. Nomi inventati, mescolati
-  in modo deterministico dal seed. Le etichette (`ui/labels.js`, HTML) sono **ancorate** al
-  baricentro fisso della terraferma di ogni nazione (`n.anchor`, calcolato una volta sola) e
-  ne proiettano solo la posizione a schermo: ricalcolando il centro della parte visibile il
-  nome si spostava di lato durante lo zoom. Quando l'ancora esce dallo schermo il nome passa
-  verso il centro della vista (70% della strada dal baricentro della parte visibile), con una
-  compressione morbida (`tanh`) che gli impedisce di incollarsi al bordo; inseguimento
-  smorzato con velocità massima 800 px/s e nessun movimento sotto il mezzo pixel. Se due
-  nomi si sovrappongono resta quello con più terra inquadrata. La visibilità viene da una
-  griglia di 16×11 raggi spalmata su 3 frame (4 righe per frame): compaiono sotto i ~7000 km
-  di quota; l'HUD mostra la nazione sotto la camera ("acque internazionali" solo sul mare).
+  con coordinate deformate da sinusoidi 3D per confini sinuosi. Nomi **inventati di sapore
+  fantasy** (Aethermoor, Ashenvale, Starfall, Umbrafen, Farrowmere…), mescolati in modo
+  deterministico dal seed.
+- **Etichette delle nazioni** (`ui/labels.js`, HTML): ogni nazione ha una serie di **punti di
+  ancoraggio fissi** sul proprio territorio — il baricentro della terraferma (`n.anchor`) più
+  fino a 16 punti sparsi sulla terra a distanza minima di ~640 km (`n.labelPoints`), calcolati
+  una volta sola. Il nome si appoggia al punto visibile più centrale e a schermo è solo la sua
+  proiezione: si muove esattamente con il terreno su cui è appoggiato. Il punto cambia solo
+  quando quello scelto esce dall'inquadratura (isteresi `KEEP_RADIUS = 1.1`) o un altro è
+  molto più centrale (`SWITCH_GAIN = 0.7`); se nessun punto è in vista (nazione vista di
+  taglio) si usa il baricentro della parte visibile, molto smorzato. Compressione morbida
+  (`tanh`, `INNER 0.5/0.42` → `OUTER 0.72/0.6`) che impedisce al nome di incollarsi al bordo;
+  inseguimento rapido (`1-exp(-dt·14)`, max 2400 px/s) perché il ritardo si legge come
+  "il nome si sposta da solo". Se due nomi si sovrappongono resta quello con più terra
+  inquadrata. La visibilità viene da una griglia di 16×11 raggi spalmata su 3 frame (4 righe
+  per frame): compaiono sotto i ~7000 km di quota; l'HUD mostra la nazione sotto la camera
+  ("international waters" solo sul mare).
 - **Due calotte polari**: a nord terre ghiacciate, a sud un continente polare (tipo
   Antartide) aggiunto al campo di continentalità oltre i ~64-80°. In entrambi i poli il
   mare gelato diventa **banchisa** (lastra di ghiaccio piatta, bioma `ICE`).
@@ -320,6 +327,8 @@ Nessun backend. L'applicazione è **statica** e può essere pubblicata su GitHub
 ## 6. Convenzioni di codice
 
 - Moduli ES, `export` nominati.
+- **Lingua dell'interfaccia: inglese** (HUD, etichette di caricamento, messaggi, nomi dei
+  biomi e delle nazioni). I commenti del codice restano in italiano.
 - Nessun uso di classi per la matematica pura; classi solo per oggetti con stato (renderer, controlli).
 - Niente allocazioni per-vertice nei loop caldi: usare oggetti scratch riutilizzati.
 - `SEA_LEVEL = 0`, quote in **metri**, raggi in **metri** dentro il livello `planet/`.

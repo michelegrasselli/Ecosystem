@@ -29,28 +29,28 @@ export const BIOME = {
 }
 
 export const BIOME_NAME = {
-  [BIOME.OCEAN_DEEP]: 'Oceano profondo',
-  [BIOME.OCEAN]: 'Oceano',
-  [BIOME.OCEAN_SHELF]: 'Piattaforma costiera',
-  [BIOME.LAKE]: 'Lago',
-  [BIOME.RIVER]: 'Fiume',
-  [BIOME.BEACH]: 'Costa sabbiosa',
-  [BIOME.DESERT]: 'Deserto caldo',
-  [BIOME.SEMI_DESERT]: 'Steppa arida',
-  [BIOME.SAVANNA]: 'Savana',
-  [BIOME.GRASSLAND]: 'Prateria',
-  [BIOME.SHRUBLAND]: 'Macchia',
-  [BIOME.TEMPERATE_FOREST]: 'Foresta temperata',
-  [BIOME.RAINFOREST]: 'Foresta pluviale',
+  [BIOME.OCEAN_DEEP]: 'Deep ocean',
+  [BIOME.OCEAN]: 'Ocean',
+  [BIOME.OCEAN_SHELF]: 'Coastal shelf',
+  [BIOME.LAKE]: 'Lake',
+  [BIOME.RIVER]: 'River',
+  [BIOME.BEACH]: 'Sandy shore',
+  [BIOME.DESERT]: 'Hot desert',
+  [BIOME.SEMI_DESERT]: 'Arid steppe',
+  [BIOME.SAVANNA]: 'Savanna',
+  [BIOME.GRASSLAND]: 'Grassland',
+  [BIOME.SHRUBLAND]: 'Scrubland',
+  [BIOME.TEMPERATE_FOREST]: 'Temperate forest',
+  [BIOME.RAINFOREST]: 'Rainforest',
   [BIOME.BOREAL_FOREST]: 'Taiga',
   [BIOME.TUNDRA]: 'Tundra',
-  [BIOME.ROCK]: 'Roccia d\u2019alta quota',
-  [BIOME.SNOW]: 'Neve perenne',
-  [BIOME.ICE]: 'Calotta glaciale',
-  [BIOME.WETLAND]: 'Palude',
-  [BIOME.BADLANDS]: 'Calanchi',
-  [BIOME.SALT_FLAT]: 'Salina',
-  [BIOME.ALPINE_MEADOW]: 'Prateria alpina'
+  [BIOME.ROCK]: 'High rock',
+  [BIOME.SNOW]: 'Permanent snow',
+  [BIOME.ICE]: 'Ice sheet',
+  [BIOME.WETLAND]: 'Wetland',
+  [BIOME.BADLANDS]: 'Badlands',
+  [BIOME.SALT_FLAT]: 'Salt flat',
+  [BIOME.ALPINE_MEADOW]: 'Alpine meadow'
 }
 
 // Colori sRGB lineari, in [0,1]

@@ -1,18 +1,22 @@
 // Etichette delle nazioni: nomi in sovrimpressione (HTML).
 //
-// Il nome sta su un punto FISSO della nazione (il baricentro della sua
-// terraferma, calcolato una volta sola): ricalcolandolo ogni volta come media
-// della parte visibile, durante lo zoom si spostava di lato in continuazione.
-// Ora la posizione a schermo è solo la proiezione dell'ancora geografica, quindi
-// si muove insieme al terreno, in modo continuo.
+// Ogni nazione ha alcuni PUNTI DI ANCORAGGIO fissi sul proprio territorio (il
+// baricentro più una manciata di punti sparsi sulla terraferma, calcolati una
+// volta sola in nations.js). Il nome si appoggia a uno di questi punti: a
+// schermo è solo la sua proiezione, quindi si muove esattamente con il terreno.
 //
-// Quando l'ancora esce dallo schermo (zoom dentro un angolo della nazione) il
-// nome si porta verso il centro della vista: lì resta fermo finché si rimane
-// nella stessa nazione. Una compressione morbida verso il centro impedisce che
-// finisca sul bordo.
+// Ricalcolare ogni volta "il centro della parte visibile" faceva scivolare il
+// nome, perché la griglia di raggi si aggiorna a scatti e il nome inseguiva
+// quegli scatti. Ora il punto cambia solo quando quello scelto esce davvero
+// dall'inquadratura (o un altro è molto più centrale): il nome resta fermo,
+// ancorato, mentre si sposta la vista o si zooma.
+//
+// Se nessun punto è in vista (nazione vista di taglio, oltre l'orizzonte) si usa
+// il baricentro della parte visibile, molto smorzato: meglio un nome che si
+// muove piano che uno che salta.
 //
 // La visibilità viene da una griglia di raggi lanciata dallo schermo (spalmata
-// su più frame): serve solo a sapere quanta parte della nazione si vede.
+// su più frame): serve SOLO a sapere se la nazione è inquadrata.
 //
 // Compaiono avvicinandosi: dallo spazio sono nascoste, sotto i ~7000 km di
 // quota sfumano in vista.
@@ -35,14 +39,11 @@ const INNER_Y = 0.42
 const OUTER_X = 0.72
 const OUTER_Y = 0.6
 
-// L'ancora comanda finché è ben dentro lo schermo; verso il bordo il nome passa
-// al centro della vista.
-const ANCHOR_FADE_IN = 0.42
-const ANCHOR_FADE_OUT = 0.86
-
-// Quando l'ancora non si vede, quanto pesa il centro della vista rispetto al
-// baricentro della parte visibile (0 = solo baricentro, 1 = centro fisso).
-const CENTRE_PULL = 0.7
+// Il punto scelto resta anche se si avvicina al bordo (così il nome non salta di
+// continuo); si cambia solo quando è uscito o quando un altro è molto più
+// centrale (SWITCH_GAIN = quanto deve essere più vicino al centro).
+const KEEP_RADIUS = 1.1
+const SWITCH_GAIN = 0.7
 
 const _ray = new THREE.Raycaster()
 const _ndc = new THREE.Vector2()
@@ -64,18 +65,25 @@ export function createNationLabels(nations, planet, container) {
     // nazioni più estese: nome un po' più grande
     const size = 11 + Math.min(Math.sqrt(n.share) * 22, 6)
     el.style.fontSize = size.toFixed(1) + 'px'
+    // primo punto: il baricentro (l'etichetta "naturale" della nazione)
+    const points = [n.anchor].concat(n.labelPoints || [])
     return {
       n,
       el,
+      points,
+      scr: points.map(() => ({ x: 0, y: 0 })),
+      valid: new Uint8Array(points.length),
+      cand: -1,
       x: 0,
       y: 0,
       tx: 0,
       ty: 0,
-      ax: 0, // ancora proiettata (px)
-      ay: 0,
-      anchorOk: false,
-      cx: 0, // baricentro della parte visibile (px)
+      cx: 0, // baricentro della parte visibile (px), solo come ripiego
       cy: 0,
+      haveCx: false,
+      scx: 0,
+      scy: 0,
+      cxPlaced: false,
       alpha: 0,
       target: 0,
       placed: false,
@@ -94,32 +102,32 @@ export function createNationLabels(nations, planet, container) {
   let row = 0
   const visible = [] // etichette da mostrare, riusato ogni frame
 
-  /** Proietta l'ancora geografica di ogni nazione (economico, ogni frame). */
-  function projectAnchors(camera, width, height) {
-    const camDist = camera.position.length() || 1
-    const horizon = SCENE_RADIUS / camDist - 0.002
-    for (const it of items) {
-      const a = it.n.anchor
-      _v.set(a[0], a[1], a[2]).multiplyScalar(SCENE_RADIUS)
-      // oltre l'orizzonte il punto è nascosto dalla curvatura anche se la
-      // proiezione cadrebbe dentro lo schermo
-      const facing =
-        (_v.x * camera.position.x + _v.y * camera.position.y + _v.z * camera.position.z) /
-        (camDist * SCENE_RADIUS)
-      if (facing < horizon) {
-        it.anchorOk = false
-        continue
-      }
-      _v.applyMatrix4(camera.matrixWorldInverse)
-      if (_v.z >= -1e-3) {
-        it.anchorOk = false
-        continue
-      }
-      _v.applyMatrix4(camera.projectionMatrix)
-      it.ax = (_v.x * 0.5 + 0.5) * width
-      it.ay = (0.5 - _v.y * 0.5) * height
-      it.anchorOk = Math.abs(_v.x) < 1.3 && Math.abs(_v.y) < 1.3
+  /**
+   * Proietta un punto della sfera (unitario) e ne scrive la posizione a schermo.
+   * Restituisce false se il punto è dietro la camera o oltre l'orizzonte.
+   */
+  function projectPoint(camera, p, camDist, horizon, width, height, out) {
+    const x = p[0] * SCENE_RADIUS
+    const y = p[1] * SCENE_RADIUS
+    const z = p[2] * SCENE_RADIUS
+    // oltre l'orizzonte è nascosto dalla curvatura anche se la proiezione
+    // cadrebbe dentro lo schermo
+    const facing =
+      (x * camera.position.x + y * camera.position.y + z * camera.position.z) /
+      (camDist * SCENE_RADIUS)
+    if (facing < horizon) return false
+    _v.set(x, y, z).applyMatrix4(camera.matrixWorldInverse)
+    if (_v.z >= -1e-3) return false
+    _v.applyMatrix4(camera.projectionMatrix)
+    const px = (_v.x * 0.5 + 0.5) * width
+    const py = (0.5 - _v.y * 0.5) * height
+    // vicino al piano della camera la proiezione esplode: si scarta
+    if (!Number.isFinite(px) || !Number.isFinite(py) || Math.abs(px) > 2e5 || Math.abs(py) > 2e5) {
+      return false
     }
+    out.x = px
+    out.y = py
+    return true
   }
 
   /** Alcune righe della griglia di raggi; a fine giro pubblica i risultati. */
@@ -152,6 +160,7 @@ export function createNationLabels(nations, planet, container) {
         if (n > 0) {
           items[i].cx = accX[i] / n
           items[i].cy = accY[i] / n
+          items[i].haveCx = true
         }
         accHits[i] = 0
         accX[i] = 0
@@ -162,7 +171,7 @@ export function createNationLabels(nations, planet, container) {
 
   /** Compressione morbida: invariata sotto `inner`, asintotica a `outer`. */
   function softLimit(v, half, inner, outer) {
-    if (!(half > 0)) return 0
+    if (!(half > 0) || !Number.isFinite(v)) return 0
     const n = Math.abs(v / half)
     if (n <= inner) return v
     const mapped = inner + (outer - inner) * Math.tanh((n - inner) / (outer - inner))
@@ -181,44 +190,84 @@ export function createNationLabels(nations, planet, container) {
     // (smoothstep di three.js vuole min < max: si inverte a mano)
     const global = 1 - THREE.MathUtils.smoothstep(altitudeKm, 3500, 7000)
     if (global > 0.01) {
-      projectAnchors(camera, width, height)
       scanRows(camera, width, height)
     } else {
       row = 0
       accHits.fill(0)
       accX.fill(0)
       accY.fill(0)
-      for (const it of items) it.anchorOk = false
     }
 
     const cx = width * 0.5
     const cy = height * 0.5
+    const camDist = camera.position.length() || 1
+    const horizon = SCENE_RADIUS / camDist - 0.002
 
     // 1. posizione e visibilità desiderate
     visible.length = 0
     for (const it of items) {
       if (global <= 0.01 || hits[it.n.id] < MIN_HITS) {
         it.target = 0
+        it.cand = -1
       } else {
         it.target = Math.min(1, hits[it.n.id] / 10) * global
-        // ancora geografica se è dentro lo schermo, altrimenti baricentro
-        // della parte visibile portato verso il centro della vista
-        let tx = it.cx + (cx - it.cx) * CENTRE_PULL
-        let ty = it.cy + (cy - it.cy) * CENTRE_PULL
-        if (it.anchorOk) {
-          const nx = (it.ax / width) * 2 - 1
-          const ny = (it.ay / height) * 2 - 1
-          const edge = Math.max(Math.abs(nx), Math.abs(ny))
-          const w = 1 - THREE.MathUtils.smoothstep(edge, ANCHOR_FADE_IN, ANCHOR_FADE_OUT)
-          tx = tx + (it.ax - tx) * w
-          ty = ty + (it.ay - ty) * w
+
+        // punto di ancoraggio visibile più centrale
+        let best = -1
+        let bestD = Infinity
+        for (let k = 0; k < it.points.length; k++) {
+          const ok = projectPoint(camera, it.points[k], camDist, horizon, width, height, it.scr[k])
+          it.valid[k] = ok ? 1 : 0
+          if (!ok) continue
+          const s = it.scr[k]
+          const d = Math.max(Math.abs((s.x - cx) / cx), Math.abs((s.y - cy) / cy))
+          if (d < bestD) {
+            bestD = d
+            best = k
+          }
         }
-        it.tx = cx + softLimit(tx - cx, cx, INNER_X, OUTER_X)
-        it.ty = cy + softLimit(ty - cy, cy, INNER_Y, OUTER_Y)
-        if (!it.placed) {
-          it.x = it.tx
-          it.y = it.ty
-          it.placed = true
+
+        // isteresi: il punto attuale resta finché non esce o non c'è di meglio
+        let chosen = best
+        if (it.cand >= 0 && it.valid[it.cand]) {
+          const s = it.scr[it.cand]
+          const dCur = Math.max(Math.abs((s.x - cx) / cx), Math.abs((s.y - cy) / cy))
+          if (dCur <= KEEP_RADIUS) chosen = it.cand
+          else if (bestD > dCur * SWITCH_GAIN) chosen = it.cand
+        }
+        it.cand = chosen
+
+        let tx
+        let ty
+        let has = false
+        if (chosen >= 0) {
+          tx = it.scr[chosen].x
+          ty = it.scr[chosen].y
+          has = true
+        } else if (it.haveCx) {
+          // ripiego: centro della parte visibile, molto smorzato
+          if (!it.cxPlaced) {
+            it.scx = it.cx
+            it.scy = it.cy
+            it.cxPlaced = true
+          } else {
+            const kc = 1 - Math.exp(-dt * 2)
+            it.scx += (it.cx - it.scx) * kc
+            it.scy += (it.cy - it.scy) * kc
+          }
+          tx = it.scx
+          ty = it.scy
+          has = true
+        }
+
+        if (has) {
+          it.tx = cx + softLimit(tx - cx, cx, INNER_X, OUTER_X)
+          it.ty = cy + softLimit(ty - cy, cy, INNER_Y, OUTER_Y)
+          if (!it.placed) {
+            it.x = it.tx
+            it.y = it.ty
+            it.placed = true
+          }
         }
       }
       if (it.target > 0.01) visible.push(it)
@@ -255,8 +304,10 @@ export function createNationLabels(nations, planet, container) {
     }
 
     // 3. movimento e opacità
-    const k = 1 - Math.exp(-dt * 7)
-    const maxStep = 800 * dt
+    // inseguimento rapido: il nome deve sembrare incollato al terreno, non
+    // arrivarci con calma (il ritardo si legge come "si sposta da solo")
+    const k = 1 - Math.exp(-dt * 14)
+    const maxStep = 2400 * dt
     for (const it of items) {
       it.alpha += (it.target - it.alpha) * (1 - Math.exp(-dt * 5))
 
@@ -297,5 +348,23 @@ export function createNationLabels(nations, planet, container) {
     }
   }
 
-  return { update }
+  return {
+    update,
+    /** Stato interno delle etichette (debug). */
+    debug: () =>
+      items.map((it) => ({
+        t: it.n.name,
+        tx: it.tx,
+        ty: it.ty,
+        x: it.x,
+        y: it.y,
+        cand: it.cand,
+        nPoints: it.points.length,
+        cx: it.cx,
+        cy: it.cy,
+        haveCx: it.haveCx,
+        hits: hits[it.n.id],
+        alpha: it.alpha
+      }))
+  }
 }

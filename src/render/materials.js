@@ -297,18 +297,18 @@ export function createTerrainMaterial(sunDir) {
 
       // Tratteggio a lunghezza costante sullo schermo: due periodi (potenze di
       // due in km) mescolati con continuità mentre si zooma. I trattini hanno i
-      // bordi sfumati (larghi più o meno un pixel) e il vuoto è più lungo del
-      // pieno: una linea a puntini netti sembrava un artefatto.
+      // bordi sfumati (larghi più o meno un pixel), il pieno è un po' più corto
+      // del vuoto: si legge come una linea tratteggiata, non come un puntinato.
       float dashPattern(float along, float foot) {
         float lp = log2(max(foot, 1e-6) * 10.0);
         float L = floor(lp);
         float fr = lp - L;
         float p1 = exp2(L);
         float p2 = p1 * 2.0;
-        float a1 = clamp(foot / p1 * 1.8, 0.05, 0.45);
-        float a2 = clamp(foot / p2 * 1.8, 0.05, 0.45);
-        float d1 = 1.0 - smoothstep(0.32 - a1, 0.32 + a1, fract(along / p1));
-        float d2 = 1.0 - smoothstep(0.32 - a2, 0.32 + a2, fract(along / p2));
+        float a1 = clamp(foot / p1 * 1.2, 0.04, 0.40);
+        float a2 = clamp(foot / p2 * 1.2, 0.04, 0.40);
+        float d1 = 1.0 - smoothstep(0.56 - a1, 0.56 + a1, fract(along / p1));
+        float d2 = 1.0 - smoothstep(0.56 - a2, 0.56 + a2, fract(along / p2));
         return mix(d1, d2, fr);
       }
 
@@ -682,12 +682,13 @@ export function createTerrainMaterial(sunDir) {
         }
 
         // ============================================================ CONFINI
-        // Confini tra nazioni: linea sottile e morbida, solo sulla terraferma.
-        // Distanza dal bisettore tra i due capoluoghi più vicini, nello spazio
-        // deformato da nationWarp (la stessa funzione usata in JS).
+        // Confini tra nazioni: una sottile linea tratteggiata grigia, solo sulla
+        // terraferma. Distanza dal bisettore tra i due capoluoghi più vicini,
+        // nello spazio deformato da nationWarp (la stessa funzione usata in JS).
         //
-        // La linea è un nucleo stretto più un alone sfumato (circa 1 + 2 px):
-        // un filo netto a un pixel "vibrava" durante lo zoom e sembrava nero.
+        // La linea è larga circa un pixel (antialiasata su due): netta abbastanza
+        // da leggersi come confine, senza essere un tratto da pennarello. Il
+        // grigio neutro si stacca sia dalla sabbia chiara sia dal bosco scuro.
         if (uNationCount > 1 && isWater < 0.98) {
           vec3 q = nationWarp(R);
           float b1 = -2.0;
@@ -707,17 +708,12 @@ export function createTerrainMaterial(sunDir) {
           // larghezza in km di un pixel (limitata: all'orizzonte fwidth esplode
           // e la fascia diventerebbe una macchia larga)
           float bw = min(foot, 25.0);
-          float core = 1.0 - smoothstep(bw * 0.35, bw * 1.7, dKm);
-          if (core > 0.0) {
-            float halo = 1.0 - smoothstep(bw * 1.0, bw * 3.2, dKm);
+          float line = 1.0 - smoothstep(bw * 0.55, bw * 2.2, dKm);
+          if (line > 0.0) {
             vec3 alongDir = normalize(cross(sd, R));
             float dash = dashPattern(dot(pl, alongDir), foot);
-            float a = (core * 0.52 + halo * 0.14) * dash * uBorderAlpha * (1.0 - isWater);
-            // scurisce il terreno invece di disegnare un colore piatto: resta
-            // leggibile su sabbia, prato, roccia e neve senza sembrare un tratto
-            // di pennarello
-            vec3 bc = color * 0.52 + vec3(0.05, 0.042, 0.034);
-            color = mix(color, bc, clamp(a, 0.0, 0.62));
+            float a = line * dash * uBorderAlpha * (1.0 - isWater);
+            color = mix(color, vec3(0.50, 0.50, 0.48), clamp(a, 0.0, 0.85));
           }
         }
 

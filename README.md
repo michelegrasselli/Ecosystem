@@ -41,10 +41,16 @@ avvio. Il salvataggio automatico della sola camera avviene anche alla chiusura d
 
 ## Nazioni
 
-La terraferma è divisa in 31 nazioni dai nomi inventati. Avvicinandosi (sotto i ~7000 km)
-compaiono i nomi, ancorati al centro geografico di ogni nazione: restano fermi sul terreno
-anche durante lo zoom. I confini sono una linea tratteggiata morbida che scurisce il terreno
-invece di disegnare un tratto nero. L'HUD indica la nazione sotto la camera.
+La terraferma è divisa in 31 nazioni dai nomi inventati di sapore fantasy. Avvicinandosi
+(sotto i ~7000 km) compaiono i nomi, ancorati a punti fissi del territorio: restano fermi sul
+terreno anche durante zoom e spostamenti. I confini sono una sottile linea tratteggiata
+grigia, visibile a scala regionale e appena accennata dallo spazio. L'HUD indica la nazione
+sotto la camera.
+
+## Lingua
+
+L'interfaccia è in inglese (HUD, caricamento, messaggi). I nomi dei biomi e delle nazioni
+sono in inglese.
 
 ## Com'è fatto
 

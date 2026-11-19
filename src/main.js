@@ -110,10 +110,10 @@ function doSave() {
     }
   })
   if (payload) {
-    hud.toast('pianeta salvato')
+    hud.toast('planet saved')
     hud.flashSaved()
   } else {
-    hud.toast('salvataggio non disponibile')
+    hud.toast('saving unavailable')
   }
 }
 
@@ -159,11 +159,11 @@ const loadingStep = document.getElementById('loading-step')
 const loadingFill = document.getElementById('loading-fill')
 
 const steps = [
-  'generazione dei continenti…',
-  'scultura delle catene montuose…',
-  'clima e fasce latitudinali…',
-  'laghi e reticolo fluviale…',
-  'composizione dei biomi…'
+  'generating continents…',
+  'carving mountain ranges…',
+  'climate and latitude belts…',
+  'lakes and river network…',
+  'composing biomes…'
 ]
 let stepIndex = 0
 const stepTimer = setInterval(() => {
@@ -180,7 +180,7 @@ function finishLoading() {
   ready = true
   clearInterval(stepTimer)
   loadingFill.style.width = '100%'
-  loadingStep.textContent = 'pronto'
+  loadingStep.textContent = 'ready'
   setTimeout(() => {
     loadingEl.classList.add('hidden')
     setTimeout(() => (loadingEl.style.display = 'none'), 700)
@@ -234,9 +234,9 @@ function step(dt, now) {
   const od = u.uOrigin.value.dot(RIPPLE_DIR)
   u.uRipplePhase.value = (od * RIPPLE_K) % (Math.PI * 2)
   u.uRipplePhase2.value = (od * (RIPPLE_K / 5)) % (Math.PI * 2)
-  // confini: leggibili da vicino, appena accennati dallo spazio (dove la linea
-  // sarebbe solo una fascia sfocata)
-  u.uBorderAlpha.value = 0.68 - 0.44 * THREE.MathUtils.smoothstep(altitudeKm, 150, 2200)
+  // confini: una linea che si legge a scala regionale, appena accennata
+  // dallo spazio (dove sarebbe solo una fascia sfocata)
+  u.uBorderAlpha.value = 0.82 - 0.66 * THREE.MathUtils.smoothstep(altitudeKm, 800, 4200)
   terrainMaterial.uniforms.uTime.value = now * 0.001
   terrainMaterial.uniforms.uHazeDensity.value = 1 / (altitudeKm * 14 + 160)
 

@@ -17,6 +17,9 @@ export const MAX_NATIONS = 48
 /** Distanza minima tra capoluoghi (radianti): ~3200 km, nazioni grandi. */
 const MIN_SEPARATION = 0.5
 
+/** Punti di ancoraggio del nome per nazione (oltre al baricentro). */
+const MAX_LABEL_POINTS = 16
+
 /**
  * Termini della deformazione: [ampiezza, kx, ky, kz, fase] per asse.
  * Due scale: anse ampie (~1000-1500 km) e dettaglio più fine (~300-400 km).
@@ -30,16 +33,16 @@ const WARP = [
   [0.022, 7.2, -10.5, 11.8, 4.2]
 ]
 
-/** Nomi inventati: suoni mediterranei, nordici e "antichi", nessuno reale. */
+/** Nomi inventati, di sapore fantasy: nessuno reale, nessun riferimento a opere note. */
 const NAMES = [
-  'Valdoria', 'Ostrenia', 'Kaledra', 'Mirevale', 'Sorvenna', 'Tharsis Minor',
-  'Aldemark', 'Brenovia', 'Calvaro', 'Dunmere', 'Esterhal', 'Faroven',
-  'Galdessa', 'Halvorn', 'Isperia', 'Jorvalia', 'Kestrova', 'Lunedra',
-  'Maranthe', 'Norwenna', 'Orsalia', 'Pelvarre', 'Quessira', 'Rodomir',
-  'Saltrenna', 'Teruval', 'Umbrenna', 'Vaskarra', 'Wendmoor', 'Ysolde',
-  'Zaraveth', 'Ardelune', 'Belmarra', 'Corvessa', 'Drevania', 'Elmaris',
-  'Fenhollow', 'Grisalda', 'Hesperon', 'Ilvarra', 'Karvossa', 'Lorendal',
-  'Merovene', 'Nalvessa', 'Oberlaine', 'Pratalia', 'Riventhal', 'Selvaren'
+  'Aethermoor', 'Ashenvale', 'Brightwater', 'Cindral', 'Drakemoor', 'Duskhollow',
+  'Emberfall', 'Evermoor', 'Faelund', 'Frostmere', 'Gloamreach', 'Grimhold',
+  'Hallowmere', 'Ironvale', 'Kaldrun', 'Lumenar', 'Mistvale', 'Moonhollow',
+  'Nightreach', 'Oakenshield', 'Obsidia', 'Palewater', 'Quenlath', 'Ravenmoor',
+  'Runemere', 'Sablewood', 'Shadowfen', 'Silverhold', 'Starfall', 'Stonewake',
+  'Stormhollow', 'Sunmere', 'Thornvale', 'Tidecall', 'Umbrafen', 'Valdrun',
+  'Verdant', 'Whisperreach', 'Wildmere', 'Wyrmrest', 'Yarrowfen', 'Zephyrion',
+  'Amberhold', 'Bleakmoor', 'Coralreach', 'Dawnvale', 'Elderglade', 'Farrowmere'
 ]
 
 /** Deformazione delle coordinate (identica a `nationWarp` in GLSL). */
@@ -152,7 +155,13 @@ export class Nations {
     }
 
     // --- baricentro della terraferma di ogni nazione: lì va l'etichetta ---
+    // Insieme al baricentro si raccolgono alcuni punti sparsi sulla terraferma
+    // (ben distanziati): da vicino il baricentro è quasi sempre fuori
+    // inquadratura, e il nome deve potersi appoggiare a un punto VICINO ma
+    // comunque fisso, invece di inseguire il centro della parte visibile.
     const acc = this.seeds.map(() => [0, 0, 0, 0])
+    const labelPts = this.seeds.map(() => [])
+    const COS_SEP = Math.cos(0.10) // ~640 km
     const M = 24000
     for (let i = 0; i < M; i++) {
       const p = fibonacciSphere(M, i)
@@ -163,6 +172,18 @@ export class Nations {
       a[1] += p[1]
       a[2] += p[2]
       a[3]++
+      const pts = labelPts[id]
+      if (pts.length < MAX_LABEL_POINTS) {
+        let ok = true
+        for (let q = 0; q < pts.length; q++) {
+          const o = pts[q]
+          if (p[0] * o[0] + p[1] * o[1] + p[2] * o[2] > COS_SEP) {
+            ok = false
+            break
+          }
+        }
+        if (ok) pts.push([p[0], p[1], p[2]])
+      }
     }
     const totalLand = acc.reduce((s, a) => s + a[3], 0) || 1
     this.list = this.seeds.map((s, i) => {
@@ -185,6 +206,8 @@ export class Nations {
         id: i,
         name: names[i % names.length],
         anchor: [ax, ay, az],
+        // punti di ancoraggio del nome: baricentro + punti sparsi sulla terra
+        labelPoints: labelPts[i],
         share: a[3] / totalLand
       }
     })
