@@ -1,9 +1,9 @@
 {
-  "name": "ecosystem-planet",
+  "name": "the-creation-of-elyra",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Simulazione procedurale di un ecosistema planetario in stile Google Earth, con grafica cartoon.",
+  "description": "The creation of ELYRA — simulazione procedurale di un ecosistema planetario in stile Google Earth, con grafica cartoon.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

@@ -43,10 +43,22 @@ export function createTileMesh(d, material) {
 }
 
 function onBeforeRenderTile(renderer, scene, camera, geometry, material) {
-  const u = material.uniforms.uMorph
+  const U = material.uniforms
+  const u = U.uMorph
   const m = this.userData.morph
   if (u.value !== m) {
     u.value = m
+    material.uniformsNeedUpdate = true
+  }
+  // nazioni candidate della tile (vedi Nations.candidatesForTile): 0 = tutte
+  const nc = this.userData.natCand
+  const n = nc ? nc.length : 0
+  const cu = U.uNatCand.value
+  let changed = U.uNatCandN.value !== n
+  for (let i = 0; i < n && !changed; i++) if (cu[i] !== nc[i]) changed = true
+  if (changed) {
+    U.uNatCandN.value = n
+    for (let i = 0; i < n; i++) cu[i] = nc[i]
     material.uniformsNeedUpdate = true
   }
 }

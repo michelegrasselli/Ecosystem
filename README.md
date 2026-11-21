@@ -1,9 +1,9 @@
-# Ecosystem Planet
+# The creation of ELYRA
 
-Simulazione esplorabile di un pianeta: si parte dallo spazio e si scende fino a
-25 m dal suolo, su un pianeta generato proceduralmente (continenti, oceani, mari, laghi, fiumi,
-rilievi, biomi e clima). Per ora il pianeta è **disabitato**: piante e animali arriveranno
-nelle fasi successive.
+Simulazione esplorabile di un pianeta chiamato **ELYRA**: si parte dallo spazio e si scende
+fino a 25 m dal suolo, su un pianeta generato proceduralmente (continenti, oceani, mari, laghi,
+fiumi, rilievi, biomi e clima). Per ora il pianeta è **disabitato**: piante e animali
+arriveranno nelle fasi successive.
 
 Lo stile è illustrato ma adulto (tipo Animal Crossing, più serio): palette terrosa, luce a
 bande morbide con ombre fredde, chiome degli alberi tonde, dune e rocce a strati, nessuna
@@ -20,6 +20,11 @@ npm run preview
 ```
 
 Serve Node 18+ (o 20+).
+
+Senza server: dopo `npm run build` basta un doppio clic su `index.html` (o su
+`dist/index.html`). Il bundle è un unico script classico con i worker incorporati,
+quindi parte anche da `file://`. Il doppio clic apre l'ultima build: dopo aver
+modificato il codice va rilanciato `npm run build`.
 
 ## Comandi di navigazione
 
@@ -41,7 +46,7 @@ avvio. Il salvataggio automatico della sola camera avviene anche alla chiusura d
 
 ## Nazioni
 
-La terraferma è divisa in 31 nazioni dai nomi inventati di sapore fantasy. Avvicinandosi
+La terraferma è divisa in 31 nazioni dai nomi inventati di sapore medievale (es. "Kingdom of Wendmere", "Duchy of Merrowdale"): il rango dipende dall'estensione del regno. Avvicinandosi
 (sotto i ~7000 km) compaiono i nomi, ancorati a punti fissi del territorio: restano fermi sul
 terreno anche durante zoom e spostamenti. I confini sono una sottile linea tratteggiata
 grigia, visibile a scala regionale e appena accennata dallo spazio. L'HUD indica la nazione

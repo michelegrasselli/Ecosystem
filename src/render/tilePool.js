@@ -2,6 +2,12 @@
 // Il LOD chiede le tile in ordine di priorità; il pool ne tiene in volo al
 // massimo `slots` per worker, così le richieste più urgenti non restano dietro
 // a una coda lunga, e restituisce i risultati da `drain()` una volta per frame.
+//
+// Il worker è incorporato nel bundle (`?worker&inline`, avviato da un Blob):
+// così la build funziona anche aprendo dist/index.html con doppio clic (file://),
+// dove il browser rifiuta di caricare un worker da un file separato.
+
+import TileWorker from './tileWorker.js?worker&inline'
 
 export class TilePool {
   constructor(seed, options = {}) {
@@ -17,7 +23,7 @@ export class TilePool {
 
     try {
       for (let i = 0; i < this.size; i++) {
-        const w = new Worker(new URL('./tileWorker.js', import.meta.url), { type: 'module' })
+        const w = new TileWorker()
         w.postMessage({ type: 'init', seed, options })
         w.onmessage = (e) => this._onMessage(i, e.data)
         w.onerror = (err) => {

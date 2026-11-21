@@ -33,7 +33,7 @@ const renderer = new THREE.WebGLRenderer({
 // risoluzione nativa all'avvio; se la GPU ha margine si sale fino a un
 // leggero supersampling (bordi più netti), senza mai scendere sotto 1
 const NATIVE_PIXEL_RATIO = Math.max(window.devicePixelRatio || 1, 1)
-const MAX_PIXEL_RATIO = Math.min(NATIVE_PIXEL_RATIO * 1.5, 2)
+const MAX_PIXEL_RATIO = Math.min(NATIVE_PIXEL_RATIO * 1.75, 2)
 renderer.setPixelRatio(NATIVE_PIXEL_RATIO)
 renderer.outputColorSpace = THREE.LinearSRGBColorSpace
 renderer.setClearColor(0x05080c, 1)
@@ -56,7 +56,7 @@ setNations(terrainMaterial, nations)
 const nationLabels = createNationLabels(nations, planet, document.body)
 // generazione delle tile in Web Worker (stesso seed: pianeta identico)
 const tilePool = new TilePool(seed)
-const lod = new TerrainLOD(planet, scene, terrainMaterial, tilePool)
+const lod = new TerrainLOD(planet, scene, terrainMaterial, tilePool, nations)
 
 const sky = createSky()
 scene.add(sky.group)
@@ -189,9 +189,26 @@ function finishLoading() {
 
 // ------------------------------------------------------------- main loop
 
+// Sole "da cartografo": per ora niente notte. Il sole segue la camera e
+// illumina sempre la parte di pianeta inquadrata, da nord-ovest e a ~55° di
+// altezza (la luce classica delle carte in rilievo: i pendii si leggono senza
+// che l'occhio inverta valli e creste). SUN_DIRECTION resta il sole fisso per
+// quando tornerà il ciclo giorno/notte.
 const sunDir = new THREE.Vector3(SUN_DIRECTION.x, SUN_DIRECTION.y, SUN_DIRECTION.z).normalize()
-terrainMaterial.uniforms.uSunDir.value.copy(sunDir)
-atmosphere.material.uniforms.uSunDir.value.copy(sunDir)
+const _up = new THREE.Vector3()
+const _north = new THREE.Vector3()
+const _east = new THREE.Vector3()
+function updateSun() {
+  _up.copy(camera.position).normalize()
+  _north.set(0, 1, 0).addScaledVector(_up, -_up.y)
+  // ai poli il nord non è definito: si usa un asse fisso
+  if (_north.lengthSq() < 1e-6) _north.set(1, 0, 0).addScaledVector(_up, -_up.x)
+  _north.normalize()
+  _east.crossVectors(_north, _up)
+  sunDir.copy(_up).multiplyScalar(0.82).addScaledVector(_north, 0.4).addScaledVector(_east, -0.4).normalize()
+  terrainMaterial.uniforms.uSunDir.value.copy(sunDir)
+  atmosphere.material.uniforms.uSunDir.value.copy(sunDir)
+}
 
 const groundSample = Planet.createSample()
 let last = performance.now()
@@ -208,6 +225,7 @@ function step(dt, now) {
     groundTarget > controls.groundKm ? groundTarget : damp(controls.groundKm, groundTarget, 5, dt)
 
   controls.update(dt)
+  updateSun()
 
   const altitudeKm = controls.altitude
   const viewportPx = window.innerHeight
@@ -308,7 +326,7 @@ window.__planet = {
 // cambi sono radi (isteresi + attesa) invece di inseguire ogni variazione.
 
 // mai sotto la risoluzione nativa del canvas: sotto l'immagine è sfocata
-const MIN_PIXEL_RATIO = 1
+const MIN_PIXEL_RATIO = NATIVE_PIXEL_RATIO
 let frameEma = 1 / 60
 let adaptTimer = 0
 let adaptCooldown = 0
@@ -339,13 +357,13 @@ function adaptResolution(dt) {
   }
 
   let next = pr
-  if (slowWindows >= 2) next = Math.max(MIN_PIXEL_RATIO, pr - 0.15)
-  else if (fastWindows >= 3 && idle > 0.6) next = Math.min(MAX_PIXEL_RATIO, pr + 0.1)
+  if (slowWindows >= 2) next = Math.max(MIN_PIXEL_RATIO, pr - 0.12)
+  else if (fastWindows >= 3 && idle > 0.6) next = Math.min(MAX_PIXEL_RATIO, pr + 0.08)
 
   if (Math.abs(next - pr) > 0.001 && adaptCooldown === 0) {
     renderer.setPixelRatio(next)
     resize()
-    adaptCooldown = 3
+    adaptCooldown = 2.4
     slowWindows = 0
     fastWindows = 0
   }

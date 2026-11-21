@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="description" content="Ecosystem Planet — an explorable procedurally generated planet in a cartoon style." />
-    <title>Ecosystem Planet</title>
+    <meta name="description" content="The creation of ELYRA — an explorable procedurally generated planet in a cartoon style." />
+    <title>The creation of ELYRA</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='%233f7c74'/%3E%3Cpath d='M6 20c4-1 6-5 10-4s6 4 10 2' stroke='%23c9b07a' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E" />
   </head>
   <body>
@@ -35,12 +35,20 @@
     <!-- Loading -->
     <div id="loading" class="loading">
       <div class="loading-inner">
-        <div class="loading-title">ECOSYSTEM PLANET</div>
+        <div class="loading-title">THE CREATION OF ELYRA</div>
         <div class="loading-sub" id="loading-step">initialising…</div>
         <div class="loading-bar"><div class="loading-fill" id="loading-fill"></div></div>
       </div>
     </div>
 
+    <!-- Aperto con doppio clic (file://) il sorgente non può partire: si passa
+         alla build in dist/ (npm run build). Rimosso dalla build stessa. -->
+    <script data-source-only>
+      if (location.protocol === 'file:') {
+        document.getElementById('loading-step').textContent = 'opening dist/index.html… (if nothing happens, run npm run build)'
+        location.replace('dist/index.html')
+      }
+    </script>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

@@ -36,11 +36,23 @@ export function createAtmosphere() {
 
       void main() {
         #include <logdepthbuf_fragment>
-        // alone sul bordo del disco visto dalla camera
-        float rim = pow(1.0 - abs(vNormalV.z), uPower);
-        // più luminoso sul lato illuminato dal sole
-        float sun = 0.35 + 0.65 * smoothstep(-0.35, 0.6, dot(normalize(vNormalW), uSunDir));
-        gl_FragColor = vec4(uColor * rim * sun * uIntensity, rim * uIntensity);
+        // alone sul bordo del disco visto dalla camera: uno largo e morbido
+        // (aria alta) e uno stretto e luminoso sul filo del pianeta
+        float edge = 1.0 - abs(vNormalV.z);
+        float wide = pow(edge, 1.5);
+        float tight = pow(edge, 7.0);
+        vec3 N = normalize(vNormalW);
+        float sun = dot(N, uSunDir);
+        // Niente notte, per ora (vedi main.js): alone uniforme, con appena un
+        // filo di luce in più verso il sole. Con il ciclo giorno/notte:
+        // lit = smoothstep(-0.55, 0.75, sun) e il tramonto al terminatore
+        // (dusk = 1 - |smoothstep(-0.3, 0.4, sun) * 2 - 1|).
+        float lit = 0.8 + 0.2 * smoothstep(-0.5, 0.5, sun);
+        float dusk = 0.0;
+        vec3 col = uColor * (wide * 0.45 + tight * 1.15) * (0.22 + 0.95 * lit);
+        col += vec3(0.85, 0.55, 0.32) * tight * dusk * 0.3;
+        float a = (wide * 0.28 + tight * 0.9) * (0.18 + lit);
+        gl_FragColor = vec4(col * uIntensity, a * uIntensity);
       }
     `,
     side: THREE.BackSide,
@@ -58,8 +70,8 @@ export function createAtmosphere() {
     mesh,
     material,
     update(altitudeKm) {
-      const t = THREE.MathUtils.smoothstep(altitudeKm, 60, 700)
-      material.uniforms.uIntensity.value = 0.55 * t
+      const t = THREE.MathUtils.smoothstep(altitudeKm, 45, 650)
+      material.uniforms.uIntensity.value = 0.72 * t
       mesh.visible = t > 0.01
     }
   }

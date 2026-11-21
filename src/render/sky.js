@@ -36,6 +36,11 @@ export function createSky() {
         vec3 space = vec3(0.021, 0.031, 0.052);
         col = mix(col, space, uAltitudeBlend);
 
+        // dithering: il gradiente del cielo su schermo è quasi piatto e
+        // mostrava bande; mezzo livello di rumore per pixel le elimina
+        float ign = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+        col += (ign - 0.5) * (1.6 / 255.0);
+
         gl_FragColor = vec4(col, 1.0);
       }
     `,

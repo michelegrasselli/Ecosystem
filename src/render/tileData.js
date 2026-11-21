@@ -38,9 +38,12 @@ export function tileResForLevel(level) {
   // Tile grandi con molti vertici invece di tante tile piccole: a parità di
   // densità di maglia a schermo le draw call si dimezzano. Risoluzioni pari
   // (servono al morph verso il padre).
+  // 48 e non 64: con 64 si disegnavano ~3 triangoli per pixel (fino a 4.6
+  // milioni a schermo) e su GPU integrate i soli vertici costavano 10-20 ms.
+  // Il dettaglio sotto la maglia lo disegna lo shader; il tempo risparmiato
+  // va alla risoluzione di rendering.
   if (level <= 1) return 40
-  if (level <= 3) return 48
-  return 64
+  return 48
 }
 
 /** Quanto dettaglio del rumore calcolare.
@@ -152,8 +155,12 @@ export function computeTileData(planet, face, level, ix, iy) {
       let cg = _sample.g
       let cb = _sample.b
       // solo sui livelli più grossi: con maglie fitte dal livello 4 in su il
-      // singolo campione basta, e la tile costa 9 ms invece di 30
-      if (level <= 3) {
+      // singolo campione basta, e la tile costa 9 ms invece di 30.
+      // Eccezione: le maglie appena sopra o sotto il livello del mare (costa,
+      // spiagge, laghi). Lì il colore per vertice è una classificazione netta e
+      // la linea di costa veniva a scalini; mediando 4 sotto-campioni diventa
+      // una copertura morbida, come una mipmap. Sono pochi vertici per tile.
+      if (level <= 3 || (rawH > -250 && rawH < 250)) {
         const off = (2 / (div * res)) * 0.25
         cr = 0
         cg = 0

@@ -63,7 +63,7 @@ export function createHud({ planet, nations, onSave, onHome, onZoomIn, onZoomOut
     if (el.nation && nations) {
       // lakes and rivers belong to the nation: "international waters" only at sea
       const onLand = sample.height >= 0
-      el.nation.textContent = onLand ? nations.atLatLon(view.lat, view.lon).name : 'international waters'
+      el.nation.textContent = onLand ? nations.atLatLon(view.lat, view.lon).title : 'international waters'
     }
   }
 

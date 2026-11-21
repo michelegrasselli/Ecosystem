@@ -15,14 +15,16 @@ import { SCENE_RADIUS, SCENE_SCALE, MAX_LOD_LEVEL } from '../planet/constants.js
 import { buildTileMesh, createTileMesh, tileBounds } from './tileBuilder.js'
 
 const MAX_CACHED_TILES = 6500
-// soglia proporzionale alla risoluzione delle tile (64 maglie): ~2 px per
+// soglia proporzionale alla risoluzione delle tile (64 maglie): ~1.9 px per
 // maglia, con meno tile (e meno draw call) rispetto a tile più piccole
-const SPLIT_PIXELS = 132
+const SPLIT_PIXELS = 124
 // oltre questa frazione della soglia i figli vengono già preparati, così
-// durante uno zoom sono pronti quando servono
-const PREFETCH_FRACTION = 0.62
+// durante uno zoom sono pronti quando servono. Presto (metà della soglia)
+// perché con lo zoom continuo i quattro figli devono arrivare *prima* che
+// servano: se arrivano dopo, per qualche frame si vede il terreno stirato.
+const PREFETCH_FRACTION = 0.5
 // durata del morph di una tile appena comparsa
-const MORPH_MS = 450
+const MORPH_MS = 560
 const MAX_TILES_PER_FRAME = 24
 // mesh create per frame dai risultati dei worker (la creazione è economica,
 // il caricamento sulla GPU avviene al primo render): poche per volta, perché
@@ -33,8 +35,9 @@ const _sphere = new THREE.Sphere()
 const _v = new THREE.Vector3()
 
 export class TerrainLOD {
-  constructor(planet, scene, material, pool = null) {
+  constructor(planet, scene, material, pool = null, nations = null) {
     this.planet = planet
+    this.nations = nations
     this.pool = pool
     this.scene = scene
     this.material = material
@@ -121,6 +124,10 @@ export class TerrainLOD {
     node.mesh = mesh
     node.requestId = 0
     node.hMax = node.mesh.userData.hMax
+    // nazioni candidate per lo shader dei confini (null = ciclo completo)
+    if (this.nations && node.level >= 2) {
+      mesh.userData.natCand = this.nations.candidatesForTile(node.face, node.level, node.x, node.y)
+    }
     // la mesh entra nella scena solo quando va a schermo (vedi update)
   }
 
@@ -166,7 +173,9 @@ export class TerrainLOD {
       const ud = n.mesh.userData
       if (ud.born === undefined) ud.born = n.level === 0 ? -1e9 : this._now
       const mt = Math.min((this._now - ud.born) / MORPH_MS, 1)
-      ud.morph = mt * mt * (3 - 2 * mt)
+      // smootherstep: derivate prima e seconda nulle agli estremi, il passaggio
+      // dalla forma del padre a quella propria non ha né partenza né arrivo netti
+      ud.morph = mt * mt * mt * (mt * (mt * 6 - 15) + 10)
       if (n.level > maxLevel) maxLevel = n.level
     }
 
@@ -181,6 +190,7 @@ export class TerrainLOD {
   visit(node, camera) {
     node.lastUsed = this.frame
     if (!this._sphereInFrustum(node)) return
+    if (this._belowHorizon(node, camera)) return
 
     const px = node.level < MAX_LOD_LEVEL ? this._screenPx(node, camera) : 0
     if (px > SPLIT_PIXELS) {
@@ -248,6 +258,28 @@ export class TerrainLOD {
       (dist * SCENE_RADIUS)
     const fore = 0.4 + 0.6 * Math.min(Math.max(facing, 0), 1)
     return (sizeKm / dist) * this._screenFactor * fore
+  }
+
+  /**
+   * La tile è tutta oltre l'orizzonte? Il frustum non lo sa: vicino al suolo,
+   * guardando lontano, metteva in scena tile nascoste dalla curvatura del
+   * pianeta (triangoli disegnati e poi coperti). Test a coni: un punto alla
+   * quota della cima della tile è visibile fino all'angolo (dal centro del
+   * pianeta) acos(Ro/d) + acos(Ro/Rtop), con Ro una sfera sicuramente piena
+   * (sotto il fondo marino più profondo).
+   */
+  _belowHorizon(node, camera) {
+    const p = camera.position
+    const d = p.length()
+    const Ro = SCENE_RADIUS - 12
+    if (d <= Ro) return false
+    const rTop = SCENE_RADIUS + Math.max(this._reliefKm(node), 0) + 0.5
+    const reach = Math.acos(Ro / d) + Math.acos(Math.min(Ro / rTop, 1))
+    const c = node.surfaceCenter
+    const cosT = (p.x * c.x + p.y * c.y + p.z * c.z) / (d * SCENE_RADIUS)
+    const theta = Math.acos(Math.max(-1, Math.min(1, cosT)))
+    const beta = Math.asin(Math.min(1, node.radius / SCENE_RADIUS)) * 1.1 + 1e-4
+    return theta - beta > reach
   }
 
   _sphereInFrustum(node) {

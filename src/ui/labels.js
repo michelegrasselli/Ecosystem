@@ -1,22 +1,28 @@
 // Etichette delle nazioni: nomi in sovrimpressione (HTML).
 //
-// Ogni nazione ha alcuni PUNTI DI ANCORAGGIO fissi sul proprio territorio (il
-// baricentro più una manciata di punti sparsi sulla terraferma, calcolati una
-// volta sola in nations.js). Il nome si appoggia a uno di questi punti: a
-// schermo è solo la sua proiezione, quindi si muove esattamente con il terreno.
+// Il nome è INCHIODATO al terreno. Ogni nazione ha un insieme fitto di ancore
+// fisse sul proprio territorio (un campione ogni ~145 km, calcolati una volta
+// sola in nations.js): l'etichetta si appoggia a una di queste e la sua
+// posizione a schermo è SOLO la proiezione di quel punto.
 //
-// Ricalcolare ogni volta "il centro della parte visibile" faceva scivolare il
-// nome, perché la griglia di raggi si aggiorna a scatti e il nome inseguiva
-// quegli scatti. Ora il punto cambia solo quando quello scelto esce davvero
-// dall'inquadratura (o un altro è molto più centrale): il nome resta fermo,
-// ancorato, mentre si sposta la vista o si zooma.
+// Regole che tengono fermo il nome (le versioni precedenti lo facevano
+// "galleggiare" sul terreno):
 //
-// Se nessun punto è in vista (nazione vista di taglio, oltre l'orizzonte) si usa
-// il baricentro della parte visibile, molto smorzato: meglio un nome che si
-// muove piano che uno che salta.
+//  1. Nessuna compressione verso il centro dello schermo e nessun inseguimento
+//     smorzato: la posizione è esattamente quella proiettata, ogni frame. Il
+//     nome si muove con il terreno, senza ritardo.
+//  2. L'ancora scelta non cambia MAI mentre il nome è visibile (cambierebbe di
+//     colpo posizione). Se l'ancora esce dall'inquadratura il nome sfuma — è
+//     uscito il terreno su cui era appoggiato — e solo quando è del tutto
+//     invisibile se ne sceglie un'altra. Così si vede sempre un nome fermo, mai
+//     uno che scivola da un punto all'altro.
+//  3. Isteresi sul numero di raggi che colpiscono la nazione: il nome non
+//     lampeggia quando la nazione è al margine della vista.
+//  4. Le ancore sono fitte, così a ogni quota (tranne il volo radente) ce n'è
+//     una inquadrata: il nome non sparisce appena si scende sotto i 1000 km.
 //
 // La visibilità viene da una griglia di raggi lanciata dallo schermo (spalmata
-// su più frame): serve SOLO a sapere se la nazione è inquadrata.
+// su più frame): serve solo a sapere quanta parte della nazione si vede.
 //
 // Compaiono avvicinandosi: dallo spazio sono nascoste, sotto i ~7000 km di
 // quota sfumano in vista.
@@ -30,25 +36,23 @@ const GRID_Y = 11
 // righe della griglia analizzate per frame: la scansione completa dura ~3 frame
 // invece di concentrare tutto in uno (uno scatto di lavoro ogni tanto si vede)
 const ROWS_PER_FRAME = 4
-const MIN_HITS = 3 // punti della griglia necessari per mostrare il nome
+const MIN_HITS = 3 // raggi necessari per far comparire il nome
+const KEEP_HITS = 1 // raggi sufficienti per non farlo sparire (isteresi)
 
-// Compressione morbida verso il centro: sotto INNER non cambia nulla, oltre si
-// avvicina al centro senza mai superare OUTER (frazioni della semilarghezza).
-const INNER_X = 0.5
-const INNER_Y = 0.42
-const OUTER_X = 0.72
-const OUTER_Y = 0.6
+// Bordo dell'inquadratura, come frazione della semilarghezza dello schermo:
+// da EDGE_FADE in poi il nome sfuma, oltre EDGE_DROP l'ancora è fuori e si
+// riancorerà quando il nome sarà invisibile.
+const EDGE_FADE = 0.9
+const EDGE_DROP = 1.02
 
-// Il punto scelto resta anche se si avvicina al bordo (così il nome non salta di
-// continuo); si cambia solo quando è uscito o quando un altro è molto più
-// centrale (SWITCH_GAIN = quanto deve essere più vicino al centro).
-const KEEP_RADIUS = 1.1
-const SWITCH_GAIN = 0.7
+// Cono di vista (coseno): un'ancora più larga di così è comunque fuori
+// inquadratura, quindi si può scartare senza proiettarla. 48° coprono con
+// margine l'angolo del rettangolo di visione (max ~40° sulla diagonale).
+const CONE_COS = Math.cos((48 * Math.PI) / 180)
 
 const _ray = new THREE.Raycaster()
 const _ndc = new THREE.Vector2()
 const _hit = new THREE.Vector3()
-const _v = new THREE.Vector3()
 const _sphere = new THREE.Sphere(new THREE.Vector3(), SCENE_RADIUS)
 
 export function createNationLabels(nations, planet, container) {
@@ -65,29 +69,26 @@ export function createNationLabels(nations, planet, container) {
     // nazioni più estese: nome un po' più grande
     const size = 11 + Math.min(Math.sqrt(n.share) * 22, 6)
     el.style.fontSize = size.toFixed(1) + 'px'
-    // primo punto: il baricentro (l'etichetta "naturale" della nazione)
-    const points = [n.anchor].concat(n.labelPoints || [])
+    const flat = n.labelPoints
+    const count = flat.length / 3
     return {
       n,
       el,
-      points,
-      scr: points.map(() => ({ x: 0, y: 0 })),
-      valid: new Uint8Array(points.length),
-      cand: -1,
+      flat,
+      count,
+      scrX: new Float64Array(count),
+      scrY: new Float64Array(count),
+      score: new Float64Array(count),
+      valid: new Uint8Array(count),
+      cand: -1, // ancora in uso (-1 = nessuna)
+      best: -1, // miglior ancora visibile in questo frame
+      bestScore: Infinity,
+      seen: false,
       x: 0,
       y: 0,
-      tx: 0,
-      ty: 0,
-      cx: 0, // baricentro della parte visibile (px), solo come ripiego
-      cy: 0,
-      haveCx: false,
-      scx: 0,
-      scy: 0,
-      cxPlaced: false,
       alpha: 0,
       target: 0,
-      placed: false,
-      w: 0, // larghezza stimata dell'etichetta (px)
+      w: 0, // dimensioni stimate dell'etichetta (px), per evitare sovrapposizioni
       h: 0,
       lastTransform: '',
       lastOpacity: ''
@@ -96,39 +97,9 @@ export function createNationLabels(nations, planet, container) {
 
   const hits = new Int32Array(items.length)
   const accHits = new Int32Array(items.length)
-  const accX = new Float64Array(items.length)
-  const accY = new Float64Array(items.length)
   const placedBoxes = items.map(() => ({ x: 0, y: 0, hw: 0, hh: 0 }))
   let row = 0
   const visible = [] // etichette da mostrare, riusato ogni frame
-
-  /**
-   * Proietta un punto della sfera (unitario) e ne scrive la posizione a schermo.
-   * Restituisce false se il punto è dietro la camera o oltre l'orizzonte.
-   */
-  function projectPoint(camera, p, camDist, horizon, width, height, out) {
-    const x = p[0] * SCENE_RADIUS
-    const y = p[1] * SCENE_RADIUS
-    const z = p[2] * SCENE_RADIUS
-    // oltre l'orizzonte è nascosto dalla curvatura anche se la proiezione
-    // cadrebbe dentro lo schermo
-    const facing =
-      (x * camera.position.x + y * camera.position.y + z * camera.position.z) /
-      (camDist * SCENE_RADIUS)
-    if (facing < horizon) return false
-    _v.set(x, y, z).applyMatrix4(camera.matrixWorldInverse)
-    if (_v.z >= -1e-3) return false
-    _v.applyMatrix4(camera.projectionMatrix)
-    const px = (_v.x * 0.5 + 0.5) * width
-    const py = (0.5 - _v.y * 0.5) * height
-    // vicino al piano della camera la proiezione esplode: si scarta
-    if (!Number.isFinite(px) || !Number.isFinite(py) || Math.abs(px) > 2e5 || Math.abs(py) > 2e5) {
-      return false
-    }
-    out.x = px
-    out.y = py
-    return true
-  }
 
   /** Alcune righe della griglia di raggi; a fine giro pubblica i risultati. */
   function scanRows(camera, width, height) {
@@ -144,10 +115,7 @@ export function createNationLabels(nations, planet, container) {
         planet.sample(_hit.x, _hit.y, _hit.z, 1, sample)
         // solo terraferma (laghi e fiumi compresi: fanno parte dello stato)
         if (sample.height < 0) continue
-        const id = nations.idAt(_hit.x, _hit.y, _hit.z)
-        accHits[id]++
-        accX[id] += sx * width
-        accY[id] += sy * height
+        accHits[nations.idAt(_hit.x, _hit.y, _hit.z)]++
       }
     }
 
@@ -155,27 +123,8 @@ export function createNationLabels(nations, planet, container) {
     if (row >= GRID_Y) {
       row = 0
       hits.set(accHits)
-      for (let i = 0; i < items.length; i++) {
-        const n = accHits[i]
-        if (n > 0) {
-          items[i].cx = accX[i] / n
-          items[i].cy = accY[i] / n
-          items[i].haveCx = true
-        }
-        accHits[i] = 0
-        accX[i] = 0
-        accY[i] = 0
-      }
+      accHits.fill(0)
     }
-  }
-
-  /** Compressione morbida: invariata sotto `inner`, asintotica a `outer`. */
-  function softLimit(v, half, inner, outer) {
-    if (!(half > 0) || !Number.isFinite(v)) return 0
-    const n = Math.abs(v / half)
-    if (n <= inner) return v
-    const mapped = inner + (outer - inner) * Math.tanh((n - inner) / (outer - inner))
-    return Math.sign(v) * mapped * half
   }
 
   /**
@@ -194,82 +143,137 @@ export function createNationLabels(nations, planet, container) {
     } else {
       row = 0
       accHits.fill(0)
-      accX.fill(0)
-      accY.fill(0)
     }
 
     const cx = width * 0.5
     const cy = height * 0.5
-    const camDist = camera.position.length() || 1
-    const horizon = SCENE_RADIUS / camDist - 0.002
+    if (!(cx > 0) || !(cy > 0)) return
 
-    // 1. posizione e visibilità desiderate
+    // matrici e parametri della camera, letti una volta sola
+    const e = camera.matrixWorldInverse.elements
+    const pr = camera.projectionMatrix.elements
+    const mw = camera.matrixWorld.elements
+    const fx = -mw[8]
+    const fy = -mw[9]
+    const fz = -mw[10]
+    const cpx = camera.position.x
+    const cpy = camera.position.y
+    const cpz = camera.position.z
+    const camDist = Math.hypot(cpx, cpy, cpz) || 1
+    const horizon = SCENE_RADIUS / camDist - 0.002
+    const invDist = 1 / (camDist * SCENE_RADIUS)
+    const R = SCENE_RADIUS
+    const invCx = 1 / cx
+    const invCy = 1 / cy
+
+    // 1. ancore: proiezione esatta, scelta solo quando il nome è invisibile
     visible.length = 0
     for (const it of items) {
-      if (global <= 0.01 || hits[it.n.id] < MIN_HITS) {
-        it.target = 0
-        it.cand = -1
-      } else {
-        it.target = Math.min(1, hits[it.n.id] / 10) * global
+      const flat = it.flat
+      const count = it.count
+      const scrX = it.scrX
+      const scrY = it.scrY
+      const score = it.score
+      const valid = it.valid
+      let best = -1
+      let bestScore = Infinity
 
-        // punto di ancoraggio visibile più centrale
-        let best = -1
-        let bestD = Infinity
-        for (let k = 0; k < it.points.length; k++) {
-          const ok = projectPoint(camera, it.points[k], camDist, horizon, width, height, it.scr[k])
-          it.valid[k] = ok ? 1 : 0
-          if (!ok) continue
-          const s = it.scr[k]
-          const d = Math.max(Math.abs((s.x - cx) / cx), Math.abs((s.y - cy) / cy))
-          if (d < bestD) {
-            bestD = d
-            best = k
-          }
+      // prima si scarta tutto ciò che è fuori dal cono di vista (economico),
+      // poi si proietta solo quello che può davvero stare a schermo
+      for (let k = 0; k < count; k++) {
+        const j = k * 3
+        const wx = flat[j] * R
+        const wy = flat[j + 1] * R
+        const wz = flat[j + 2] * R
+        if ((wx * cpx + wy * cpy + wz * cpz) * invDist < horizon) {
+          // oltre l'orizzonte: nascosto dalla curvatura
+          valid[k] = 0
+          score[k] = Infinity
+          continue
         }
-
-        // isteresi: il punto attuale resta finché non esce o non c'è di meglio
-        let chosen = best
-        if (it.cand >= 0 && it.valid[it.cand]) {
-          const s = it.scr[it.cand]
-          const dCur = Math.max(Math.abs((s.x - cx) / cx), Math.abs((s.y - cy) / cy))
-          if (dCur <= KEEP_RADIUS) chosen = it.cand
-          else if (bestD > dCur * SWITCH_GAIN) chosen = it.cand
+        // cono attorno all'asse di vista, misurato DALLA camera
+        const dvx = wx - cpx
+        const dvy = wy - cpy
+        const dvz = wz - cpz
+        const d2 = dvx * dvx + dvy * dvy + dvz * dvz
+        if (dvx * fx + dvy * fy + dvz * fz < CONE_COS * Math.sqrt(d2)) {
+          valid[k] = 0
+          score[k] = Infinity
+          continue
         }
-        it.cand = chosen
-
-        let tx
-        let ty
-        let has = false
-        if (chosen >= 0) {
-          tx = it.scr[chosen].x
-          ty = it.scr[chosen].y
-          has = true
-        } else if (it.haveCx) {
-          // ripiego: centro della parte visibile, molto smorzato
-          if (!it.cxPlaced) {
-            it.scx = it.cx
-            it.scy = it.cy
-            it.cxPlaced = true
-          } else {
-            const kc = 1 - Math.exp(-dt * 2)
-            it.scx += (it.cx - it.scx) * kc
-            it.scy += (it.cy - it.scy) * kc
-          }
-          tx = it.scx
-          ty = it.scy
-          has = true
+        const vx = e[0] * wx + e[4] * wy + e[8] * wz + e[12]
+        const vy = e[1] * wx + e[5] * wy + e[9] * wz + e[13]
+        const vz = e[2] * wx + e[6] * wy + e[10] * wz + e[14]
+        if (vz >= -1e-3) {
+          valid[k] = 0
+          score[k] = Infinity
+          continue
         }
-
-        if (has) {
-          it.tx = cx + softLimit(tx - cx, cx, INNER_X, OUTER_X)
-          it.ty = cy + softLimit(ty - cy, cy, INNER_Y, OUTER_Y)
-          if (!it.placed) {
-            it.x = it.tx
-            it.y = it.ty
-            it.placed = true
-          }
+        const pz = -vz
+        const sx = ((pr[0] * vx + pr[8] * vz) / pz * 0.5 + 0.5) * width
+        const sy = (0.5 - (pr[5] * vy + pr[9] * vz) / pz * 0.5) * height
+        // vicino al piano della camera la proiezione esplode: si scarta
+        if (!(sx > -2e5) || !(sx < 2e5) || !(sy > -2e5) || !(sy < 2e5)) {
+          valid[k] = 0
+          score[k] = Infinity
+          continue
+        }
+        scrX[k] = sx
+        scrY[k] = sy
+        valid[k] = 1
+        const sc = Math.max(Math.abs((sx - cx) * invCx), Math.abs((sy - cy) * invCy))
+        score[k] = sc
+        if (sc < bestScore) {
+          bestScore = sc
+          best = k
         }
       }
+      it.best = best
+      it.bestScore = bestScore
+
+      // isteresi sui raggi: non lampeggia al margine della vista
+      const h = hits[it.n.id]
+      it.seen = global > 0.01 && h >= (it.seen ? KEEP_HITS : MIN_HITS)
+
+      // l'ancora in uso esce dall'inquadratura → si potrà cambiare, ma solo
+      // quando il nome sarà del tutto invisibile (vedi sotto)
+      if (it.cand >= 0 && !(it.valid[it.cand] && it.score[it.cand] <= EDGE_DROP)) {
+        it.cand = -1
+      }
+
+      if (!it.seen) {
+        it.cand = -1
+        it.target = 0
+        continue
+      }
+
+      if (it.cand < 0) {
+        // riancoraggio: prima si sfuma, poi si riappare nel punto nuovo
+        if (it.alpha > 0.02) {
+          it.target = 0
+          continue
+        }
+        it.cand = bestScore <= EDGE_DROP ? best : -1
+        if (it.cand < 0) {
+          it.target = 0
+          continue
+        }
+        // posizione impostata ora che è invisibile: nessun salto a vista
+        it.x = it.scrX[it.cand]
+        it.y = it.scrY[it.cand]
+        it.lastTransform = ''
+      }
+
+      // ancoraggio esatto: la posizione è la proiezione dell'ancora, senza
+      // smorzamenti né compressioni verso il centro
+      it.x = it.scrX[it.cand]
+      it.y = it.scrY[it.cand]
+
+      // sfuma solo negli ultimi punti percentuali verso il bordo, così il nome
+      // "esce" con il terreno invece di sparire di colpo
+      const edge =
+        1 - THREE.MathUtils.smoothstep(it.score[it.cand], EDGE_FADE, EDGE_DROP)
+      it.target = Math.min(1, h / 10) * global * edge
       if (it.target > 0.01) visible.push(it)
     }
 
@@ -287,7 +291,7 @@ export function createNationLabels(nations, planet, container) {
       let clash = false
       for (let k = 0; k < keep; k++) {
         const o = placedBoxes[k]
-        if (Math.abs(it.tx - o.x) < hw + o.hw && Math.abs(it.ty - o.y) < hh + o.hh) {
+        if (Math.abs(it.x - o.x) < hw + o.hw && Math.abs(it.y - o.y) < hh + o.hh) {
           clash = true
           break
         }
@@ -295,46 +299,31 @@ export function createNationLabels(nations, planet, container) {
       if (clash) {
         it.target = 0
       } else {
-        placedBoxes[keep].x = it.tx
-        placedBoxes[keep].y = it.ty
+        placedBoxes[keep].x = it.x
+        placedBoxes[keep].y = it.y
         placedBoxes[keep].hw = hw
         placedBoxes[keep].hh = hh
         keep++
       }
     }
 
-    // 3. movimento e opacità
-    // inseguimento rapido: il nome deve sembrare incollato al terreno, non
-    // arrivarci con calma (il ritardo si legge come "si sposta da solo")
-    const k = 1 - Math.exp(-dt * 14)
-    const maxStep = 2400 * dt
+    // 3. opacità e scrittura nel DOM (solo se qualcosa è cambiato)
+    const kIn = 1 - Math.exp(-dt * 7)
+    const kOut = 1 - Math.exp(-dt * 12)
     for (const it of items) {
-      it.alpha += (it.target - it.alpha) * (1 - Math.exp(-dt * 5))
+      const k = it.target > it.alpha ? kIn : kOut
+      it.alpha += (it.target - it.alpha) * k
+      if (it.target === 0 && it.alpha < 0.012) it.alpha = 0
 
       if (it.alpha < 0.012) {
-        it.alpha = 0
         if (it.lastOpacity !== '0') {
           it.el.style.opacity = '0'
           it.lastOpacity = '0'
         }
-        // torna fuori schermo: la prossima volta riparte dalla posizione giusta
-        if (it.target === 0) it.placed = false
         continue
       }
 
-      // avvicinamento graduale, con velocità massima: niente scatti laterali
-      const dx = it.tx - it.x
-      const dy = it.ty - it.y
-      const dist = Math.hypot(dx, dy)
-      if (dist < 0.5) {
-        it.x = it.tx
-        it.y = it.ty
-      } else {
-        const step = Math.min(k, maxStep / dist)
-        it.x += dx * step
-        it.y += dy * step
-      }
-
+      // posizione esatta; 0.1 px basta a evitare aggiornamenti inutili
       const tr = `translate(-50%, -50%) translate(${it.x.toFixed(1)}px, ${it.y.toFixed(1)}px)`
       if (tr !== it.lastTransform) {
         it.el.style.transform = tr
@@ -352,19 +341,22 @@ export function createNationLabels(nations, planet, container) {
     update,
     /** Stato interno delle etichette (debug). */
     debug: () =>
-      items.map((it) => ({
-        t: it.n.name,
-        tx: it.tx,
-        ty: it.ty,
-        x: it.x,
-        y: it.y,
-        cand: it.cand,
-        nPoints: it.points.length,
-        cx: it.cx,
-        cy: it.cy,
-        haveCx: it.haveCx,
-        hits: hits[it.n.id],
-        alpha: it.alpha
-      }))
+      items.map((it) => {
+        const c = it.cand
+        return {
+          t: it.n.name,
+          x: it.x,
+          y: it.y,
+          cand: c,
+          best: it.best,
+          bestScore: it.bestScore,
+          score: c >= 0 ? it.score[c] : Infinity,
+          point: c >= 0 ? [it.flat[c * 3], it.flat[c * 3 + 1], it.flat[c * 3 + 2]] : null,
+          nPoints: it.count,
+          hits: hits[it.n.id],
+          target: it.target,
+          alpha: it.alpha
+        }
+      })
   }
 }

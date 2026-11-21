@@ -1,4 +1,4 @@
-# CONTEXT — Ecosystem Planet
+# CONTEXT — The creation of ELYRA
 
 > Documento di contesto del progetto. Va letto prima di qualsiasi modifica al codice.
 > Ogni decisione tecnica deve restare coerente con quanto scritto qui.
@@ -7,14 +7,27 @@
 
 ## 1. Obiettivo del progetto
 
-Creare una **applicazione web** che sia la **simulazione di un ecosistema planetario**.
+**The creation of ELYRA** è la creazione da zero di un **mondo fantasy-medievale vivo**,
+come **applicazione web** esplorabile.
 
-L'utente deve poter esplorare un pianeta simile alla Terra con una vista globo in
-**stile Google Earth**, partendo dallo spazio e potendo zoomare fino a scala regionale
-(es. deserto del Sahara) dove, in futuro, vedrà piante e animali che vivono in quell'ambiente.
+Il mondo si costruisce **per strati, in quest'ordine**:
 
-Il pianeta deve essere **ragionevolmente fedele** alla realtà: conformazione territoriale,
-distribuzione di mari/continenti, laghi, fiumi, fasce climatiche e temperature.
+1. **il pianeta**: continenti, mari, laghi, fiumi, rilievi, clima, biomi e i regni che si
+   spartiscono la terraferma (stato attuale);
+2. **le creature**: flora e fauna che popolano i biomi;
+3. **i villaggi**: insediamenti medievali con i loro abitanti.
+
+Lo scopo finale è che **ogni elemento abbia un proprio comportamento nella vita** del mondo:
+le creature si muovono, si nutrono, si riproducono; i villaggi nascono, crescono, commerciano
+e reagiscono all'ambiente (clima, risorse, confini). Ogni strato nuovo poggia sui dati di
+quello sotto: biomi e clima del pianeta → dove vivono le creature → dove sorgono i villaggi.
+
+L'utente esplora il mondo con una vista globo in **stile Google Earth**, dallo spazio fino a
+pochi metri dal suolo, dove vedrà creature e villaggi vivere nel loro ambiente.
+
+Il pianeta resta **ragionevolmente credibile** (conformazione territoriale, mari e continenti,
+laghi, fiumi, fasce climatiche e temperature), ma il tono è quello di un **mondo
+fantasy-medievale**: nomi, regni e insediamenti devono suonare come su una carta antica.
 
 ---
 
@@ -31,10 +44,16 @@ distribuzione di mari/continenti, laghi, fiumi, fasce climatiche e temperature.
 | R7 | Tasto **poco visibile "Salva"** che salva lo stato del pianeta | **fatto** |
 | R8 | Lo stato salvato viene **ricaricato automaticamente** al prossimo avvio | **fatto** (verificato) |
 | R9 | Repository GitHub con **commit + push dopo ogni prompt** | attivo |
-| R10 | Terraferma divisa in **nazioni** grandi con nomi inventati (fantasy), nomi visibili avvicinandosi e confini a **linea tratteggiata grigia sottile** | **fatto** (31 nazioni) |
+| R10 | Terraferma divisa in **nazioni** grandi con nomi inventati (medievali), nomi visibili avvicinandosi e confini a **linea tratteggiata grigia sottile** | **fatto** (31 nazioni) |
 | R11 | Texture **realistiche da vicino** (erba, acqua che scorre, sabbia, neve) e **transizioni morbide** tra biomi | **fatto** |
 | R12 | Navigazione: mouse = ruota, **Ctrl + mouse = traslazione rigida** (anche rotella premuta) | **fatto** |
 | R13 | Interfaccia (HUD, caricamento, messaggi) **in inglese** | **fatto** |
+| R14 | Scopo: mondo **fantasy-medievale** creato da zero (prima il pianeta, poi le creature, poi i villaggi) con **comportamenti propri** per ogni elemento | pianeta **fatto**; creature e villaggi da fare |
+| R15 | Nomi dei regni **di sapore medievale** (originali), con un rango (Impero, Regno, Ducato, Marca, Contea…) | **fatto** |
+| R16 | **Niente notte, per ora**: tutto il pianeta inquadrato è illuminato | **fatto** (sole che segue la camera) |
+| R17 | Acqua (mari, fiumi, laghi) con **animazioni semplici di movimento** visibili zoomando | **fatto** (da ~250 km di quota) |
+| R18 | Risoluzione **molto più alta**, soprattutto durante lo zoom, **senza perdere fluidità** | **fatto** (mai sotto la risoluzione nativa, frame 30-40% più leggero) |
+| R19 | L'app si apre anche con **doppio clic su index.html** (senza server) | **fatto** (build IIFE in dist/, vedi §4) |
 
 ---
 
@@ -64,12 +83,18 @@ distribuzione di mari/continenti, laghi, fiumi, fasce climatiche e temperature.
   a ogni quota. Non esiste una sfera separata per la vista dallo spazio: a quota alta
   bastano i livelli 0-3. Vantaggi: una sola `Planet.sample()` come verità, nessun pop
   nel passaggio tra "globo lontano" e "terreno vicino".
-- LOD: una tile si suddivide quando supera `SPLIT_PIXELS = 132` pixel a schermo (corretti
+- LOD: una tile si suddivide quando supera `SPLIT_PIXELS = 124` pixel a schermo (corretti
   per lo scorcio: una tile vista di taglio verso l'orizzonte conta fino al 40%); livello
   massimo 17 (tile di ~76 m, maglie di ~1.7 m). Budget di generazione per frame (`buildBudgetMs`), priorità alle tile vicine.
-- Risoluzione per tile (`tileResForLevel`): 40 / 48 / 64 maglie per lato (sempre pari, serve
-  al morph), ~2 pixel per maglia a schermo. Poche tile grandi invece di tante piccole: le
-  draw call si dimezzano a parità di densità.
+- Risoluzione per tile (`tileResForLevel`): 40 maglie per lato ai livelli 0-1, poi 48
+  (sempre pari, serve al morph), ~2.6 pixel per maglia a schermo. **Non tornare a 64**:
+  si disegnavano ~3 triangoli per pixel (fino a 4.6 milioni) e su GPU integrate i soli
+  vertici costavano 10-20 ms a frame; il dettaglio sotto la maglia lo disegna lo shader.
+  Poche tile grandi invece di tante piccole: le draw call si dimezzano a parità di densità.
+- **Culling dell'orizzonte** (`_belowHorizon`): oltre al frustum, una tile viene scartata se è
+  tutta nascosta dalla curvatura del pianeta (test a coni con una sfera piena 12 km sotto il
+  livello del mare e la cima della tile alla quota esagerata). Vicino al suolo toglie il
+  25-30% dei triangoli.
 - **Priorità**: le tile mancanti sono servite in ordine di dimensione a schermo del padre
   (prima ciò che si vede più grande, cioè vicino alla camera), non un livello alla volta.
 - **Precaricamento**: oltre il 62% della soglia i figli vengono già chiesti ai worker, se
@@ -99,8 +124,14 @@ distribuzione di mari/continenti, laghi, fiumi, fasce climatiche e temperature.
   suolo, 4.2 dallo spazio. Cambia ogni frame senza ricostruire nulla.
 - Le normali di illuminazione usano un'esagerazione ancora maggiore (`shadingExaggeration`),
   ricavata dalla normale a k=1: `N = normalize(R - (R - N1/dot(N1,R)) * kS)`.
-- Luce: sole reale + "sole radente" con lo stesso azimut, così i pendii si leggono anche
+- Luce: sole + "sole radente" con lo stesso azimut, così i pendii si leggono anche
   a mezzogiorno. Ombre fredde (bluastre), luce calda.
+- **Niente notte, per ora** (R16): il sole **segue la camera** (`updateSun()` in `main.js`):
+  da nord-ovest, ~55° sopra l'orizzonte locale del punto sotto la camera, la luce classica
+  delle carte in rilievo. Nel terreno `day = 1.0`, nell'atmosfera alone uniforme senza
+  tramonto. `SUN_DIRECTION` resta il sole fisso per quando tornerà il ciclo giorno/notte
+  (i commenti nello shader dicono cosa ripristinare). Il bagliore largo del sole sull'acqua
+  è ridotto al minimo: con questo sole cadrebbe sempre al centro dell'inquadratura.
 - La camera misura la quota **dal terreno** (`controls.groundKm`, stessa esagerazione):
   piante e animali dovranno usare `reliefExaggeration()` per appoggiarsi al suolo.
 - Il generatore ha creste secondarie deformate sulle montagne (valli di ~2.5 km), colline
@@ -134,6 +165,12 @@ distribuzione di mari/continenti, laghi, fiumi, fasce climatiche e temperature.
   sole solo dove le onde sono risolte, schiuma sulla battigia che va e viene). Fiumi con la
   tecnica della *flow map*: direzione lungo il letto (perpendicolare al gradiente di
   `vWater`), verso in discesa, due fasi sfalsate che si ripartono a vicenda.
+- **Movimento dell'acqua a scala regionale** (R17, stile cartoon): le onde vere da 100 km
+  sembrano ferme, quindi ogni scala si muove con velocità **proporzionale alla sua lunghezza
+  d'onda** e compare solo quando è risolta (`scaleW`): onde lunghe di ~2 km che scorrono
+  (chiazze chiare/scure, da ~250 km di quota), creste di ~250 m come linee chiare che
+  avanzano e si spezzano (da ~35 km), correnti dei fiumi con flow map a ~250 m. Laghi e
+  fiumi più calmi del mare (`calm`).
 - **Transizioni tra biomi**: colore e pesi `aSurf` sono la media della classificazione con
   il clima spostato (±2.5 °C, ±0.05 umidità, ±0.14 varietà, `SOFT_OFFSETS` in
   `planet.js`), e le soglie dello shader sono più larghe. Niente alberi su neve e roccia.
@@ -147,7 +184,14 @@ distribuzione di mari/continenti, laghi, fiumi, fasce climatiche e temperature.
   dalla sabbia chiara sia dal bosco scuro. Solo sulla terraferma; l'opacità cala con la quota
   (`uBorderAlpha = 0.82 → 0.16` fra 800 e 4200 km), così a scala regionale è ben visibile e
   dallo spazio è appena un accenno.
-- **Risoluzione adattiva** in `main.js`: mai sotto la risoluzione nativa, fino a 1.85× se la
+  **Candidate per tile**: il ciclo su tutti i capoluoghi costava fino a 8 ms a frame. Ora ogni
+  tile (livello ≥ 2) porta le nazioni che possono comparirvi (`Nations.candidatesForTile`:
+  griglia 9×9, margine conservativo, max 8) e lo shader confronta solo quelle (`uNatCand`,
+  caricate in `onBeforeRender` come `uMorph`). Una sola candidata = nessun confine nella
+  tile; troppe (tile enormi, dallo spazio) = ciclo completo.
+- **Risoluzione adattiva** in `main.js`: **mai sotto la risoluzione nativa del display**
+  (`MIN_PIXEL_RATIO = devicePixelRatio`; prima era 1, e su uno schermo al 125% durante lo
+  zoom scendeva all'80% della nativa: immagine sgranata), fino a 2× se la
   GPU ha margine. La decisione è presa **prima** del render (ridimensionare il drawing buffer
   dopo aver disegnato mostrava un frame di solo sfondo, cioè un lampo nero), con isteresi
   (scende se la media mobile supera 1/27 s per 2 finestre, sale sotto 1/56 s per 3 finestre),
@@ -277,6 +321,14 @@ Generazione **procedurale deterministica** da un seed:
 
 Nessun backend. L'applicazione è **statica** e può essere pubblicata su GitHub Pages.
 
+**Apertura con doppio clic** (R19): `npm run build` produce in `dist/` un unico script
+classico IIFE con il worker delle tile incorporato (`tileWorker.js?worker&inline`, avviato da
+un Blob): da `file://` il browser blocca gli script `type="module"`, le richieste
+`crossorigin` e i worker da file separati. Il plugin `file-protocol-html` in `vite.config.js`
+riscrive lo script come `defer`. L'`index.html` di sorgente, aperto da file, reindirizza a
+`dist/index.html` (script `data-source-only`, tolto dalla build). Il doppio clic mostra
+l'ultima build: dopo ogni modifica va rilanciato `npm run build`.
+
 ---
 
 ## 5. Struttura del progetto
@@ -343,11 +395,17 @@ Nessun backend. L'applicazione è **statica** e può essere pubblicata su GitHub
 
 ## 7. Roadmap
 
-- **Fase 1 (attuale)** — modello del pianeta: continenti, oceani, laghi, fiumi, rilievi,
-  biomi, clima, navigazione, salvataggio.
-- **Fase 2** — vegetazione procedurale a scala regionale (cluster di alberi, arbusti, cactus).
-- **Fase 3** — fauna: popolamenti per bioma, comportamenti semplici.
-- **Fase 4** — simulazione: temperatura, stagioni, catene trofiche.
+L'ordine segue lo scopo del progetto (§1): **pianeta → creature → villaggi**, poi la vita.
+
+- **Fase 1 (attuale): il pianeta**. Continenti, oceani, laghi, fiumi, rilievi, biomi, clima,
+  regni medievali con confini, acqua animata, navigazione, salvataggio.
+- **Fase 2: le creature**. Flora (boschi, arbusti, campi) e fauna istanziate per bioma,
+  ciascuna con un comportamento proprio: muoversi, nutrirsi, riprodursi, fuggire, migrare.
+- **Fase 3: i villaggi**. Insediamenti medievali dove l'ambiente lo permette (acqua dolce,
+  terra fertile, legname, pietra), legati al regno in cui sorgono, con abitanti che lavorano,
+  commerciano e crescono di numero.
+- **Fase 4: il mondo vive**. Simulazione nel tempo: stagioni, catene alimentari, villaggi
+  che crescono o si spopolano, rapporti tra regni. Il ciclo giorno/notte torna qui.
 
 ---
 
@@ -392,7 +450,7 @@ Limiti noti / prossimi passi tecnici:
   per tile e riempimento sono quelle pre-worker.
 - **Nitidezza**: maglie fitte anche sui livelli grossi, foschia leggera solo verso
   l'orizzonte, correzione di contrasto e saturazione a fine shader. Risoluzione di rendering
-  mai sotto quella nativa; se la GPU ha margine sale fino a 1.5× (supersampling, max 2).
+  mai sotto quella nativa del display (devicePixelRatio); se la GPU ha margine sale fino a 2×.
 - **Zoom fluido**: la quota è smorzata in scala logaritmica (velocità percepita costante da
   15 000 km a pochi metri). I voli durano in proporzione al salto di scala e alla distanza
   (fino a 5.5 s), con smootherstep; lo spostamento orizzontale avviene in quota e la
@@ -403,10 +461,11 @@ Limiti noti / prossimi passi tecnici:
   corrispondenza dei cambi di livello LOD (caricamento dei buffer sulla GPU): sono mitigati
   creando al massimo **8 mesh nuove per frame**. I vecchi picchi di 100-300 ms erano in parte
   un primo frame di assestamento della scena, non un problema di shader.
-- **Costi dello shader dei confini**: circa **3.3 ms/frame** a schermo pieno (16.8 ms con i
-  confini, 13.2 senza, a 1.45×): il ciclo di Voronoi è ~48 iterazioni per ogni pixel di
-  terraferma. Si può scendere solo disegnando i confini su una passata separata o a
-  risoluzione ridotta; per ora si accetta il costo perché rende leggibile la mappa politica.
+- **Costi del frame** (GPU integrata AMD, 1920×1080 fisici con display al 125%, misure da
+  Edge headless con GPU reale, tempo di render sincrono): prima delle ottimizzazioni
+  32 / 33 / 44 / 46 ms a 3000 km / 200 km / 8 km / 0.5 km; ora circa 22 / 19 / 26 / 33 ms
+  (maglie 48 invece di 64, confini con nazioni candidate per tile, culling dell'orizzonte).
+  Il costo rimasto è soprattutto lo shader per pixel; la CPU pesa ~1.5 ms.
 - **Alberi dipinti sul terreno**: da 25-100 m le chiome sono dischi piatti. In fase 2 vanno
   affiancate da alberi 3D istanziati vicino alla camera, posizionati con lo stesso hash
   di `canopy()` (stessi punti) e la stessa esagerazione del rilievo.

@@ -1,4 +1,4 @@
-// Nazioni: la terraferma è divisa in grandi stati inventati.
+﻿// Nazioni: la terraferma è divisa in grandi stati inventati.
 //
 // Ogni nazione è la regione di Voronoi (sulla sfera) di un "capoluogo" scelto
 // sulla terraferma. Prima del confronto le coordinate vengono deformate da una
@@ -10,6 +10,7 @@
 // Deterministico: stesso seed del pianeta → stesse nazioni e stessi nomi.
 
 import { Planet } from './planet.js'
+import { cubeFaceDir } from '../render/tileData.js'
 
 /** Numero massimo di nazioni (dimensione dell'array uniform nello shader). */
 export const MAX_NATIONS = 48
@@ -17,8 +18,14 @@ export const MAX_NATIONS = 48
 /** Distanza minima tra capoluoghi (radianti): ~3200 km, nazioni grandi. */
 const MIN_SEPARATION = 0.5
 
-/** Punti di ancoraggio del nome per nazione (oltre al baricentro). */
-const MAX_LABEL_POINTS = 16
+/**
+ * Punti di ancoraggio del nome: TUTTI i campioni di terraferma della nazione
+ * (~145 km di passo). Sono tanti (qualche centinaio per nazione) perché il nome
+ * deve poter esistere a ogni quota: a 300 km di quota l'inquadratura è larga
+ * poche centinaia di km e con pochi punti sparsi non ce ne sarebbe nessuno
+ * dentro. Non costano nulla al frame: si proiettano solo quelli nel cono di
+ * vista (vedi ui/labels.js).
+ */
 
 /**
  * Termini della deformazione: [ampiezza, kx, ky, kz, fase] per asse.
@@ -33,16 +40,35 @@ const WARP = [
   [0.022, 7.2, -10.5, 11.8, 4.2]
 ]
 
-/** Nomi inventati, di sapore fantasy: nessuno reale, nessun riferimento a opere note. */
+/**
+ * Nomi inventati di un mondo fantasy-medievale: suonano anglo-normanni,
+ * germanici e celtici, come i nomi di regni e feudi su una carta antica.
+ * Nessuno è un luogo reale noto, nessuno viene da opere esistenti.
+ */
 const NAMES = [
-  'Aethermoor', 'Ashenvale', 'Brightwater', 'Cindral', 'Drakemoor', 'Duskhollow',
-  'Emberfall', 'Evermoor', 'Faelund', 'Frostmere', 'Gloamreach', 'Grimhold',
-  'Hallowmere', 'Ironvale', 'Kaldrun', 'Lumenar', 'Mistvale', 'Moonhollow',
-  'Nightreach', 'Oakenshield', 'Obsidia', 'Palewater', 'Quenlath', 'Ravenmoor',
-  'Runemere', 'Sablewood', 'Shadowfen', 'Silverhold', 'Starfall', 'Stonewake',
-  'Stormhollow', 'Sunmere', 'Thornvale', 'Tidecall', 'Umbrafen', 'Valdrun',
-  'Verdant', 'Whisperreach', 'Wildmere', 'Wyrmrest', 'Yarrowfen', 'Zephyrion',
-  'Amberhold', 'Bleakmoor', 'Coralreach', 'Dawnvale', 'Elderglade', 'Farrowmere'
+  'Valdremont', 'Aurenhal', 'Brecknoll', 'Caerwydd', 'Dunmarrow', 'Eskerholt',
+  'Falkenreth', 'Garrowmere', 'Hollinsgard', 'Ivelmark', 'Kestrelford', 'Lorvaine',
+  'Merrowdale', 'Norhaven', 'Oswaldane', 'Pellingrave', 'Quillemont', 'Rookhallow',
+  'Saint Ambrel', 'Thurlowmere', 'Ulverstane', 'Varenhold', 'Wexmoor', 'Ystrandel',
+  'Aldbrecht', 'Belmorrow', 'Corvennes', 'Draxholm', 'Elmsreach', 'Fennwald',
+  'Glaivemark', 'Harthmoor', 'Ingleward', 'Jorvane', 'Kaldrecht', 'Lindenhoff',
+  'Montclaire', 'Orlemont', 'Penmarrow', 'Ravelloc', 'Sevrenne', 'Tamberlay',
+  'Umberwold', 'Vesperhal', 'Wendmere', 'Ardengrave', 'Covenhall', 'Brannoch'
+]
+
+/**
+ * Rango del regno in base all'estensione: il più vasto è un impero, poi
+ * regni, granducati, ducati… fino alle contee e baronie più piccole.
+ */
+const RANKS = [
+  [1, 'Empire of'],
+  [5, 'Kingdom of'],
+  [9, 'Grand Duchy of'],
+  [14, 'Duchy of'],
+  [18, 'Principality of'],
+  [22, 'March of'],
+  [27, 'County of'],
+  [Infinity, 'Barony of']
 ]
 
 /** Deformazione delle coordinate (identica a `nationWarp` in GLSL). */
@@ -154,14 +180,13 @@ export class Nations {
       names[j] = t
     }
 
-    // --- baricentro della terraferma di ogni nazione: lì va l'etichetta ---
-    // Insieme al baricentro si raccolgono alcuni punti sparsi sulla terraferma
-    // (ben distanziati): da vicino il baricentro è quasi sempre fuori
-    // inquadratura, e il nome deve potersi appoggiare a un punto VICINO ma
-    // comunque fisso, invece di inseguire il centro della parte visibile.
+    // --- baricentro della terraferma di ogni nazione ---
+    // Nello stesso giro si raccolgono TUTTI i campioni di terraferma: sono le
+    // ancore possibili del nome. Il nome deve potersi appoggiare a un punto
+    // VICINO ma comunque FISSO, invece di inseguire il centro della parte
+    // visibile (che lo faceva scivolare).
     const acc = this.seeds.map(() => [0, 0, 0, 0])
-    const labelPts = this.seeds.map(() => [])
-    const COS_SEP = Math.cos(0.10) // ~640 km
+    const landPts = this.seeds.map(() => [])
     const M = 24000
     for (let i = 0; i < M; i++) {
       const p = fibonacciSphere(M, i)
@@ -172,20 +197,12 @@ export class Nations {
       a[1] += p[1]
       a[2] += p[2]
       a[3]++
-      const pts = labelPts[id]
-      if (pts.length < MAX_LABEL_POINTS) {
-        let ok = true
-        for (let q = 0; q < pts.length; q++) {
-          const o = pts[q]
-          if (p[0] * o[0] + p[1] * o[1] + p[2] * o[2] > COS_SEP) {
-            ok = false
-            break
-          }
-        }
-        if (ok) pts.push([p[0], p[1], p[2]])
-      }
+      const flat = landPts[id]
+      flat.push(p[0], p[1], p[2])
     }
     const totalLand = acc.reduce((s, a) => s + a[3], 0) || 1
+    // tutti i campioni di terraferma diventano ancore possibili del nome
+    const labelPts = landPts.map((f) => new Float32Array(f))
     this.list = this.seeds.map((s, i) => {
       const a = acc[i]
       let ax = a[0]
@@ -206,10 +223,18 @@ export class Nations {
         id: i,
         name: names[i % names.length],
         anchor: [ax, ay, az],
-        // punti di ancoraggio del nome: baricentro + punti sparsi sulla terra
+        // ancore del nome: ogni campione di terraferma della nazione
         labelPoints: labelPts[i],
         share: a[3] / totalLand
       }
+    })
+
+    // rango (titolo) per estensione della terraferma
+    const bySize = this.list.slice().sort((a, b) => b.share - a.share)
+    bySize.forEach((n, i) => {
+      const rank = RANKS.find(([upTo]) => i < upTo)[1]
+      n.rank = rank
+      n.title = rank + ' ' + n.name
     })
 
     // array per lo shader
@@ -232,6 +257,54 @@ export class Nations {
       }
     }
     return best
+  }
+
+  /**
+   * Nazioni che possono comparire (come prima o seconda più vicina) dentro una
+   * tile del quadtree. Lo shader dei confini confronta ogni pixel solo con
+   * queste invece che con tutti i capoluoghi: era il ciclo più caro del
+   * fragment shader (~48 iterazioni per pixel di terraferma).
+   *
+   * Conservativo: su una griglia di campioni della tile si tengono tutte le
+   * nazioni il cui punteggio è entro `margin` dal migliore. Il margine copre
+   * la variazione tra due campioni (la deformazione ha gradiente < ~3) più la
+   * fascia in cui la linea è disegnata. Restituisce null se le candidate sono
+   * troppe (tile grandi, viste dallo spazio): lo shader usa il ciclo completo.
+   */
+  candidatesForTile(face, level, ix, iy, max = 8) {
+    const G = 9
+    const div = 1 << level
+    const span = 2 / div
+    // distanza angolare tra due campioni (radianti, ~ lato della tile / (G-1))
+    const step = (Math.PI / 2 / div) / (G - 1)
+    // 0.018: fascia della linea (dKm < 55 km con |s1 - s2| <= 2)
+    const margin = step * 8 + 0.018
+    const d = { x: 0, y: 0, z: 0 }
+    const w = { x: 0, y: 0, z: 0 }
+    const found = new Set()
+    const sc = new Float64Array(this.count)
+    for (let j = 0; j < G; j++) {
+      for (let i = 0; i < G; i++) {
+        const u = (ix / div) * 2 - 1 + (i / (G - 1)) * span
+        const v = (iy / div) * 2 - 1 + (j / (G - 1)) * span
+        cubeFaceDir(face, u, v, d)
+        nationWarp(d.x, d.y, d.z, w)
+        let best = -2
+        for (let k = 0; k < this.count; k++) {
+          const s = this.seeds[k]
+          const x = w.x * s[0] + w.y * s[1] + w.z * s[2]
+          sc[k] = x
+          if (x > best) best = x
+        }
+        for (let k = 0; k < this.count; k++) {
+          if (sc[k] > best - margin) {
+            found.add(k)
+            if (found.size > max) return null
+          }
+        }
+      }
+    }
+    return Array.from(found)
   }
 
   /** Nazione a latitudine/longitudine (gradi). */

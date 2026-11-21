@@ -79,6 +79,9 @@ export function createTerrainMaterial(sunDir) {
       // confini delle nazioni (vedi planet/nations.js)
       uNationSeeds: { value: Array.from({ length: MAX_NATIONS }, () => new THREE.Vector3()) },
       uNationCount: { value: 0 },
+      // nazioni candidate della tile in disegno (0 = tutte), vedi tileBuilder.js
+      uNatCand: { value: new Array(8).fill(0) },
+      uNatCandN: { value: 0 },
       uBorderAlpha: { value: 0.75 }
     },
     vertexShader: /* glsl */ `
@@ -152,6 +155,8 @@ export function createTerrainMaterial(sunDir) {
       uniform vec3 uRotOff[6];
       uniform vec3 uNationSeeds[${MAX_NATIONS}];
       uniform int uNationCount;
+      uniform int uNatCand[8];
+      uniform int uNatCandN;
       uniform float uBorderAlpha;
 
       varying vec3 vColor;
@@ -374,13 +379,33 @@ export function createTerrainMaterial(sunDir) {
         // invece di cambiare di colpo (il colore per vertice è già una media
         // morbida della classificazione, vedi planet.js).
         float soft = 0.06 + smoothstep(4.0, 40.0, foot) * 0.14;
-        float isWater = smoothstep(0.42 - soft * 0.5, 0.58 + soft * 0.5, waterF);
+        // Antialiasing di costa e fiumi: fwidth misura di quanto cambia il
+        // campo acqua tra un pixel e il successivo, quindi la soglia si allarga
+        // ad almeno un pixel. Senza, il bordo seguiva la griglia della mesh e
+        // mostrava scalini netti di 1-2 px (visibili da 1500 km in giù).
+        float aaW = fwidth(waterF) * 1.4;
+        float halfW = max(soft * 0.5, aaW);
+        float isWater = smoothstep(0.5 - halfW, 0.5 + halfW, waterF);
+        // Costa: la linea del mare segue lo zero della QUOTA interpolata, che è
+        // continua tra i triangoli. Il campo vWater per vertice è 0 o 1 e
+        // faceva il bordo a scalini di una cella; la quota no: tra un vertice
+        // appena sotto il livello del mare e uno appena sopra, lo zero cade
+        // dentro il triangolo e il contorno è continuo. Fascia di ~1 pixel.
+        float shoreBand = max(2.0, fwidth(vHeight) * 1.1);
+        isWater = max(isWater, 1.0 - smoothstep(-shoreBand, shoreBand, vHeight));
         // densità di alberi (savana e macchia: radi; foreste: chioma chiusa)
         float trees = clamp(vSurf.x + edgeN * 0.5, 0.0, 1.0);
-        float forest = smoothstep(0.40 - soft, 0.75 + soft, trees);
-        float sand = smoothstep(0.25 - soft, 0.75 + soft, vSurf.y + edgeN * 0.5);
-        float rock = smoothstep(0.30 - soft, 0.70 + soft, vSurf.z + edgeN * 0.4);
-        float snow = smoothstep(0.30 - soft, 0.70 + soft, vSurf.w + edgeN * 0.4);
+        // Stesse soglie di prima, ma allargate di ~1 pixel a schermo: i confini
+        // tra biomi (spiaggia, foresta, roccia, neve) seguivano la griglia della
+        // mesh e mostravano scalini netti di una cella; così sfumano.
+        float aaT = min(fwidth(trees) * 0.9, 0.30);
+        float aaS = min(fwidth(vSurf.y) * 0.9, 0.30);
+        float aaR = min(fwidth(vSurf.z) * 0.9, 0.30);
+        float aaN = min(fwidth(vSurf.w) * 0.9, 0.30);
+        float forest = smoothstep(0.40 - soft - aaT, 0.75 + soft + aaT, trees);
+        float sand = smoothstep(0.25 - soft - aaS, 0.75 + soft + aaS, vSurf.y + edgeN * 0.5);
+        float rock = smoothstep(0.30 - soft - aaR, 0.70 + soft + aaR, vSurf.z + edgeN * 0.4);
+        float snow = smoothstep(0.30 - soft - aaN, 0.70 + soft + aaN, vSurf.w + edgeN * 0.4);
 
         // fasce d'alta quota dalla quota del fragment (stessa linea delle nevi
         // di classifyLandBiome): seguono valli e crinali come isoipse
@@ -609,7 +634,10 @@ export function createTerrainMaterial(sunDir) {
 
         // ============================================================ LUCE
         float sunUp = dot(R, uSunDir);
-        float day = smoothstep(-0.30, 0.12, sunUp);
+        // Niente notte, per ora: il sole segue la camera (main.js) e qui non
+        // si scurisce nulla. Per riattivare il ciclo giorno/notte:
+        // day = smoothstep(-0.30, 0.12, sunUp) con un sole fisso.
+        float day = 1.0;
 
         // sole "basso" per il rilievo: stessa direzione del sole ma più radente
         vec3 sunT = uSunDir - R * sunUp;
@@ -638,8 +666,8 @@ export function createTerrainMaterial(sunDir) {
           float depth = max(-vHeight, 0.0);
           vec3 deep = vec3(0.08, 0.22, 0.35);
           vec3 mid = vec3(0.15, 0.38, 0.50);
-          vec3 shallow = vec3(0.28, 0.58, 0.60);
-          vec3 wc = mix(shallow, mid, smoothstep(0.0, 60.0, depth));
+          vec3 shallow = vec3(0.25, 0.53, 0.57);
+          vec3 wc = mix(shallow, mid, smoothstep(0.0, 110.0, depth));
           wc = mix(wc, deep, smoothstep(150.0, 3500.0, depth));
           float inland = step(-0.5, vHeight);
           wc = mix(wc, vColor * 1.05, inland * 0.6);
@@ -654,6 +682,47 @@ export function createTerrainMaterial(sunDir) {
             vec3 o = flowDir * 0.0016 * ph * T;
             float streak = lnoise(pl - o, 2048.0);
             wc = mix(wc, vec3(0.78, 0.86, 0.86), smoothstep(0.72, 0.9, streak) * 0.35 * flowMask * waveW2);
+          }
+
+          // --- movimento a scala regionale (stile cartoon) ---
+          // Le onde vere (pochi m/s) da 100 km di quota sembrano ferme: qui
+          // ogni scala si muove con una velocità proporzionale alla propria
+          // lunghezza d'onda, così l'acqua "vive" allo stesso modo a ogni
+          // zoom. Ogni scala compare solo quando è risolta (scaleW): onde
+          // lunghe da ~250 km di quota, creste da ~35 km, correnti dei fiumi
+          // da ~40 km. Laghi e fiumi sono più calmi del mare.
+          {
+            vec3 E1 = normalize(cross(R, vec3(0.31, 0.95, 0.0)));
+            vec3 E2 = normalize(cross(R, vec3(0.9, 0.1, 0.42)));
+            float calm = mix(1.0, 0.55, inland);
+            float wSw = scaleW(2.0, foot);
+            float wCr = scaleW(0.25, foot);
+            if (wSw > 0.0) {
+              // onde lunghe (~2 km): chiazze chiare e scure che scorrono
+              float sw = lnoise(pl + E1 * tw * 0.09, 0.5) * 0.6
+                       + lnoise(pl - E2 * tw * 0.07, 1.0) * 0.4;
+              wc *= 1.0 + (sw - 0.5) * 0.18 * wSw * calm;
+            }
+            if (wCr > 0.0) {
+              // creste (~250 m): linee chiare che avanzano e si spezzano
+              float m = lnoise(pl + E2 * tw * 0.012, 4.0);
+              float ph = fract(m * 4.0 - tw * 0.16);
+              float aw = clamp(fwidth(ph), 0.01, 0.2);
+              float crest = smoothstep(0.0, 0.05 + aw, ph) * (1.0 - smoothstep(0.08, 0.16 + aw, ph));
+              float brk = smoothstep(0.48, 0.70, lnoise(pl - E1 * tw * 0.01, 8.0));
+              wc = mix(wc, vec3(0.80, 0.90, 0.92), crest * brk * 0.34 * wCr * calm * (1.0 - flowMask));
+            }
+            if (flowMask > 0.01 && wCr > 0.0) {
+              // correnti dei fiumi (~250 m): flow map a due fasi sfalsate
+              float T = 3.0;
+              float p1 = fract(tw / T);
+              float p2 = fract(tw / T + 0.5);
+              float a1 = lnoise(pl - flowDir * 0.12 * p1 * T, 4.0);
+              float a2 = lnoise(pl - flowDir * 0.12 * p2 * T + 3.7, 4.0);
+              float st = mix(a1, a2, abs(p1 * 2.0 - 1.0));
+              wc *= 1.0 + (st - 0.5) * 0.16 * flowMask * wCr;
+              wc = mix(wc, vec3(0.76, 0.86, 0.88), smoothstep(0.64, 0.86, st) * 0.3 * flowMask * wCr);
+            }
           }
 
           // battigia: schiuma che va e viene
@@ -674,7 +743,9 @@ export function createTerrainMaterial(sunDir) {
           // scintille solo dove le onde sono risolte: da lontano la normale è
           // piatta e il riflesso stretto diventerebbe un disco abbagliante
           float specSharp = pow(nh, 900.0) * waveW1;
-          wcol += vec3(1.0, 0.96, 0.86) * (smoothstep(0.25, 0.9, specWide) * 0.30 + specSharp * 1.4) * day;
+          // il bagliore largo è appena accennato: con il sole che segue la
+          // camera cadrebbe sempre al centro dell'inquadratura come una macchia
+          wcol += vec3(1.0, 0.96, 0.86) * (smoothstep(0.25, 0.9, specWide) * 0.06 + specSharp * 1.4) * day;
           float fres = pow(1.0 - max(dot(Nw, V), 0.0), 4.0);
           wcol = mix(wcol, uHazeColor * mix(0.35, 0.9, day), fres * 0.45);
 
@@ -689,18 +760,30 @@ export function createTerrainMaterial(sunDir) {
         // La linea è larga circa un pixel (antialiasata su due): netta abbastanza
         // da leggersi come confine, senza essere un tratto da pennarello. Il
         // grigio neutro si stacca sia dalla sabbia chiara sia dal bosco scuro.
-        if (uNationCount > 1 && isWater < 0.98) {
+        if (uNationCount > 1 && uNatCandN != 1 && isWater < 0.98) {
           vec3 q = nationWarp(R);
           float b1 = -2.0;
           float b2 = -2.0;
           int i1 = 0;
           int i2 = 0;
-          for (int i = 0; i < ${MAX_NATIONS}; i++) {
-            if (i >= uNationCount) break;
-            float d = dot(q, uNationSeeds[i]);
-            if (d > b1) { b2 = b1; i2 = i1; b1 = d; i1 = i; }
-            else if (d > b2) { b2 = d; i2 = i; }
+          if (uNatCandN > 1) {
+            // solo le nazioni che possono comparire in questa tile
+            for (int j = 0; j < 8; j++) {
+              if (j >= uNatCandN) break;
+              int i = uNatCand[j];
+              float d = dot(q, uNationSeeds[i]);
+              if (d > b1) { b2 = b1; i2 = i1; b1 = d; i1 = i; }
+              else if (d > b2) { b2 = d; i2 = i; }
+            }
+          } else if (uNatCandN == 0) {
+            for (int i = 0; i < ${MAX_NATIONS}; i++) {
+              if (i >= uNationCount) break;
+              float d = dot(q, uNationSeeds[i]);
+              if (d > b1) { b2 = b1; i2 = i1; b1 = d; i1 = i; }
+              else if (d > b2) { b2 = d; i2 = i; }
+            }
           }
+          // una sola candidata: nessun confine nella tile (b2 resta -2)
           vec3 s1 = uNationSeeds[i1];
           vec3 s2 = uNationSeeds[i2];
           vec3 sd = s1 - s2;
@@ -727,6 +810,12 @@ export function createTerrainMaterial(sunDir) {
         color = mix(vec3(luma), color, 1.14);
         color = (color - 0.42) * 1.08 + 0.42;
         color = max(color, 0.0);
+
+        // dithering: mezzo livello di rumore per pixel sui gradienti (foschia,
+        // pendii in ombra). Toglie le bande e rende il passaggio di colore
+        // continuo invece che a scalini.
+        float ign = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+        color += (ign - 0.5) * (1.6 / 255.0);
 
         gl_FragColor = vec4(color, 1.0);
       }
