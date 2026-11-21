@@ -125,7 +125,7 @@ export class TerrainLOD {
     node.requestId = 0
     node.hMax = node.mesh.userData.hMax
     // nazioni candidate per lo shader dei confini (null = ciclo completo)
-    if (this.nations && node.level >= 2) {
+    if (this.nations && node.level >= 1) {
       mesh.userData.natCand = this.nations.candidatesForTile(node.face, node.level, node.x, node.y)
     }
     // la mesh entra nella scena solo quando va a schermo (vedi update)

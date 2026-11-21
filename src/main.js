@@ -252,9 +252,9 @@ function step(dt, now) {
   const od = u.uOrigin.value.dot(RIPPLE_DIR)
   u.uRipplePhase.value = (od * RIPPLE_K) % (Math.PI * 2)
   u.uRipplePhase2.value = (od * (RIPPLE_K / 5)) % (Math.PI * 2)
-  // confini: una linea che si legge a scala regionale, appena accennata
-  // dallo spazio (dove sarebbe solo una fascia sfocata)
-  u.uBorderAlpha.value = 0.82 - 0.66 * THREE.MathUtils.smoothstep(altitudeKm, 800, 4200)
+  // confini: ben visibili a scala regionale, ancora leggibili dallo spazio
+  // (opacità da 0.95 a 0.60 fra 1500 e 9000 km)
+  u.uBorderAlpha.value = 0.95 - 0.35 * THREE.MathUtils.smoothstep(altitudeKm, 1500, 9000)
   terrainMaterial.uniforms.uTime.value = now * 0.001
   terrainMaterial.uniforms.uHazeDensity.value = 1 / (altitudeKm * 14 + 160)
 

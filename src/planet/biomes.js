@@ -25,7 +25,9 @@ export const BIOME = {
   WETLAND: 18,
   BADLANDS: 19,
   SALT_FLAT: 20,
-  ALPINE_MEADOW: 21
+  ALPINE_MEADOW: 21,
+  VOLCANIC: 22,
+  LAVA: 23
 }
 
 export const BIOME_NAME = {
@@ -50,7 +52,9 @@ export const BIOME_NAME = {
   [BIOME.WETLAND]: 'Wetland',
   [BIOME.BADLANDS]: 'Badlands',
   [BIOME.SALT_FLAT]: 'Salt flat',
-  [BIOME.ALPINE_MEADOW]: 'Alpine meadow'
+  [BIOME.ALPINE_MEADOW]: 'Alpine meadow',
+  [BIOME.VOLCANIC]: 'Volcanic slopes',
+  [BIOME.LAVA]: 'Lava lake'
 }
 
 // Colori sRGB lineari, in [0,1]
@@ -78,7 +82,10 @@ export const PALETTE = {
   [BIOME.WETLAND]: C(84, 108, 82),
   [BIOME.BADLANDS]: C(178, 112, 76),
   [BIOME.SALT_FLAT]: C(224, 217, 200),
-  [BIOME.ALPINE_MEADOW]: C(128, 142, 92)
+  [BIOME.ALPINE_MEADOW]: C(128, 142, 92),
+  // basalto scuro e lava incandescente
+  [BIOME.VOLCANIC]: C(74, 66, 62),
+  [BIOME.LAVA]: C(236, 96, 34)
 }
 
 /**

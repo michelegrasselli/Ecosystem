@@ -75,6 +75,7 @@ const SURFACE = (() => {
   set(BIOME.BADLANDS, 0, 0.25, 0.75, 0)
   set(BIOME.SALT_FLAT, 0, 0.15, 0, 0)
   set(BIOME.ALPINE_MEADOW, 0.05, 0, 0.12, 0)
+  set(BIOME.VOLCANIC, 0.04, 0, 0.55, 0)
   // roccia d'alta quota e neve perenne le calcola lo shader dalla quota del
   // fragment (linee continue che seguono il terreno, non scalini di maglia);
   // le calotte arrivano da `sample.ice`, che è già continuo

@@ -13,10 +13,13 @@ import { Planet } from './planet.js'
 import { cubeFaceDir } from '../render/tileData.js'
 
 /** Numero massimo di nazioni (dimensione dell'array uniform nello shader). */
-export const MAX_NATIONS = 48
+export const MAX_NATIONS = 96
 
-/** Distanza minima tra capoluoghi (radianti): ~3200 km, nazioni grandi. */
-const MIN_SEPARATION = 0.5
+/**
+ * Distanza minima tra capoluoghi (radianti): ~2000 km. Regni più fitti, come
+ * su una carta medievale (prima 0.5 rad, ~3200 km: una trentina di nazioni).
+ */
+const MIN_SEPARATION = 0.31
 
 /**
  * Punti di ancoraggio del nome: TUTTI i campioni di terraferma della nazione
@@ -53,21 +56,29 @@ const NAMES = [
   'Aldbrecht', 'Belmorrow', 'Corvennes', 'Draxholm', 'Elmsreach', 'Fennwald',
   'Glaivemark', 'Harthmoor', 'Ingleward', 'Jorvane', 'Kaldrecht', 'Lindenhoff',
   'Montclaire', 'Orlemont', 'Penmarrow', 'Ravelloc', 'Sevrenne', 'Tamberlay',
-  'Umberwold', 'Vesperhal', 'Wendmere', 'Ardengrave', 'Covenhall', 'Brannoch'
+  'Umberwold', 'Vesperhal', 'Wendmere', 'Ardengrave', 'Covenhall', 'Brannoch',
+  'Ashmorrow', 'Blackmarsh', 'Caldervale', 'Dornholt', 'Edrasmoor', 'Frostwick',
+  'Gildenmoor', 'Hawkesmere', 'Ironmere', 'Kingsholt', 'Larkspire', 'Maldane',
+  'Northwold', 'Oakenvale', 'Pembrecht', 'Redmere', 'Stonevale', 'Tyrewood',
+  'Valemont', 'Westmarrow', 'Aubercy', 'Belvaine', 'Castellune', 'Dravenshire',
+  'Esmerault', 'Fallowmere', 'Greycairn', 'Highmoor', 'Isenwald', 'Lachmere',
+  'Morvaine', 'Nethercombe', 'Orrinsby', 'Pruvenna', 'Rosmaire', 'Saltmarrow',
+  'Thornwaite', 'Uthermoor', 'Vauclère', 'Wolfreach', 'Yarnwick', 'Ambermoor'
 ]
 
 /**
- * Rango del regno in base all'estensione: il più vasto è un impero, poi
- * regni, granducati, ducati… fino alle contee e baronie più piccole.
+ * Rango del regno in base all'estensione (posizione in classifica, come
+ * frazione del numero di regni): il più vasto è un impero, poi regni,
+ * granducati, ducati… fino alle contee e baronie più piccole.
  */
 const RANKS = [
-  [1, 'Empire of'],
-  [5, 'Kingdom of'],
-  [9, 'Grand Duchy of'],
-  [14, 'Duchy of'],
-  [18, 'Principality of'],
-  [22, 'March of'],
-  [27, 'County of'],
+  [0.02, 'Empire of'],
+  [0.12, 'Kingdom of'],
+  [0.22, 'Grand Duchy of'],
+  [0.38, 'Duchy of'],
+  [0.5, 'Principality of'],
+  [0.65, 'March of'],
+  [0.82, 'County of'],
   [Infinity, 'Barony of']
 ]
 
@@ -232,7 +243,7 @@ export class Nations {
     // rango (titolo) per estensione della terraferma
     const bySize = this.list.slice().sort((a, b) => b.share - a.share)
     bySize.forEach((n, i) => {
-      const rank = RANKS.find(([upTo]) => i < upTo)[1]
+      const rank = RANKS.find(([upTo]) => i < Math.max(1, Math.round(upTo * bySize.length)))[1]
       n.rank = rank
       n.title = rank + ' ' + n.name
     })
@@ -271,14 +282,14 @@ export class Nations {
    * fascia in cui la linea è disegnata. Restituisce null se le candidate sono
    * troppe (tile grandi, viste dallo spazio): lo shader usa il ciclo completo.
    */
-  candidatesForTile(face, level, ix, iy, max = 8) {
+  candidatesForTile(face, level, ix, iy, max = 24) {
     const G = 9
     const div = 1 << level
     const span = 2 / div
     // distanza angolare tra due campioni (radianti, ~ lato della tile / (G-1))
     const step = (Math.PI / 2 / div) / (G - 1)
-    // 0.018: fascia della linea (dKm < 55 km con |s1 - s2| <= 2)
-    const margin = step * 8 + 0.018
+    // 0.026: fascia della linea con l'alone (dKm < 80 km con |s1 - s2| <= 2)
+    const margin = step * 8 + 0.026
     const d = { x: 0, y: 0, z: 0 }
     const w = { x: 0, y: 0, z: 0 }
     const found = new Set()

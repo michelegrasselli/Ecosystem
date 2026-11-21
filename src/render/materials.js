@@ -24,6 +24,23 @@ export const RIPPLE_DIR = new THREE.Vector3(0.62, 0.21, -0.75).normalize()
 /** Numero d'onda delle increspature della sabbia (rad/km, ~60 cm). */
 export const RIPPLE_K = 10471.98
 
+/**
+ * Treni di creste d'onda dell'acqua: direzione del vento (3D, proiettata sul
+ * piano tangente dallo shader) e lunghezza d'onda in km (48 km, 4 km, 400 m).
+ */
+const WAVES = [
+  { dir: new THREE.Vector3(0.48, -0.33, 0.81).normalize(), lambda: 48 },
+  { dir: new THREE.Vector3(-0.7, 0.4, 0.59).normalize(), lambda: 4 },
+  { dir: new THREE.Vector3(0.2, 0.9, -0.38).normalize(), lambda: 0.4 }
+]
+// Direzione alternativa, perpendicolare: su una sfera i fronti paralleli a una
+// direzione fissa diventano cerchi concentrici attorno ai due punti in cui la
+// direzione è verticale. Lì lo shader passa con continuità a questa.
+for (const w of WAVES) {
+  w.alt = new THREE.Vector3().crossVectors(w.dir, new THREE.Vector3(0.3, -0.5, 0.81).normalize()).normalize()
+}
+const WAVE_DIRS = [...WAVES.map((w) => w.dir), ...WAVES.map((w) => w.alt)]
+
 // rotazione fissa del reticolo delle ottave fini
 const ROT4 = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(1, 2, 3).normalize(), 0.93)
 
@@ -41,6 +58,12 @@ export function updateNoiseFrame(material, origin) {
     const f = 512 * 2 ** k
     const m = (v) => ((v * f) % 64 + 64) % 64
     offs[k].set(m(rx), m(ry), m(rz))
+  }
+  // fase delle creste d'onda all'origine del reticolo, in doppia precisione
+  const ph = material.uniforms.uWavePhase.value
+  for (let i = 0; i < WAVE_DIRS.length; i++) {
+    const k = (Math.PI * 2) / WAVES[i % WAVES.length].lambda
+    ph[i] = (origin.dot(WAVE_DIRS[i]) * k) % (Math.PI * 2)
   }
 }
 
@@ -80,8 +103,12 @@ export function createTerrainMaterial(sunDir) {
       uNationSeeds: { value: Array.from({ length: MAX_NATIONS }, () => new THREE.Vector3()) },
       uNationCount: { value: 0 },
       // nazioni candidate della tile in disegno (0 = tutte), vedi tileBuilder.js
-      uNatCand: { value: new Array(8).fill(0) },
+      uNatCand: { value: new Array(24).fill(0) },
       uNatCandN: { value: 0 },
+      // creste d'onda dell'acqua (vedi WAVES e updateNoiseFrame)
+      uWaveDir: { value: WAVE_DIRS.map((d) => d.clone()) },
+      uWaveK: { value: WAVES.map((w) => (Math.PI * 2) / w.lambda) },
+      uWavePhase: { value: WAVE_DIRS.map(() => 0) },
       uBorderAlpha: { value: 0.75 }
     },
     vertexShader: /* glsl */ `
@@ -155,8 +182,11 @@ export function createTerrainMaterial(sunDir) {
       uniform vec3 uRotOff[6];
       uniform vec3 uNationSeeds[${MAX_NATIONS}];
       uniform int uNationCount;
-      uniform int uNatCand[8];
+      uniform int uNatCand[24];
       uniform int uNatCandN;
+      uniform vec3 uWaveDir[6];
+      uniform float uWaveK[3];
+      uniform float uWavePhase[6];
       uniform float uBorderAlpha;
 
       varying vec3 vColor;
@@ -286,6 +316,40 @@ export function createTerrainMaterial(sunDir) {
         return vec4(cover, lit, bestId, shade);
       }
 
+      // Creste d'onda stilizzate (stile illustrato): fronti paralleli che
+      // avanzano nella direzione del vento uWaveDir[i], ondulati dal rumore e
+      // spezzati in tratti. La fase all'origine del reticolo (uWavePhase[i])
+      // arriva dalla CPU in doppia precisione, come per le increspature della
+      // sabbia: dot(uOrigin, W) * k in float32 perderebbe la continuità.
+      // f: frequenza del rumore che ondula e spezza i fronti (potenza di due),
+      // amp: quanto ondularli (per le onde da 48 km il rumore non può essere
+      // più largo di 64 km, quindi l'ondulazione va ridotta).
+      float crestAlong(vec3 pl, int d, float k, float warp, float f, float speed, float tw) {
+        vec3 W = uWaveDir[d];
+        float ph = fract((dot(pl, W) * k + uWavePhase[d]) * 0.15915494 + warp - tw * speed);
+        float aw = clamp(fwidth(ph), 0.004, 0.3);
+        // fronte netto e coda morbida dietro la cresta
+        float crest = smoothstep(0.0, 0.025 + aw, ph) * (1.0 - smoothstep(0.04, 0.15 + aw, ph));
+        // tratti: il rumore si sposta con l'onda, così i tratti non "scivolano"
+        float brk = smoothstep(0.42, 0.64, lnoise(pl - W * (tw * speed / k * 6.2831853), f));
+        return crest * brk;
+      }
+
+      float waveCrest(vec3 pl, vec3 R, int i, float f, float amp, float speed, float tw) {
+        // ondulazione dei fronti: rumore più largo della lunghezza d'onda e
+        // ampiezza sotto mezzo ciclo, altrimenti i fronti si ripiegano in
+        // scarabocchi invece di restare onde parallele
+        float warp = ((lnoise(pl, f) - 0.5) * 0.7 + (lnoise(pl, f * 2.0) - 0.5) * 0.25) * amp;
+        float k = uWaveK[i];
+        // vicino ai punti in cui il vento è verticale si passa alla direzione
+        // alternativa (perpendicolare), che lì è ben orizzontale
+        float t = smoothstep(0.55, 0.8, abs(dot(uWaveDir[i], R)));
+        float c = 0.0;
+        if (t < 1.0) c += (1.0 - t) * crestAlong(pl, i, k, warp, f, speed, tw);
+        if (t > 0.0) c += t * crestAlong(pl, i + 3, k, warp, f, speed, tw);
+        return c;
+      }
+
       // Gradiente nel piano tangente di una grandezza v (unità di v per km),
       // dalle derivate a schermo. Va chiamata in flusso di controllo uniforme.
       vec3 tangentGrad(float v, vec3 R) {
@@ -312,8 +376,8 @@ export function createTerrainMaterial(sunDir) {
         float p2 = p1 * 2.0;
         float a1 = clamp(foot / p1 * 1.2, 0.04, 0.40);
         float a2 = clamp(foot / p2 * 1.2, 0.04, 0.40);
-        float d1 = 1.0 - smoothstep(0.56 - a1, 0.56 + a1, fract(along / p1));
-        float d2 = 1.0 - smoothstep(0.56 - a2, 0.56 + a2, fract(along / p2));
+        float d1 = 1.0 - smoothstep(0.66 - a1, 0.66 + a1, fract(along / p1));
+        float d2 = 1.0 - smoothstep(0.66 - a2, 0.66 + a2, fract(along / p2));
         return mix(d1, d2, fr);
       }
 
@@ -688,29 +752,53 @@ export function createTerrainMaterial(sunDir) {
           // Le onde vere (pochi m/s) da 100 km di quota sembrano ferme: qui
           // ogni scala si muove con una velocità proporzionale alla propria
           // lunghezza d'onda, così l'acqua "vive" allo stesso modo a ogni
-          // zoom. Ogni scala compare solo quando è risolta (scaleW): onde
-          // lunghe da ~250 km di quota, creste da ~35 km, correnti dei fiumi
-          // da ~40 km. Laghi e fiumi sono più calmi del mare.
+          // zoom. Tre treni di creste (48 km, 4 km, 400 m) che si passano il
+          // testimone: ognuno compare quando è risolto e si spegne quando è
+          // così grande da diventare una fascia larga. Il più grande si vede già
+          // da ~3000 km di quota. In più, chiazze di onda lunga che scorrono.
+          // Velocità ~0.12-0.2 lunghezze d'onda al secondo: a 90 m/s le onde
+          // da 2 km, viste da 200 km, facevano mezzo pixel al secondo.
+          // Laghi e fiumi sono più calmi del mare.
           {
             vec3 E1 = normalize(cross(R, vec3(0.31, 0.95, 0.0)));
             vec3 E2 = normalize(cross(R, vec3(0.9, 0.1, 0.42)));
-            float calm = mix(1.0, 0.55, inland);
-            float wSw = scaleW(2.0, foot);
-            float wCr = scaleW(0.25, foot);
+            float calm = mix(1.0, 0.5, inland);
+            float notRiver = 1.0 - flowMask;
+            vec3 crestCol = vec3(0.82, 0.91, 0.93);
+            float wC0 = (1.0 - smoothstep(3.0, 7.0, foot)) * smoothstep(0.04, 0.3, foot);
+            float wC1 = (1.0 - smoothstep(0.14, 0.4, foot)) * smoothstep(0.004, 0.03, foot);
+            float wC2 = 1.0 - smoothstep(0.014, 0.04, foot);
+            float wSw = (1.0 - smoothstep(2.0, 6.0, foot)) * smoothstep(0.01, 0.06, foot);
+            float wCr = scaleW(0.25, foot); // correnti fini dei fiumi
             if (wSw > 0.0) {
-              // onde lunghe (~2 km): chiazze chiare e scure che scorrono
-              float sw = lnoise(pl + E1 * tw * 0.09, 0.5) * 0.6
-                       + lnoise(pl - E2 * tw * 0.07, 1.0) * 0.4;
-              wc *= 1.0 + (sw - 0.5) * 0.18 * wSw * calm;
+              // onde lunghe: chiazze chiare e scure che scorrono
+              float sw = lnoise(pl + E1 * tw * 1.2, 0.125) * 0.6
+                       + lnoise(pl - E2 * tw * 0.9, 0.25) * 0.4;
+              wc *= 1.0 + (sw - 0.5) * 0.2 * wSw * calm;
             }
-            if (wCr > 0.0) {
-              // creste (~250 m): linee chiare che avanzano e si spezzano
-              float m = lnoise(pl + E2 * tw * 0.012, 4.0);
-              float ph = fract(m * 4.0 - tw * 0.16);
-              float aw = clamp(fwidth(ph), 0.01, 0.2);
-              float crest = smoothstep(0.0, 0.05 + aw, ph) * (1.0 - smoothstep(0.08, 0.16 + aw, ph));
-              float brk = smoothstep(0.48, 0.70, lnoise(pl - E1 * tw * 0.01, 8.0));
-              wc = mix(wc, vec3(0.80, 0.90, 0.92), crest * brk * 0.34 * wCr * calm * (1.0 - flowMask));
+            if (wC0 > 0.0) {
+              float c = waveCrest(pl, R, 0, 0.015625, 0.35, 0.12, tw);
+              wc = mix(wc, crestCol, c * 0.5 * wC0 * calm * notRiver);
+            }
+            if (wC1 > 0.0) {
+              float c = waveCrest(pl, R, 1, 0.125, 1.0, 0.15, tw);
+              wc = mix(wc, crestCol, c * 0.32 * wC1 * calm * notRiver);
+            }
+            if (wC2 > 0.0) {
+              float c = waveCrest(pl, R, 2, 1.0, 1.0, 0.2, tw);
+              wc = mix(wc, crestCol, c * 0.34 * wC2 * calm * notRiver);
+            }
+            float wRv = scaleW(1.2, foot);
+            if (flowMask > 0.01 && wRv > 0.0) {
+              // correnti dei fiumi a ~500 m, visibili da più lontano
+              float T = 3.0;
+              float p1 = fract(tw / T);
+              float p2 = fract(tw / T + 0.5);
+              float a1 = lnoise(pl - flowDir * 0.45 * p1 * T, 2.0);
+              float a2 = lnoise(pl - flowDir * 0.45 * p2 * T + 3.7, 2.0);
+              float st = mix(a1, a2, abs(p1 * 2.0 - 1.0));
+              wc *= 1.0 + (st - 0.5) * 0.2 * flowMask * wRv;
+              wc = mix(wc, vec3(0.76, 0.86, 0.88), smoothstep(0.62, 0.84, st) * 0.3 * flowMask * wRv);
             }
             if (flowMask > 0.01 && wCr > 0.0) {
               // correnti dei fiumi (~250 m): flow map a due fasi sfalsate
@@ -768,7 +856,7 @@ export function createTerrainMaterial(sunDir) {
           int i2 = 0;
           if (uNatCandN > 1) {
             // solo le nazioni che possono comparire in questa tile
-            for (int j = 0; j < 8; j++) {
+            for (int j = 0; j < 24; j++) {
               if (j >= uNatCandN) break;
               int i = uNatCand[j];
               float d = dot(q, uNationSeeds[i]);
@@ -791,12 +879,18 @@ export function createTerrainMaterial(sunDir) {
           // larghezza in km di un pixel (limitata: all'orizzonte fwidth esplode
           // e la fascia diventerebbe una macchia larga)
           float bw = min(foot, 25.0);
-          float line = 1.0 - smoothstep(bw * 0.55, bw * 2.2, dKm);
-          if (line > 0.0) {
+          // Linea d'inchiostro scura larga ~1.7 px su un alone chiaro continuo
+          // di ~3 px: si legge sia sul bosco scuro sia sulla sabbia chiara, e
+          // anche dallo spazio (la vecchia linea grigia di 1 px spariva).
+          float core = 1.0 - smoothstep(bw * 0.85, bw * 1.7, dKm);
+          float halo = 1.0 - smoothstep(bw * 1.7, bw * 3.2, dKm);
+          if (halo > 0.0) {
+            float land = 1.0 - isWater;
             vec3 alongDir = normalize(cross(sd, R));
             float dash = dashPattern(dot(pl, alongDir), foot);
-            float a = line * dash * uBorderAlpha * (1.0 - isWater);
-            color = mix(color, vec3(0.50, 0.50, 0.48), clamp(a, 0.0, 0.85));
+            color = mix(color, vec3(0.93, 0.89, 0.80), halo * 0.38 * uBorderAlpha * land);
+            float a = core * mix(0.35, 1.0, dash) * uBorderAlpha * land;
+            color = mix(color, vec3(0.20, 0.17, 0.15), clamp(a, 0.0, 0.92));
           }
         }
 

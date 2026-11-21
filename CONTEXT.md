@@ -44,15 +44,16 @@ fantasy-medievale**: nomi, regni e insediamenti devono suonare come su una carta
 | R7 | Tasto **poco visibile "Salva"** che salva lo stato del pianeta | **fatto** |
 | R8 | Lo stato salvato viene **ricaricato automaticamente** al prossimo avvio | **fatto** (verificato) |
 | R9 | Repository GitHub con **commit + push dopo ogni prompt** | attivo |
-| R10 | Terraferma divisa in **nazioni** grandi con nomi inventati (medievali), nomi visibili avvicinandosi e confini a **linea tratteggiata grigia sottile** | **fatto** (31 nazioni) |
+| R10 | Terraferma divisa in **nazioni** con nomi inventati (medievali), nomi visibili avvicinandosi e confini **ben visibili** (inchiostro scuro tratteggiato su alone chiaro), regni **fitti** | **fatto** (79 regni) |
 | R11 | Texture **realistiche da vicino** (erba, acqua che scorre, sabbia, neve) e **transizioni morbide** tra biomi | **fatto** |
 | R12 | Navigazione: mouse = ruota, **Ctrl + mouse = traslazione rigida** (anche rotella premuta) | **fatto** |
 | R13 | Interfaccia (HUD, caricamento, messaggi) **in inglese** | **fatto** |
 | R14 | Scopo: mondo **fantasy-medievale** creato da zero (prima il pianeta, poi le creature, poi i villaggi) con **comportamenti propri** per ogni elemento | pianeta **fatto**; creature e villaggi da fare |
 | R15 | Nomi dei regni **di sapore medievale** (originali), con un rango (Impero, Regno, Ducato, Marca, Contea…) | **fatto** |
 | R16 | **Niente notte, per ora**: tutto il pianeta inquadrato è illuminato | **fatto** (sole che segue la camera) |
-| R17 | Acqua (mari, fiumi, laghi) con **animazioni semplici di movimento** visibili zoomando | **fatto** (da ~250 km di quota) |
+| R17 | Acqua (mari, fiumi, laghi) con **animazioni semplici di movimento** visibili zoomando, **già da lontano** | **fatto** (da ~3000 km di quota) |
 | R18 | Risoluzione **molto più alta**, soprattutto durante lo zoom, **senza perdere fluidità** | **fatto** (mai sotto la risoluzione nativa, frame 30-40% più leggero) |
+| R20 | **Zone vulcaniche** e **piccoli arcipelaghi** di isole sparsi per il pianeta | **fatto** (vedi §3.3) |
 | R19 | L'app si apre anche con **doppio clic su index.html** (senza server) | **fatto** (build IIFE in dist/, vedi §4) |
 
 ---
@@ -165,30 +166,40 @@ fantasy-medievale**: nomi, regni e insediamenti devono suonare come su una carta
   sole solo dove le onde sono risolte, schiuma sulla battigia che va e viene). Fiumi con la
   tecnica della *flow map*: direzione lungo il letto (perpendicolare al gradiente di
   `vWater`), verso in discesa, due fasi sfalsate che si ripartono a vicenda.
-- **Movimento dell'acqua a scala regionale** (R17, stile cartoon): le onde vere da 100 km
-  sembrano ferme, quindi ogni scala si muove con velocità **proporzionale alla sua lunghezza
-  d'onda** e compare solo quando è risolta (`scaleW`): onde lunghe di ~2 km che scorrono
-  (chiazze chiare/scure, da ~250 km di quota), creste di ~250 m come linee chiare che
-  avanzano e si spezzano (da ~35 km), correnti dei fiumi con flow map a ~250 m. Laghi e
-  fiumi più calmi del mare (`calm`).
+- **Movimento dell'acqua a ogni quota** (R17, stile illustrato): le onde vere da 100 km
+  sembrano ferme, quindi ogni scala si muove a **~0.12-0.2 lunghezze d'onda al secondo**
+  (a velocità reali, o anche a 90 m/s, le onde da 2 km viste da 200 km facevano mezzo pixel
+  al secondo). Tre treni di **creste d'onda** (`waveCrest`) di 48 km, 4 km e 400 m: fronti
+  paralleli alla direzione del vento (`WAVES` in `materials.js`), appena ondulati e spezzati
+  in tratti, che si passano il testimone con lo zoom. Il treno da 48 km si vede **già da
+  ~3000 km** di quota. In più chiazze d'onda lunga che scorrono e correnti dei fiumi (flow
+  map a ~500 m da ~120 km, a ~250 m da vicino). Laghi e fiumi più calmi del mare (`calm`).
+  Tre regole imparate a fatica:
+  - l'ondulazione dei fronti deve usare un rumore **più largo** della lunghezza d'onda e
+    un'ampiezza **sotto mezzo ciclo**, altrimenti i fronti si ripiegano in scarabocchi (le
+    isolinee di un rumore, provate prima, disegnavano anelli e "vermicelli");
+  - la fase all'origine del reticolo (`uWavePhase`) è calcolata sulla CPU in doppia
+    precisione (`updateNoiseFrame`), come per le increspature della sabbia;
+  - su una sfera i fronti paralleli a una direzione fissa diventano **cerchi concentrici**
+    attorno ai due punti dove quella direzione è verticale: lì lo shader sfuma su una
+    direzione alternativa perpendicolare (`uWaveDir[i + 3]`).
 - **Transizioni tra biomi**: colore e pesi `aSurf` sono la media della classificazione con
   il clima spostato (±2.5 °C, ±0.05 umidità, ±0.14 varietà, `SOFT_OFFSETS` in
   `planet.js`), e le soglie dello shader sono più larghe. Niente alberi su neve e roccia.
 - **Confini delle nazioni**: per pixel, distanza dal bisettore tra i due capoluoghi più
   vicini nello spazio deformato da `nationWarp` (GLSL generato dalle stesse costanti JS).
-  Sono una **sottile linea tratteggiata grigia** (`vec3(0.50, 0.50, 0.48)`), larga circa un
-  pixel e antialiasata su due (`smoothstep(bw·0.55, bw·2.2, dKm)`, con `bw = min(foot, 25)`):
-  si legge come confine senza diventare un tratto da pennarello. Tratteggio a lunghezza
-  costante sullo schermo (due periodi potenza di due mescolati con lo zoom), pieno ~0.56 del
-  periodo e vuoto più lungo, estremità sfumate su ~1.2 px. Il grigio neutro si stacca sia
-  dalla sabbia chiara sia dal bosco scuro. Solo sulla terraferma; l'opacità cala con la quota
-  (`uBorderAlpha = 0.82 → 0.16` fra 800 e 4200 km), così a scala regionale è ben visibile e
-  dallo spazio è appena un accenno.
+  Sono una **linea d'inchiostro scura** (`vec3(0.20, 0.17, 0.15)`) larga ~1.7 px su un
+  **alone chiaro continuo** di ~3 px (`bw = min(foot, 25)`): si legge sia sul bosco scuro sia
+  sulla sabbia chiara. La vecchia linea grigia di 1 px non si vedeva. Il tratto scuro è
+  tratteggiato (pieno ~0.66 del periodo, i vuoti restano al 35%), a lunghezza costante sullo
+  schermo. Solo sulla terraferma; opacità `uBorderAlpha = 0.95 → 0.60` fra 1500 e 9000 km:
+  i confini restano leggibili anche dallo spazio.
   **Candidate per tile**: il ciclo su tutti i capoluoghi costava fino a 8 ms a frame. Ora ogni
-  tile (livello ≥ 2) porta le nazioni che possono comparirvi (`Nations.candidatesForTile`:
-  griglia 9×9, margine conservativo, max 8) e lo shader confronta solo quelle (`uNatCand`,
-  caricate in `onBeforeRender` come `uMorph`). Una sola candidata = nessun confine nella
-  tile; troppe (tile enormi, dallo spazio) = ciclo completo.
+  tile (livello ≥ 1) porta le nazioni che possono comparirvi (`Nations.candidatesForTile`:
+  griglia 9×9, margine conservativo che include l'alone, max 24) e lo shader confronta solo
+  quelle (`uNatCand`, caricate in `onBeforeRender` come `uMorph`). Una sola candidata =
+  nessun confine nella tile; troppe = ciclo completo (con 79 regni non capita più dal
+  livello 3 in giù: al massimo 16 candidate).
 - **Risoluzione adattiva** in `main.js`: **mai sotto la risoluzione nativa del display**
   (`MIN_PIXEL_RATIO = devicePixelRatio`; prima era 1, e su uno schermo al 125% durante lo
   zoom scendeva all'80% della nativa: immagine sgranata), fino a 2× se la
@@ -251,6 +262,22 @@ comparivano come puntini bianchi **sopra** il pianeta.
 ### 3.3 Fedeltà geografica (R4 + R5)
 
 Generazione **procedurale deterministica** da un seed:
+
+- **Vulcani e arcipelaghi** (R20, `planet/features.js`): elementi puntuali trovati con una
+  griglia 3D di celle (hash intero per cella, centro spostato e proiettato sulla sfera,
+  finestra 2×2×2: il raggio deve restare ≤ 1/4 della cella). Centri e distanze usano la
+  direzione **non deformata**: con quella deformata dei continenti coni e isole uscivano
+  stirati tutti nella stessa direzione.
+  - **Vulcani**: in "province vulcaniche" (rumore a ~3000 km), celle di ~320 km, coni di
+    22-54 km di raggio, 1.8-4.4 km sopra il terreno (0.9-3.5 km sul livello del mare se in
+    mare: diventano isole vulcaniche). Fianchi concavi, cratere al 10% del raggio, metà
+    attivi con **lago di lava** (`BIOME.LAVA`); fianchi di basalto scuro
+    (`BIOME.VOLCANIC`, colore sfumato nel paesaggio). Niente laghi né fiumi sui coni.
+    ~0.26% della superficie.
+  - **Arcipelaghi**: solo in mare, in fasce dedicate; isole di 6-16 km (celle di ~130 km) e
+    isolotti di 2-4 km (celle di ~38 km), ciascuno con una piattaforma di acqua bassa di
+    due raggi. Le isole ricevono colline proprie (la terraferma le ha dai passi 5 e 5b).
+  - Costo di `Planet.sample()`: da 2.75 a 3.24 µs (+18%).
 
 - **Continenti**: tre scale di fBm su sfera (3D noise → niente distorsione ai poli) con
   pesi `0.35 / 0.65 / 0.2`, scale `0.6 / 1.9 / 4.5` (`CONTINENT_TUNING` in `planet.js`),
@@ -465,7 +492,8 @@ Limiti noti / prossimi passi tecnici:
   Edge headless con GPU reale, tempo di render sincrono): prima delle ottimizzazioni
   32 / 33 / 44 / 46 ms a 3000 km / 200 km / 8 km / 0.5 km; ora circa 22 / 19 / 26 / 33 ms
   (maglie 48 invece di 64, confini con nazioni candidate per tile, culling dell'orizzonte).
-  Il costo rimasto è soprattutto lo shader per pixel; la CPU pesa ~1.5 ms.
+  Il costo rimasto è soprattutto lo shader per pixel; la CPU pesa ~1.5 ms. Con onde a ogni
+  quota, vulcani e 79 regni: circa 28 / 21 / 29 / 36 ms (da lontano l'acqua costa ~4 ms in più).
 - **Alberi dipinti sul terreno**: da 25-100 m le chiome sono dischi piatti. In fase 2 vanno
   affiancate da alberi 3D istanziati vicino alla camera, posizionati con lo stesso hash
   di `canopy()` (stessi punti) e la stessa esagerazione del rilievo.

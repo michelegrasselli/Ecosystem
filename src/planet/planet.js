@@ -10,7 +10,8 @@ import {
   MAX_LAND_RISE,
   MAX_MOUNTAIN_HEIGHT
 } from './constants.js'
-import { BIOME, classifyLandBiome, classifySeaBiome, rgbFor } from './biomes.js'
+import { BIOME, classifyLandBiome, classifySeaBiome, rgbFor, SNOW_LINE_BASE, SNOW_LINE_LAT } from './biomes.js'
+import { nearestFeature, createFeatureSample } from './features.js'
 
 /**
  * Parametri del campo di continentalità. Valori pensati per ottenere qualche
@@ -34,6 +35,7 @@ export class Planet {
     this.continentThreshold =
       options.continentThreshold ?? CONTINENT_THRESHOLD
     this._out = createSample()
+    this._vf = createFeatureSample()
   }
 
   /** Crea un oggetto riutilizzabile per il campionamento. */
@@ -187,6 +189,83 @@ export class Planet {
       }
     }
 
+    // ---------- 5c. Vulcani ----------
+    // Coni isolati raccolti in "province vulcaniche" (circa un quinto del
+    // pianeta): sulla terraferma svettano sul paesaggio, in mare diventano
+    // isole vulcaniche. Fianchi concavi, cratere in cima; i vulcani attivi
+    // hanno un lago di lava. Vedi features.js per la ricerca a celle.
+    // Centri e distanze usano la direzione NON deformata (x, y, z): la
+    // deformazione dei continenti stira le forme fino a ~1.5x e coni e isole
+    // uscivano allungati tutti nella stessa direzione.
+    const vf = this._vf
+    vf.s = Infinity
+    let volc = 0
+    let lava = false
+    const vProv = smoothstep(0.1, 0.3, fbm(n, px * 2.1 + 91.3, py * 2.1 - 17.7, pz * 2.1 + 43.9, 2))
+    if (vProv > 0) {
+      nearestFeature(x, y, z, VOLC_CELL, this.seed ^ 0x5bd1e995, 0.6 * vProv, 0.0035, 0.0085, vf)
+      if (vf.s < 1.3) {
+        // contorno non perfettamente circolare
+        const sp = vf.s * (1 + 0.14 * nd.noise(px * 520 + 3.1, py * 520 - 7.4, pz * 520 + 1.6))
+        const H = (isSea ? 900 : 1800) + 2600 * ((vf.id * 13.7) % 1)
+        const peak = (isSea ? 0 : baseLevel) + H
+        if (sp < 1) {
+          const w = Math.pow(1 - sp, 1.7)
+          height = lerp(height, peak, w)
+          // cratere: conca di ~10% del raggio, profonda ~9% dell'altezza
+          if (sp < VOLC_CRATER) {
+            const c = sp / VOLC_CRATER
+            height -= H * 0.09 * (1 - c * c)
+            lava = (vf.id * 29.3) % 1 < 0.45 && sp < VOLC_CRATER * 0.75
+          }
+          // colate e calanchi sui fianchi
+          height += nd.noise(px * 3000 + 5.5, py * 3000 - 2.2, pz * 3000 + 8.1) * 45 * w
+          if (isSea && height > 0) baseLevel = 0
+        }
+        volc = 1 - smoothstep(0.5, 1.25, sp)
+      }
+    }
+
+    // ---------- 5d. Arcipelaghi ----------
+    // Solo in mare, in fasce dedicate: isole di 6-16 km circondate da una
+    // piattaforma di acqua bassa, più una manciata di isolotti di 2-4 km.
+    let islandLand = 0
+    if (isSea) {
+      const aProv = smoothstep(0.08, 0.26, fbm(n, px * 2.7 - 47.1, py * 2.7 + 8.2, pz * 2.7 + 61.5, 2))
+      if (aProv > 0) {
+        const edge = 1 + 0.3 * nd.noise(px * 900 - 1.7, py * 900 + 6.3, pz * 900 - 4.9)
+        const layers = ISLAND_LAYERS
+        for (let k = 0; k < layers.length; k++) {
+          const L = layers[k]
+          nearestFeature(x, y, z, L.cell, this.seed ^ L.salt, L.prob * aProv, L.rMin, L.rMax, vf)
+          if (vf.s >= 2) continue
+          const sp = vf.s * edge
+          // piattaforma: acqua bassa attorno all'isola
+          const shelf = 1 - smoothstep(0.9, 2.0, sp)
+          height = lerp(height, Math.max(height, -70), shelf)
+          if (sp < 1) {
+            const land = smoothstep(1.0, 0.8, sp)
+            const top = 12 + (L.hMin + L.hRange * ((vf.id * 5.1) % 1)) * Math.pow(1 - sp, 1.4)
+            height = Math.max(height, lerp(-40, top, land))
+            islandLand = Math.max(islandLand, land)
+          }
+        }
+      }
+    }
+
+    // un vulcano o un'isola possono aver fatto emergere il fondale
+    if (isSea && height > 0) {
+      isSea = false
+      baseLevel = 0
+      // colline sulle isole (la terraferma le ha dai passi 5 e 5b)
+      if (q > 0.5) {
+        const k = Math.max(islandLand, volc)
+        height += nd.noise(px * 1050 - 2.4, py * 1050 + 6.6, pz * 1050 - 9.2) * 40 * k
+        height += nd.noise(px * 3200 + 1.3, py * 3200 - 4.1, pz * 3200 + 7.7) * 18 * k
+        height = Math.max(height, 1)
+      }
+    }
+
     // ---------- 6. Clima ----------
     const tempBase = 27.8 - 56.0 * Math.pow(absLat / 90, 1.5)
     let temp = tempBase - Math.max(0, height) * 0.0063
@@ -226,7 +305,7 @@ export class Planet {
     let isRiver = false
     let biome = BIOME.GRASSLAND
 
-    if (!isSea && q > 0.3) {
+    if (!isSea && q > 0.3 && volc < 0.3) {
       const lakeNoise = fbm(nd, px * 5.6 - 71.2, py * 5.6 + 29.4, pz * 5.6 - 13.8, 2)
       const flatness = smoothstep(2400, 180, height)
       const lakeMask = smoothstep(0.36, 0.68, lakeNoise) * flatness
@@ -248,7 +327,7 @@ export class Planet {
     // ---------- 9. Fiumi ----------
     let valley = 0
     let riverAmount = 0
-    if (!isSea && !isLake && q > 0.42 && height > 4 && height < 3800) {
+    if (!isSea && !isLake && volc < 0.3 && q > 0.42 && height > 4 && height < 3800) {
       // Due reticoli fluviali sovrapposti: fiumi maggiori (letto ~3.2 km) e
       // affluenti più fitti (letto ~2 km). Per ciascuno conta la distanza
       // dall'isolinea in unità di larghezza del letto; vince la più vicina.
@@ -322,6 +401,18 @@ export class Planet {
         }
         out.mixCount = SOFT_OFFSETS.length + 1
       }
+      // vulcani: lava nel cratere degli attivi, fianchi di roccia scura
+      // (sopra la linea delle nevi resta la neve, la disegna lo shader)
+      if (ice <= 0.5) {
+        const snowLine = SNOW_LINE_BASE - absLat * SNOW_LINE_LAT
+        if (lava) {
+          biome = BIOME.LAVA
+          out.mixCount = 1
+        } else if (volc > 0.5 && height < snowLine) {
+          biome = BIOME.VOLCANIC
+          out.mixCount = 1
+        }
+      }
     }
     out.mix[0] = biome
 
@@ -349,6 +440,13 @@ export class Planet {
     let r = col[0]
     let g = col[1]
     let b = col[2]
+    // i fianchi del vulcano sfumano nel paesaggio attorno
+    if (!isSea && volc > 0 && biome !== BIOME.LAVA && biome !== BIOME.LAKE && biome !== BIOME.RIVER) {
+      const k = volc * volc * (3 - 2 * volc) * 0.85
+      r = lerp(r, VOLCANIC_RGB[0], k)
+      g = lerp(g, VOLCANIC_RGB[1], k)
+      b = lerp(b, VOLCANIC_RGB[2], k)
+    }
 
     // variazione di albedo: senza, il terreno sembra un tappeto di colore piatto.
     // Frequenza bassa (periodo ~600 km) di proposito: le maglie grosse (L2-L3,
@@ -360,7 +458,7 @@ export class Planet {
       r = lerp(col[0], 0.05, smoothstep(0, 1, clamp((-height - 2600) / 6000, 0, 1)))
       g = lerp(col[1], 0.11, smoothstep(0, 1, clamp((-height - 2600) / 6000, 0, 1)))
       b = lerp(col[2], 0.19, smoothstep(0, 1, clamp((-height - 2600) / 6000, 0, 1)))
-    } else if (!isSea && water === 0 && biome !== BIOME.LAKE && biome !== BIOME.BEACH) {
+    } else if (!isSea && water === 0 && biome !== BIOME.LAKE && biome !== BIOME.BEACH && biome !== BIOME.LAVA) {
       // gradienti continui dentro il bioma: più verde dove è umido, più
       // giallo-bruno dove è secco, più spento dove è freddo
       const wet = clamp(moist - 0.45, -0.45, 0.45)
@@ -426,6 +524,21 @@ export class Planet {
     return this.sample(cl * Math.cos(lo), Math.sin(la), -cl * Math.sin(lo), quality, out)
   }
 }
+
+/** Vulcani: celle di ~320 km, cratere al 10% del raggio. */
+const VOLC_CELL = 0.05
+const VOLC_CRATER = 0.1
+const VOLCANIC_RGB = rgbFor(BIOME.VOLCANIC)
+
+/**
+ * Strati di isole degli arcipelaghi: celle, probabilità, raggi (sfera unitaria:
+ * 0.001 = 6.4 km) e altezza della cima. Il raggio massimo resta sotto 1/8
+ * della cella, perché anche la piattaforma (2 raggi) stia nella finestra 2×2×2.
+ */
+const ISLAND_LAYERS = [
+  { cell: 0.02, salt: 0x27d4eb2f, prob: 0.8, rMin: 0.0009, rMax: 0.0025, hMin: 120, hRange: 900 },
+  { cell: 0.006, salt: 0x165667b1, prob: 0.5, rMin: 0.00025, rMax: 0.0007, hMin: 30, hRange: 220 }
+]
 
 /** Colore dell'acqua dei fiumi (condiviso con la palette dei biomi). */
 const RIVER_RGB = rgbFor(BIOME.RIVER)

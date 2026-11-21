@@ -46,11 +46,18 @@ avvio. Il salvataggio automatico della sola camera avviene anche alla chiusura d
 
 ## Nazioni
 
-La terraferma è divisa in 31 nazioni dai nomi inventati di sapore medievale (es. "Kingdom of Wendmere", "Duchy of Merrowdale"): il rango dipende dall'estensione del regno. Avvicinandosi
+La terraferma è divisa in 79 regni dai nomi inventati di sapore medievale (es. "Kingdom of Wendmere", "Duchy of Merrowdale"): il rango dipende dall'estensione del regno. Avvicinandosi
 (sotto i ~7000 km) compaiono i nomi, ancorati a punti fissi del territorio: restano fermi sul
-terreno anche durante zoom e spostamenti. I confini sono una sottile linea tratteggiata
-grigia, visibile a scala regionale e appena accennata dallo spazio. L'HUD indica la nazione
+terreno anche durante zoom e spostamenti. I confini sono una linea scura
+tratteggiata su un alone chiaro, leggibile da vicino e anche dallo spazio. L'HUD indica la nazione
 sotto la camera.
+
+## Vulcani e isole
+
+Nelle province vulcaniche svettano coni di basalto scuro; metà sono attivi e hanno un lago di
+lava nel cratere. In mare compaiono isole vulcaniche e arcipelaghi di isole e isolotti
+circondati da acqua bassa. Il mare è animato a ogni quota: creste d'onda parallele che
+scorrono, visibili già da ~3000 km.
 
 ## Lingua
 
