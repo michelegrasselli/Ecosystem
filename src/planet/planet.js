@@ -186,20 +186,27 @@ export class Planet {
         if (mtnMask > 0.001) {
           // coordinate deformate: crinali lunghi e sinuosi invece di bozze
           // tutte uguali a "cartone delle uova"
-          const wx = nd.noise(px * 38 + 1.1, py * 38 - 2.7, pz * 38 + 4.4) * 0.007
-          const wy = nd.noise(px * 38 - 5.3, py * 38 + 3.9, pz * 38 - 0.6) * 0.007
-          const wz = nd.noise(px * 38 + 7.6, py * 38 + 0.2, pz * 38 - 8.1) * 0.007
+          // Una vera catena: pochi massicci larghi (~130 km) che si dividono in
+          // creste via via più strette fino a ~4 km, con valli ampie e lisce in
+          // mezzo (multifrattale "ridged": i dettagli fini nascono solo sulle
+          // creste, non sui fondovalle). Prima le creste partivano da ~60 km e
+          // sopra c'era rumore isotropo: un tappeto di bozze tutte uguali.
+          const wx = nd.noise(px * 22 + 1.1, py * 22 - 2.7, pz * 22 + 4.4) * 0.012
+          const wy = nd.noise(px * 22 - 5.3, py * 22 + 3.9, pz * 22 - 0.6) * 0.012
+          const wz = nd.noise(px * 22 + 7.6, py * 22 + 0.2, pz * 22 - 8.1) * 0.012
           const crest = ridged(
             nd,
-            (px + wx) * 105 + 3.3,
-            (py + wy) * 105 - 7.1,
-            (pz + wz) * 105 + 1.9,
-            4
+            (px + wx) * 48 + 3.3,
+            (py + wy) * 48 - 7.1,
+            (pz + wz) * 48 + 1.9,
+            6
           )
-          height += (crest - 0.4) * 2400 * mtnMask
+          height += (crest - 0.36) * 3400 * mtnMask
         }
         // sulla costa il rilievo si spegne: niente pozze sotto il livello del mare
-        const rough = (0.3 + 0.7 * inland + mtn * 5) * smoothstep(0.0, 0.04, l)
+        // in montagna il rumore fine si spegne quasi del tutto: il dettaglio
+        // lo danno le creste (sopra); colline e dossi restano in pianura
+        const rough = ((0.3 + 0.7 * inland) * (1 - 0.75 * mtnMask) + 0.25 * mtnMask) * smoothstep(0.0, 0.04, l)
         // colline dolci (~6 km e ~2 km): il paesaggio visto da 1-5 km di quota
         height += nd.noise(px * 1050 - 2.4, py * 1050 + 6.6, pz * 1050 - 9.2) * 75 * rough
         height += nd.noise(px * 3200 + 1.3, py * 3200 - 4.1, pz * 3200 + 7.7) * 34 * rough
@@ -216,6 +223,9 @@ export class Planet {
     // (x, y, z), così i coni restano rotondi.
     let volc = 0
     let lava = false
+    // campo di lava attorno al vulcano (colate di basalto a lobi)
+    let lavaField = 0
+    let fieldHot = false
     {
       let best = Infinity
       let bv = null
@@ -226,7 +236,8 @@ export class Planet {
         const dy = y - v.y
         const dz = z - v.z
         const d2 = dx * dx + dy * dy + dz * dz
-        const lim = v.r * 1.3
+        // i campi di lava arrivano più lontano del cono
+        const lim = v.r * (1.3 + 1.5 * v.field)
         if (d2 < lim * lim) {
           const sv = Math.sqrt(d2) / v.r
           if (sv < best) {
@@ -240,6 +251,37 @@ export class Planet {
         const sp = best * (1 + 0.12 * nd.noise(px * 260 + 3.1, py * 260 - 7.4, pz * 260 + 1.6))
         const H = bv.H
         const peak = (isSea ? 0 : baseLevel) + H
+        // angolo attorno al centro (canaloni e lobi delle colate)
+        const ddx = x - bv.x
+        const ddy = y - bv.y
+        const ddz = z - bv.z
+        const ang = Math.atan2(
+          ddx * bv.e2[0] + ddy * bv.e2[1] + ddz * bv.e2[2],
+          ddx * bv.e1[0] + ddy * bv.e1[1] + ddz * bv.e1[2]
+        )
+        // Campo di lava: colate scure che scendono dal cono in pochi lobi
+        // lunghi (fino a ~2.5 raggi), con il bordo frastagliato. Sui vulcani
+        // attivi hanno crepe ancora incandescenti.
+        if (bv.field > 0 && !isSea) {
+          // lobi irregolari: rumore lungo l'angolo (periodico sul giro) che
+          // cambia anche con la distanza, così le colate serpeggiano invece di
+          // formare una stella regolare
+          const ca = Math.cos(ang) * 1.3
+          const sa = Math.sin(ang) * 1.3
+          const lobeN =
+            nd.noise(ca + bv.x * 40, sa + bv.y * 40, best * 0.55 + bv.z * 40) * 0.75 +
+            nd.noise(ca * 2.6 - bv.y * 30, sa * 2.6 + bv.z * 30, best * 1.4 - bv.x * 30) * 0.35
+          const lobe = smoothstep(-0.35, 0.65, lobeN)
+          const reach = 0.8 + 1.8 * bv.field * lobe
+          const edge = 1 + 0.16 * nd.noise(px * 900 - 3.3, py * 900 + 2.2, pz * 900 - 7.7)
+          lavaField =
+            (1 - smoothstep(reach - 0.35, reach + 0.05, best * edge)) * smoothstep(0.1, 0.3, best)
+          if (lavaField > 0) {
+            // colate fresche: un po' in rilievo, a lingue
+            height += 35 * lavaField + nd.noise(px * 6000 + 1.4, py * 6000 - 3.6, pz * 6000 + 2.5) * 12 * lavaField
+            fieldHot = bv.lava
+          }
+        }
         if (sp < 1) {
           // in mare il profilo è più pieno: l'isola emersa è larga
           const w = Math.pow(1 - sp, isSea ? 1.45 : 2.3)
@@ -253,13 +295,6 @@ export class Planet {
           // canaloni radiali sui fianchi: costole e solchi che scendono dal
           // cratere. Un cono liscio, con la luce alle spalle della camera,
           // sembrava un disco piatto; le costole lo rendono leggibile
-          const ddx = x - bv.x
-          const ddy = y - bv.y
-          const ddz = z - bv.z
-          const ang = Math.atan2(
-            ddx * bv.e2[0] + ddy * bv.e2[1] + ddz * bv.e2[2],
-            ddx * bv.e1[0] + ddy * bv.e1[1] + ddz * bv.e1[2]
-          )
           const wob = nd.noise(px * 140 + 2.7, py * 140 - 6.1, pz * 140 + 4.4) * 1.8
           const rib = Math.abs(Math.sin(ang * bv.ribs + wob))
           height += (rib - 0.6) * H * 0.07 * w * smoothstep(0.08, 0.3, sp)
@@ -353,7 +388,7 @@ export class Planet {
     let isRiver = false
     let biome = BIOME.GRASSLAND
 
-    if (!isSea && q > 0.3 && volc < 0.3) {
+    if (!isSea && q > 0.3 && Math.max(volc, lavaField) < 0.3) {
       const lakeNoise = fbm(nd, px * 5.6 - 71.2, py * 5.6 + 29.4, pz * 5.6 - 13.8, 2)
       const flatness = smoothstep(2400, 180, height)
       const lakeMask = smoothstep(0.36, 0.68, lakeNoise) * flatness
@@ -459,6 +494,9 @@ export class Planet {
         } else if (volc > 0.5 && height < snowLine) {
           biome = BIOME.VOLCANIC
           out.mixCount = 1
+        } else if (lavaField > 0.5 && height < snowLine && biome !== BIOME.RIVER) {
+          biome = BIOME.LAVA_FIELD
+          out.mixCount = 1
         }
       }
     }
@@ -494,6 +532,25 @@ export class Planet {
       r = lerp(r, VOLCANIC_RGB[0], k)
       g = lerp(g, VOLCANIC_RGB[1], k)
       b = lerp(b, VOLCANIC_RGB[2], k)
+    }
+    // campi di lava: basalto quasi nero; sui vulcani attivi crepe arancioni
+    if (!isSea && lavaField > 0 && biome !== BIOME.LAKE && biome !== BIOME.RIVER) {
+      // colate recenti quasi nere; quelle vecchie (vulcani dormienti) più
+      // chiare, grigio-brune, con chiazze di vegetazione che le ricolonizza
+      const old = fieldHot ? 0 : 1
+      const regrow = old * smoothstep(0.1, 0.6, nd.noise(px * 1400 + 4.4, py * 1400 - 8.1, pz * 1400 + 2.9))
+      const k = lavaField * lavaField * (3 - 2 * lavaField) * (fieldHot ? 0.92 : 0.72) * (1 - 0.6 * regrow)
+      const tone = 1 + 0.18 * nd.noise(px * 400 - 1.7, py * 400 + 5.2, pz * 400 - 9.3) + 0.35 * old
+      r = lerp(r, LAVA_FIELD_RGB[0] * tone * 1.08, k)
+      g = lerp(g, LAVA_FIELD_RGB[1] * tone, k)
+      b = lerp(b, LAVA_FIELD_RGB[2] * tone * 0.95, k)
+      if (fieldHot) {
+        const crack = 1 - Math.abs(nd.noise(px * 9000 - 2.1, py * 9000 + 6.7, pz * 9000 - 4.3))
+        const glow = smoothstep(0.9, 0.97, crack) * k
+        r = lerp(r, LAVA_RGB[0], glow)
+        g = lerp(g, LAVA_RGB[1], glow)
+        b = lerp(b, LAVA_RGB[2], glow)
+      }
     }
 
     // variazione di albedo: senza, il terreno sembra un tappeto di colore piatto.
@@ -574,13 +631,13 @@ export class Planet {
 }
 
 /** Vulcani: quanti, raggio del cono (sfera unitaria: 0.01 = 64 km, quindi 40-95 km), cratere. */
-const VOLC_LAND = 7
-const VOLC_SEA = 5
-const VOLC_R_MIN = 0.0065
+const VOLC_LAND = 18
+const VOLC_SEA = 12
+const VOLC_R_MIN = 0.0042
 const VOLC_R_MAX = 0.015
 const VOLC_CRATER = 0.08
-/** Distanza minima tra due vulcani (radianti, ~2200 km): restano isolati. */
-const VOLC_SEPARATION = 0.35
+/** Distanza minima tra due vulcani (radianti, ~1300 km): sparsi, mai a grappolo. */
+const VOLC_SEPARATION = 0.2
 
 /**
  * Sceglie i vulcani del pianeta: qualche cono sulla terraferma e qualche isola
@@ -629,6 +686,9 @@ function pickVolcanoes(planet) {
       e1,
       e2,
       ribs: 16 + Math.floor(rand() * 10),
+      // campo di lava: sempre attorno agli attivi (deciso sotto), metà dei
+      // dormienti ne ha uno più vecchio e corto
+      field: rand() < 0.5 ? 0.7 : 0,
       r: VOLC_R_MIN + (VOLC_R_MAX - VOLC_R_MIN) * u,
       // i coni più larghi sono anche più alti; le isole partono dal fondale
       H: isSea ? 2600 + 2400 * u : 3200 + 2800 * u,
@@ -640,12 +700,16 @@ function pickVolcanoes(planet) {
           SNOW_LINE_BASE - Math.abs(Math.asin(yy) * 57.2958) * SNOW_LINE_LAT - 300,
       sea: isSea
     })
+    const last = out[out.length - 1]
+    if (last.lava) last.field = 1
     if (isSea) sea++
     else land++
   }
   return out
 }
 const VOLCANIC_RGB = rgbFor(BIOME.VOLCANIC)
+const LAVA_FIELD_RGB = rgbFor(BIOME.LAVA_FIELD)
+const LAVA_RGB = rgbFor(BIOME.LAVA)
 
 /**
  * Strati di isole degli arcipelaghi: celle, probabilità, raggi (sfera unitaria:

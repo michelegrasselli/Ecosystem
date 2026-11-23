@@ -508,7 +508,7 @@ export function createTerrainMaterial(sunDir) {
           ripple = sin(dot(pl, uRippleDir) * 10471.98 + uRipplePhase + (n6 - 0.5) * 9.0 + (n5 - 0.5) * 6.0);
           sastr = sin(dot(pl, uRippleDir) * 2094.4 + uRipplePhase2 + (n6 - 0.5) * 5.0);
         }
-        float bumpAmt = grassMask * 1.0 + forest * 0.6 + sand * 0.5 + rock * 1.6 + snow * 0.45;
+        float bumpAmt = grassMask * 1.0 + forest * 0.6 + sand * 0.5 + rock * 0.8 + snow * 0.3;
         float hb = ((n6 - 0.5) * 0.0004 * wN1
                   + (n7 - 0.5) * 0.00008 * wN2
                   + (n8 - 0.5) * 0.00002 * wN3) * bumpAmt
@@ -684,7 +684,9 @@ export function createTerrainMaterial(sunDir) {
           vec3 rockA = vec3(0.47, 0.44, 0.40);
           vec3 rockB = vec3(0.58, 0.54, 0.48);
           vec3 rc = mix(rockA, rockB, smoothstep(-0.3, 0.3, strata) * scaleW(0.12, foot) + 0.5 * (1.0 - scaleW(0.12, foot)));
-          rc = mix(rc, vColor, 0.25);
+          // le rocce molto scure (basalto, colate) tengono il loro colore
+          float vLum = dot(vColor, vec3(0.2126, 0.7152, 0.0722));
+          rc = mix(rc, vColor, 0.25 + 0.65 * (1.0 - smoothstep(0.08, 0.25, vLum)));
           if (w03 > 0.0) {
             float crack = smoothstep(0.035, 0.0, abs(n4 - 0.5));
             rc *= 1.0 - crack * 0.14 * w03;

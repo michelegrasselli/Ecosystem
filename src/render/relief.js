@@ -32,5 +32,7 @@ export function reliefExaggeration(altKm) {
  */
 export function shadingExaggeration(altKm) {
   const t = smoothstep(Math.log(3), Math.log(3000), Math.log(clamp(altKm, 0.01, 1e6)))
-  return reliefExaggeration(altKm) * (1.35 + 0.85 * t)
+  // vicino al suolo poco più della geometria: un'ombreggiatura troppo
+  // esagerata trasforma ogni piccola gobba in un cratere
+  return reliefExaggeration(altKm) * (1.12 + 1.08 * t)
 }

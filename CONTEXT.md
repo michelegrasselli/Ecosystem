@@ -53,7 +53,7 @@ fantasy-medievale**: nomi, regni e insediamenti devono suonare come su una carta
 | R16 | **Niente notte, per ora**: tutto il pianeta inquadrato è illuminato | **fatto** (sole che segue la camera) |
 | R17 | Acqua (mari, fiumi, laghi) con **animazioni semplici di movimento** visibili zoomando, **già da lontano** | **fatto** (da ~3000 km di quota) |
 | R18 | Risoluzione **molto più alta**, soprattutto durante lo zoom, **senza perdere fluidità** | **fatto** (mai sotto la risoluzione nativa, frame 30-40% più leggero) |
-| R20 | **Pochi vulcani grandi** (anche isolati o su un'isola) e **piccoli arcipelaghi** di isole | **fatto** (vedi §3.3) |
+| R20 | **Vulcani sparsi per il mondo** (grandi e piccoli, anche isolati o su un'isola) con **campi di lava**, e **piccoli arcipelaghi** di isole | **fatto** (vedi §3.3) |
 | R19 | L'app si apre anche con **doppio clic su index.html** (senza server) | **fatto** (build IIFE in dist/, vedi §4) |
 
 ---
@@ -278,18 +278,23 @@ comparivano come puntini bianchi **sopra** il pianeta.
 
 Generazione **procedurale deterministica** da un seed:
 
-- **Vulcani** (R20, `pickVolcanoes` in `planet.js`): **pochi e grandi**, non più "province
-  vulcaniche" piene di coni piccoli. Una lista fissa scelta dal seed: **7 sulla terraferma e
-  5 isole vulcaniche in mare aperto** (fondale sotto i 1500 m), a distanza minima di ~2200 km
-  l'uno dall'altro, entro ~60° di latitudine. Coni di **40-95 km** di raggio, 3.2-6 km sopra
-  il terreno (isole: 2.6-5 km sul livello del mare, profilo più pieno così la parte emersa è
-  larga). Fianchi concavi, **costole e canaloni radiali** (un cono liscio, con la luce alle
-  spalle della camera, sembrava un disco piatto), cratere all'8% del raggio. Hanno un
-  **lago di lava** solo i vulcani la cui cima resta sotto la linea delle nevi (gli altri sono
-  giganti innevati dormienti): con il seed di default 2 attivi, un'isola e uno sulla
-  terraferma. Basalto scuro (`BIOME.VOLCANIC`) solo sul cono alto; i fianchi bassi restano
-  del paesaggio attorno. Centri e distanze sulla direzione **non deformata**, così i coni
-  restano rotondi. Costo: 12 confronti per campione.
+- **Vulcani** (R20, `pickVolcanoes` in `planet.js`): una lista fissa scelta dal seed di
+  **30 vulcani sparsi** (18 sulla terraferma, 12 isole vulcaniche in mare aperto con fondale
+  sotto i 1500 m), a distanza minima di ~1300 km, entro ~60° di latitudine. Né le vecchie
+  "province vulcaniche" piene di coni piccoli, né i soli 12 giganti della versione
+  precedente. Coni di **27-95 km** di raggio, 3.2-6 km sopra il terreno (isole: 2.6-5 km sul
+  livello del mare, profilo più pieno così la parte emersa è larga). Fianchi concavi,
+  **costole e canaloni radiali**, cratere all'8% del raggio. Hanno un **lago di lava** solo
+  quelli con la cima sotto la linea delle nevi (gli altri sono giganti innevati dormienti):
+  con il seed di default 5 attivi. Basalto scuro (`BIOME.VOLCANIC`) solo sul cono alto.
+  Centri e distanze sulla direzione **non deformata**, così i coni restano rotondi.
+- **Campi di lava** (`BIOME.LAVA_FIELD`): attorno a tutti i vulcani attivi e a metà dei
+  dormienti, colate che scendono dal cono fino a ~2.6 raggi. I lobi sono irregolari: rumore
+  lungo l'angolo (periodico sul giro) che cambia anche con la distanza, così le colate
+  serpeggiano invece di formare una stella. Recenti (vulcani attivi): basalto quasi nero con
+  **crepe incandescenti**. Vecchie (dormienti): grigio-brune, con chiazze di vegetazione che
+  le ricolonizza. Niente laghi sulle colate; i fiumi possono attraversarle. Nello shader le
+  rocce molto scure tengono il proprio colore invece di diventare grigio roccia.
 - **Arcipelaghi** (`planet/features.js`): elementi puntuali trovati con una griglia 3D di
   celle (hash intero per cella, centro spostato e proiettato sulla sfera, finestra 2×2×2: il
   raggio deve restare ≤ 1/4 della cella), sulla direzione non deformata.
@@ -306,7 +311,13 @@ Generazione **procedurale deterministica** da un seed:
   warp più forte (0.3) le coste diventavano "pennellate" stirate.
 - **Catene montuose**: *ridged multifractal* mascherato da un campo di "orogenesi" esteso
   (anche vicino alle coste), più un secondo sistema di sierre minori (ridged a scala ~700
-  km), creste secondarie deformate e valli. Linea delle nevi `4500 - 30·|lat|` m
+  km). Dentro le catene, **massicci e valli come in una catena vera**: ridged a 6 ottave
+  con coordinate deformate, da massicci di ~130 km a creste di ~4 km, ampiezza 3.4 km; i
+  dettagli fini nascono solo sulle creste e i fondovalle restano ampi e lisci. In montagna il
+  rumore isotropo fine (2 km, 400 m, 80 m) è quasi spento: prima era moltiplicato per 5 e
+  insieme a creste che partivano da ~60 km dava "un tappeto di bozze tutte uguali".
+  Vicino al suolo anche l'ombreggiatura è meno esagerata (`shadingExaggeration`: 1.12× la
+  geometria invece di 1.35×) e il micro-rilievo della roccia nello shader è dimezzato. Linea delle nevi `4500 - 30·|lat|` m
   (`SNOW_LINE_BASE/LAT` in `biomes.js`, ripetuta nello shader).
 - **Oceani**: quota 0 = livello del mare, profondità fino a ~-6700 m. Il fondale ha un
   rilievo proprio lontano dalle coste: **dorsali oceaniche** (ridged, creste che salgono di
