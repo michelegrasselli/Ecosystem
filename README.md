@@ -34,6 +34,16 @@ Senza server: dopo `npm run build` basta un doppio clic su `index.html` (o su
 quindi parte anche da `file://`. Il doppio clic apre l'ultima build: dopo aver
 modificato il codice va rilanciato `npm run build`.
 
+## Girare un episodio
+
+Il pulsante 🎬 apre il pannello di regia:
+
+1. scegli un episodio (le sceneggiature sono in `episodes/`) o modifica il JSON;
+2. **Preview** lo fa girare in tempo reale nella cornice verticale 9:16;
+3. **Render video** lo gira fotogramma per fotogramma a 1080×1920 e crea un MP4 (H.264)
+   direttamente nel browser. Con `npm run dev` il file viene salvato in `videos/`,
+   altrimenti viene scaricato.
+
 ## Comandi di navigazione
 
 | Azione | Comando |

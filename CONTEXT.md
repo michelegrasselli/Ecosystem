@@ -415,6 +415,43 @@ Generazione **procedurale deterministica** da un seed:
   (seed deterministico) e ripristina la camera.
 - Autosalvataggio leggero della camera (posizione di navigazione) su `beforeunload`.
 
+### 3.10 Regia: girare gli episodi (`src/director/`)
+
+Strumento di produzione dei video della serie (§1.1). Tutto nel browser, niente ffmpeg.
+
+- **Sceneggiatura** (`episodes/*.json`, inclusi nel bundle e scelti dal pannello):
+  `shots` (punti chiave della camera: `at` in secondi, `lat`, `lon`, `alt` in km dal
+  suolo, `pitch` 90 = zenit, `heading` 0 = nord, `cut: true` per uno stacco), `titles`
+  (`from`, `to`, `text`, `sub`, `pos` top/center/bottom, `size`), `labels` (nomi dei
+  regni: `true`, `false` o un intervallo `{ from, to }` con dissolvenza), `fade` (in/out dal nero), `fps`, `width`, `height` (default 1080×1920, 9:16),
+  `fov`, `duration`.
+- **Movimento** (`timeline.js`): ogni canale (posizione sulla sfera come versore, quota in
+  scala logaritmica, inclinazione, orientamento "srotolato") è interpolato con una cubica
+  monotona PCHIP: velocità continua, niente oscillazioni oltre i punti chiave, partenza e
+  arrivo da fermo.
+- **Sovrimpressione** (`overlay.js`): titoli in Cinzel e sottotitoli in Cormorant Garamond
+  (Google Fonts, con ripiego su Georgia), dissolvenze, vignettatura, nomi dei regni,
+  dissolvenze dal/al nero. Identica in anteprima e nel video.
+- **Anteprima**: la sceneggiatura gira in tempo reale in una cornice 9:16 al centro dello
+  schermo (il resto è nero), con i titoli; `Esc` o *Stop* per uscire.
+- **Ripresa** (`director.render`): fotogramma per fotogramma con un **orologio virtuale**
+  (acqua, lava e morph delle tile seguono il tempo del video). Per ogni fotogramma si aspetta
+  che tutte le tile necessarie siano pronte (max 12 s), poi l'immagine 3D viene composta con
+  la sovrimpressione su un canvas 2D e codificata. Il risultato non dipende dalla velocità
+  del computer ed è ripetibile. Il ciclo principale cede il controllo al regista
+  (`step(dt, now, opts)` accetta `drive`, `viewportHeight`, `labelW/H`, `offline`,
+  `clock`); per cedere il controllo al browser si usa `MessageChannel` (i timer sono
+  rallentati a pagina nascosta).
+- **Codifica** (`recorder.js`): WebCodecs `VideoEncoder` (H.264 High 4.2, ripiego VP9),
+  16 Mbit/s, fotogramma chiave ogni 2 s, impacchettato in MP4 "fast start" da `mp4-muxer`.
+- **Salvataggio**: con il server di sviluppo il video va in `videos/` del progetto (plugin
+  `directorSave` in `vite.config.js`, POST `/__director/save`); nella build statica si
+  scarica dal browser. `videos/` è escluso da git (file pesanti).
+- Prova: 90 fotogrammi 1080×1920 in ~17 s su GPU integrata (senza tile nuove da generare).
+- **Attenzione al morph**: con l'orologio virtuale una tile può risultare "nata nel futuro"
+  (nata in tempo reale, ripresa che riparte da 0): in quel caso è considerata già formata,
+  altrimenti il morph andava fuori scala e i vertici schizzavano via in lunghe schegge.
+
 ---
 
 ## 4. Stack tecnico
@@ -427,6 +464,7 @@ Generazione **procedurale deterministica** da un seed:
 | Geometria | procedurale, **cubo-sfera quadtree** | LOD corretto su tutta la sfera |
 | Noise | **simplex 3D + fBm propri** | deterministico dal seed, nessuna dipendenza |
 | Persistenza | `localStorage` | sufficiente, sincrono, nessun server |
+| Video | **WebCodecs + mp4-muxer** | MP4 generato nel browser, niente ffmpeg da installare |
 
 Nessun backend. L'applicazione è **statica** e può essere pubblicata su GitHub Pages.
 
@@ -446,6 +484,8 @@ l'ultima build: dopo ogni modifica va rilanciato `npm run build`.
 /
 ├── CONTEXT.md                 questo file
 ├── contesto/                  ispirazione dell'utente (immagini, documenti): da guardare sempre
+├── episodes/                  sceneggiature degli episodi (JSON)
+├── videos/                    video girati (non in git)
 ├── README.md                  descrizione + istruzioni
 ├── index.html
 ├── vite.config.js
@@ -469,6 +509,7 @@ l'ultima build: dopo ogni modifica va rilanciato `npm run build`.
 │   │   ├── materials.js       shader toon del terreno/acqua
 │   │   ├── atmosphere.js      alone atmosferico
 │   │   └── sky.js             sfondo + stelle
+│   ├── director/              regia: sceneggiatura, anteprima, ripresa MP4
 │   ├── camera/
 │   │   └── globeControls.js   navigazione stile Google Earth
 │   ├── state/

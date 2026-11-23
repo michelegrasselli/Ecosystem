@@ -17,6 +17,8 @@ import { createAtmosphere } from './render/atmosphere.js'
 import { GlobeControls } from './camera/globeControls.js'
 import { createHud } from './ui/hud.js'
 import { loadState, saveState, defaultState } from './state/saveSystem.js'
+import { createDirector } from './director/director.js'
+import { createDirectorPanel } from './director/panel.js'
 
 THREE.ColorManagement.enabled = false
 
@@ -214,8 +216,28 @@ const groundSample = Planet.createSample()
 let last = performance.now()
 let frameCount = 0
 
-/** Un passo della simulazione (senza richiesta del frame successivo). */
-function step(dt, now) {
+/**
+ * Un passo della simulazione (senza richiesta del frame successivo).
+ * @param {object} [opts] usato dal regista (director/director.js):
+ *   drive: { lat, lon, alt, pitch, heading } camera imposta dalla sceneggiatura
+ *   viewportHeight / labelW / labelH: dimensioni dell'inquadratura (px)
+ *   offline: ripresa fotogramma per fotogramma (niente risoluzione adattiva)
+ *   clock: orologio virtuale in ms per l'animazione delle tile
+ */
+function step(dt, now, opts = {}) {
+  if (opts.drive) {
+    // la camera la decide la sceneggiatura: stato e bersagli coincidono,
+    // quindi lo smorzamento dei controlli non aggiunge ritardi
+    const d = opts.drive
+    controls._fly = null
+    controls.autoPitch = false
+    controls.lat = controls.tLat = d.lat
+    controls.lon = controls.tLon = d.lon
+    controls.altitude = controls.tAltitude = d.alt
+    controls.pitch = controls.tPitch = d.pitch
+    controls.heading = controls.tHeading = d.heading
+  }
+  lod.clock = opts.clock ?? null
   // quota del terreno sotto la camera (con la stessa esagerazione dello shader)
   const exag = reliefExaggeration(controls.altitude)
   const gs = planet.sampleLatLon(controls.lat, controls.lon, 1, groundSample)
@@ -228,7 +250,7 @@ function step(dt, now) {
   updateSun()
 
   const altitudeKm = controls.altitude
-  const viewportPx = window.innerHeight
+  const viewportPx = opts.viewportHeight ?? window.innerHeight
 
   // budget di costruzione: generoso durante il caricamento, poi contenuto
   lod.buildBudgetMs = ready ? 6.5 : 46 // usato solo senza Web Worker
@@ -259,7 +281,7 @@ function step(dt, now) {
   terrainMaterial.uniforms.uHazeDensity.value = 1 / (altitudeKm * 14 + 160)
 
   sky.update(camera, altitudeKm, Math.max(altitudeKm, 60))
-  nationLabels.update(camera, altitudeKm, window.innerWidth, window.innerHeight, dt)
+  nationLabels.update(camera, altitudeKm, opts.labelW ?? window.innerWidth, opts.labelH ?? window.innerHeight, dt)
   atmosphere.update(altitudeKm)
 
   hud.update(
@@ -273,7 +295,7 @@ function step(dt, now) {
 
   // risoluzione adattiva PRIMA del render: ridimensionare il drawing buffer
   // dopo aver disegnato mostra un frame con lo sfondo (lampo nero)
-  adaptResolution(dt)
+  if (!opts.offline && !opts.drive) adaptResolution(dt)
 
   renderer.render(scene, camera)
 }
@@ -282,7 +304,10 @@ function frame(now) {
   const dt = Math.min((now - last) / 1000, 0.1)
   last = now
 
-  step(dt, now)
+  // il regista, quando è attivo, guida la scena (anteprima) o la gira
+  // fotogramma per fotogramma per conto suo (ripresa)
+  if (director.mode === 'preview') director.tick(dt, now)
+  else if (director.mode !== 'render') step(dt, now)
 
   frameCount++
   if (!ready && frameCount > 1 && lod.stats.queued === 0 && lod.stats.inFlight === 0 && lod.stats.visible > 0) {
@@ -291,6 +316,19 @@ function frame(now) {
 
   requestAnimationFrame(frame)
 }
+
+// ------------------------------------------------------------- regia
+// Modalità regia: sceneggiature (episodes/*.json), anteprima 9:16 e ripresa
+// in MP4 fotogramma per fotogramma. Vedi director/.
+const director = createDirector({
+  renderer,
+  camera,
+  lod,
+  nationLabels,
+  resize,
+  stepScene: step
+})
+const directorPanel = createDirectorPanel(director)
 
 requestAnimationFrame(frame)
 
@@ -306,6 +344,8 @@ window.__planet = {
   scene,
   camera,
   renderer,
+  director,
+  directorPanel,
   step(frames = 1, dt = 1 / 60) {
     for (let i = 0; i < frames; i++) {
       const now = performance.now()

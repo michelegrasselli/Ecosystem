@@ -250,3 +250,135 @@ body {
     0 1px 2px rgba(20, 16, 12, 0.9);
   will-change: transform, opacity;
 }
+
+/* ----------------------------------------------------------------- regia */
+
+/* cornice dell'anteprima: fuori dal formato del video tutto è nero */
+.director-frame {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 0;
+  pointer-events: none;
+}
+body.director-on #scene {
+  z-index: 1;
+}
+.director-overlay {
+  position: fixed;
+  z-index: 2;
+  pointer-events: none;
+}
+body.director-on .nation-labels,
+body.director-busy .nation-labels {
+  visibility: hidden;
+}
+body.director-on #hud-readout {
+  display: none;
+}
+
+.director-panel {
+  position: fixed;
+  top: 16px;
+  right: 60px;
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--edge);
+  background: rgba(10, 14, 18, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--ink);
+  font-size: 12px;
+  z-index: 20;
+}
+.director-panel.open {
+  display: flex;
+}
+.dp-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.dp-title {
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--accent);
+}
+.dp-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 18px;
+  cursor: pointer;
+}
+.dp-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+}
+.dp-row select {
+  flex: 1;
+}
+.director-panel select,
+.director-panel textarea,
+.director-panel button {
+  font: inherit;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+}
+.dp-script {
+  height: 260px;
+  min-height: 120px;
+  resize: vertical;
+  padding: 6px;
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: pre;
+  user-select: text;
+}
+.dp-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dp-buttons button {
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.dp-buttons button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.dp-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.dp-fill {
+  width: 0;
+  height: 100%;
+  background: var(--accent);
+}
+.dp-status {
+  color: var(--muted);
+  min-height: 1.2em;
+  user-select: text;
+}
+.dp-thumb {
+  align-self: center;
+  border-radius: 4px;
+  background: #000;
+}

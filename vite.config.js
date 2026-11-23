@@ -20,9 +20,45 @@ function fileProtocolHtml() {
   }
 }
 
+// Regia: con il server di sviluppo i video girati vengono salvati
+// direttamente in videos/ del progetto (POST /__director/save?name=...).
+// Nella build statica non c'è: il video si scarica dal browser.
+function directorSave() {
+  return {
+    name: 'director-save',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use('/__director/save', async (req, res) => {
+        if (req.method !== 'POST') {
+          res.statusCode = 405
+          res.end()
+          return
+        }
+        try {
+          const { mkdirSync, writeFileSync } = await import('node:fs')
+          const { join, resolve } = await import('node:path')
+          const url = new URL(req.url, 'http://localhost')
+          const raw = url.searchParams.get('name') || 'episode.mp4'
+          const name = raw.replace(/[^\w.-]/g, '_').replace(/^\.+/, '') || 'episode.mp4'
+          const dir = resolve(server.config.root, 'videos')
+          mkdirSync(dir, { recursive: true })
+          const chunks = []
+          for await (const c of req) chunks.push(c)
+          const file = join(dir, name)
+          writeFileSync(file, Buffer.concat(chunks))
+          res.end(file)
+        } catch (e) {
+          res.statusCode = 500
+          res.end(String(e))
+        }
+      })
+    }
+  }
+}
+
 export default defineConfig({
   base: './',
-  plugins: [fileProtocolHtml()],
+  plugins: [fileProtocolHtml(), directorSave()],
   server: {
     port: 5173,
     open: false

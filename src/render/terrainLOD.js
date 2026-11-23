@@ -140,7 +140,8 @@ export class TerrainLOD {
     this.frame++
     this.needed.length = 0
     this.prefetch.length = 0
-    this._now = performance.now()
+    // orologio virtuale del regista (ripresa) o tempo reale
+    this._now = this.clock ?? performance.now()
 
     this._projScreen.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
     this._frustum.setFromProjectionMatrix(this._projScreen)
@@ -172,7 +173,11 @@ export class TerrainLOD {
       // precaricata può essere pronta da tempo)
       const ud = n.mesh.userData
       if (ud.born === undefined) ud.born = n.level === 0 ? -1e9 : this._now
-      const mt = Math.min((this._now - ud.born) / MORPH_MS, 1)
+      // Orologio "precedente" alla nascita (la ripresa del regista riparte da
+      // 0 con tile nate in tempo reale, o viceversa): tile già formata. Senza
+      // questo controllo il morph andava fuori scala e i vertici schizzavano
+      // via in lunghe schegge.
+      const mt = this._now < ud.born ? 1 : Math.min((this._now - ud.born) / MORPH_MS, 1)
       // smootherstep: derivate prima e seconda nulle agli estremi, il passaggio
       // dalla forma del padre a quella propria non ha né partenza né arrivo netti
       ud.morph = mt * mt * mt * (mt * (mt * 6 - 15) + 10)

@@ -61,6 +61,7 @@ export function createNationLabels(nations, planet, container) {
     return {
       n,
       el,
+      size,
       center: [c[0], c[1], c[2]],
       // punto del terreno a cui è appoggiato il nome (versore) e bersaglio
       p: [c[0], c[1], c[2]],
@@ -337,7 +338,8 @@ export function createNationLabels(nations, planet, container) {
         p: it.p.slice(),
         hits: hits[it.n.id],
         target: it.target,
-        alpha: it.alpha
+        alpha: it.alpha,
+        size: it.size
       }))
   }
 }
