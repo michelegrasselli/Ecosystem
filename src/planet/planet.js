@@ -117,6 +117,22 @@ export class Planet {
       height = -Math.pow(t, 0.82) * MAX_OCEAN_DEPTH
       // piattaforme continentali: acque basse vicino alle coste
       height *= lerp(0.55, 1, smoothstep(0.0, 0.16, t))
+
+      // Rilievo del fondale: senza, l'oceano era una conca liscia e da sopra
+      // non si capiva dove fosse profondo. Lontano dalle coste: dorsali
+      // oceaniche (creste lunghe che salgono di ~2 km), fosse più profonde ai
+      // piedi delle scarpate e colline abissali. Il fondale non emerge mai.
+      if (q > 0.2) {
+        const open = smoothstep(0.04, 0.3, t)
+        const mor = ridged(n, px * 1.7 + 13.3, py * 1.7 - 5.1, pz * 1.7 + 27.9, 4)
+        height += (mor - 0.42) * 2800 * open
+        // fossa: stretta fascia profonda dove la scarpata incontra l'abisso
+        const trench = Math.exp(-Math.pow((t - 0.17) / 0.035, 2))
+        const trenchMask = smoothstep(0.1, 0.4, fbm(n, px * 2.3 - 8.8, py * 2.3 + 3.1, pz * 2.3 - 6.6, 2))
+        height -= trench * trenchMask * 2600
+        height += fbm(nd, px * 16 + 2.2, py * 16 - 7.5, pz * 16 + 1.1, 2) * 420 * open
+        if (open > 0) height = Math.min(height, -60)
+      }
     } else {
       const l = clamp((cont - threshold) / (1 - threshold), 0, 1)
       height = Math.pow(l, 1.3) * MAX_LAND_RISE

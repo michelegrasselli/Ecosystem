@@ -579,6 +579,8 @@ export function createTerrainMaterial(sunDir) {
           }
         }
         vec3 Nw = normalize(R - tangentGrad(hw + hwFar, R) * 1.4);
+        // pendenza del fondale marino (m per km), per ombreggiarlo sotto l'acqua
+        vec3 gSea = tangentGrad(vHeight, R);
 
         vec3 base = vColor;
 
@@ -712,9 +714,17 @@ export function createTerrainMaterial(sunDir) {
 
         // tinta altimetrica: le quote alte schiariscono e raffreddano, le valli
         // restano più sature. Aiuta a leggere il rilievo anche dall'alto.
-        float hT = smoothstep(200.0, 4200.0, vHeight);
-        base = mix(base, base * vec3(1.08, 1.06, 1.10) + 0.025, hT * 0.55 * (1.0 - snow));
-        base *= mix(0.94, 1.0, smoothstep(0.0, 400.0, vHeight));
+        // Pianure e coste: colore pieno, un po' più scuro e saturo. Alture: via
+        // via più chiare e meno sature, verso un grigio-bruno caldo. Così la
+        // quota si legge dal colore a ogni zoom, anche dove la luce è piatta.
+        float hLow = 1.0 - smoothstep(0.0, 380.0, vHeight);
+        float hMid = smoothstep(300.0, 2300.0, vHeight);
+        float hHigh = smoothstep(1800.0, 5200.0, vHeight);
+        float lumB = dot(base, vec3(0.2126, 0.7152, 0.0722));
+        float noSnow = 1.0 - snow;
+        base = mix(base, (base - lumB) * 1.28 + lumB * 0.9, hLow * 0.65 * noSnow);
+        vec3 highTone = mix(vec3(lumB), base, 0.55) * 1.13 + vec3(0.035, 0.03, 0.02);
+        base = mix(base, highTone, (hMid * 0.42 + hHigh * 0.38) * noSnow);
 
         // ============================================================ LUCE
         float sunUp = dot(R, uSunDir);
@@ -739,21 +749,44 @@ export function createTerrainMaterial(sunDir) {
         vec3 shadowTint = vec3(0.50, 0.55, 0.70);
         vec3 lightCol = mix(shadowTint, vec3(1.04, 1.01, 0.96), light);
         lightCol *= mix(0.32, 1.0, day);
+        lightCol *= mix(0.87, 1.08, smoothstep(-50.0, 4800.0, vHeight));
 
         float ao = 1.0 - slope * 0.22;
 
         vec3 color = base * lightCol * ao;
+        // prospettiva aerea in base alla quota: viste da lontano, pianure e
+        // fondovalle restano dietro un velo d'aria, le cime ne escono nitide
+        float lowHaze = (1.0 - smoothstep(0.0, 1400.0, vHeight)) * smoothstep(30.0, 900.0, dist) * 0.12;
+        color = mix(color, uHazeColor * 0.92, lowHaze * (1.0 - isWater));
         color += vec3(1.0, 0.98, 0.94) * glint * 0.6 * day * lit;
 
         // ============================================================ ACQUA
         if (isWater > 0.001) {
           float depth = max(-vHeight, 0.0);
-          vec3 deep = vec3(0.08, 0.22, 0.35);
-          vec3 mid = vec3(0.15, 0.38, 0.50);
-          vec3 shallow = vec3(0.25, 0.53, 0.57);
-          vec3 wc = mix(shallow, mid, smoothstep(0.0, 110.0, depth));
-          wc = mix(wc, deep, smoothstep(150.0, 3500.0, depth));
+          // Scala di profondità: lagune turchesi, piattaforma verde-azzurra,
+          // scarpata blu, abisso blu notte e fosse quasi nere. Il contrasto
+          // fa leggere a colpo d'occhio dove il mare è profondo.
+          vec3 c0 = vec3(0.30, 0.66, 0.66);   // 0-20 m
+          vec3 c1 = vec3(0.17, 0.47, 0.57);   // piattaforma, ~150 m
+          vec3 c2 = vec3(0.075, 0.27, 0.45);  // scarpata, ~1500 m
+          vec3 c3 = vec3(0.035, 0.125, 0.28); // abisso, ~4000 m
+          vec3 c4 = vec3(0.018, 0.06, 0.17);  // fosse, oltre 6000 m
+          vec3 wc = mix(c0, c1, smoothstep(0.0, 150.0, depth));
+          wc = mix(wc, c2, smoothstep(150.0, 1800.0, depth));
+          wc = mix(wc, c3, smoothstep(1500.0, 4200.0, depth));
+          wc = mix(wc, c4, smoothstep(4300.0, 6800.0, depth));
           float inland = step(-0.5, vHeight);
+          // rilievo del fondale visto attraverso l'acqua: ombreggiatura con una
+          // luce fissa da nord-ovest (come nelle carte batimetriche), dorsali
+          // chiare da un lato e scure dall'altro, fosse in ombra
+          {
+            vec3 northT = normalize(vec3(0.0, 1.0, 0.0) - R * R.y + vec3(1e-4, 0.0, 0.0));
+            vec3 eastT = normalize(cross(northT, R));
+            vec3 Lsea = normalize(northT - eastT);
+            float bathy = clamp(dot(gSea, Lsea) / 10.0, -1.0, 1.0);
+            float deepEnough = smoothstep(60.0, 400.0, depth) * (1.0 - inland);
+            wc *= 1.0 + bathy * 0.28 * deepEnough;
+          }
           wc = mix(wc, vColor * 1.05, inland * 0.6);
 
           // colore che segue le onde: creste più chiare, ventri più scuri

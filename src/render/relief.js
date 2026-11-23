@@ -13,13 +13,15 @@
 
 import { clamp, smoothstep } from '../core/math.js'
 
-export const RELIEF_NEAR = 1.5 // vicino al suolo
-export const RELIEF_FAR = 4.2 // dallo spazio
+export const RELIEF_NEAR = 1.7 // vicino al suolo
+export const RELIEF_FAR = 6.5 // dallo spazio: catene e vulcani sporgono anche sul bordo del disco
 export const RELIEF_MAX = RELIEF_FAR
 
 /** Esagerazione geometrica in funzione della quota della camera (km). */
 export function reliefExaggeration(altKm) {
-  const t = smoothstep(Math.log(8), Math.log(2500), Math.log(clamp(altKm, 0.01, 1e6)))
+  // sale prima di prima (da 4 km invece che da 8, pieno già a 1500 km): a
+  // scala regionale le montagne devono già sembrare alte
+  const t = smoothstep(Math.log(4), Math.log(1500), Math.log(clamp(altKm, 0.01, 1e6)))
   return RELIEF_NEAR + (RELIEF_FAR - RELIEF_NEAR) * t
 }
 
@@ -30,5 +32,5 @@ export function reliefExaggeration(altKm) {
  */
 export function shadingExaggeration(altKm) {
   const t = smoothstep(Math.log(3), Math.log(3000), Math.log(clamp(altKm, 0.01, 1e6)))
-  return reliefExaggeration(altKm) * (1.25 + 0.95 * t)
+  return reliefExaggeration(altKm) * (1.35 + 0.85 * t)
 }

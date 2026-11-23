@@ -121,8 +121,20 @@ fantasy-medievale**: nomi, regni e insediamenti devono suonare come su una carta
 ### 3.8 Rilievo esagerato (`render/relief.js`)
 
 - Le tile sono costruite a esagerazione 1; il vertex shader sposta ogni vertice lungo la
-  verticale di `aHeight * (k - 1)`. `k` dipende dalla quota della camera: 1.5 vicino al
-  suolo, 4.2 dallo spazio. Cambia ogni frame senza ricostruire nulla.
+  verticale di `aHeight * (k - 1)`. `k` dipende dalla quota della camera: 1.7 vicino al
+  suolo, 6.5 dallo spazio (pieno già da ~1500 km), così catene e vulcani sporgono anche sul
+  bordo del disco. Cambia ogni frame senza ricostruire nulla.
+- **Lettura della quota a ogni zoom** (oltre all'esagerazione):
+  - *tinta per quota*: pianure e coste (sotto ~380 m) con colore pieno, un po' più scuro e
+    saturo; alture via via più chiare e meno sature verso un grigio-bruno caldo (da ~300 m,
+    più deciso oltre ~1800 m). Si legge anche dove la luce è piatta;
+  - *luce per quota*: fondovalle a 0.87, cime a 1.08;
+  - *prospettiva aerea*: viste da lontano (30-900 km), pianure e fondovalle sotto ~1400 m
+    restano dietro un velo d'aria del 12%, le cime ne escono nitide;
+  - *mare*: scala di profondità a cinque colori (lagune turchesi → piattaforma → scarpata
+    blu → abisso blu notte → fosse quasi nere) e **rilievo del fondale visto attraverso
+    l'acqua**, ombreggiato con una luce fissa da nord-ovest come nelle carte batimetriche
+    (gradiente a schermo di `vHeight`, `gSea`), solo oltre ~60 m di profondità.
 - Le normali di illuminazione usano un'esagerazione ancora maggiore (`shadingExaggeration`),
   ricavata dalla normale a k=1: `N = normalize(R - (R - N1/dot(N1,R)) * kS)`.
 - Luce: sole + "sole radente" con lo stesso azimut, così i pendii si leggono anche
@@ -296,7 +308,10 @@ Generazione **procedurale deterministica** da un seed:
   (anche vicino alle coste), più un secondo sistema di sierre minori (ridged a scala ~700
   km), creste secondarie deformate e valli. Linea delle nevi `4500 - 30·|lat|` m
   (`SNOW_LINE_BASE/LAT` in `biomes.js`, ripetuta nello shader).
-- **Oceani**: quota 0 = livello del mare, profondità fino a ~-8000 m.
+- **Oceani**: quota 0 = livello del mare, profondità fino a ~-6700 m. Il fondale ha un
+  rilievo proprio lontano dalle coste: **dorsali oceaniche** (ridged, creste che salgono di
+  ~2 km), **fosse** strette e profonde ~2.6 km ai piedi delle scarpate continentali (solo dove
+  lo decide un rumore a grande scala) e colline abissali. Non emerge mai (resta sotto -60 m).
 - **Laghi**: bacini chiusi portati sotto il livello del mare → si riempiono.
 - **Fiumi**: canali incisi lungo isolinee di due campi di rumore (fiumi maggiori con letto
   di ~3.2 km e affluenti più fitti di ~2 km); in montagna scavano valli più profonde.
