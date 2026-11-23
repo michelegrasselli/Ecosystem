@@ -29,6 +29,45 @@ Il pianeta resta **ragionevolmente credibile** (conformazione territoriale, mari
 laghi, fiumi, fasce climatiche e temperature), ma il tono è quello di un **mondo
 fantasy-medievale**: nomi, regni e insediamenti devono suonare come su una carta antica.
 
+### 1.1 Il fine: una serie di video corti sulla creazione di Elyra
+
+L'app è lo **strumento di produzione** di una serie di **video corti** (YouTube Shorts,
+TikTok, Reels) che narrano **la creazione di questo mondo fantasy**, un atto alla volta:
+prima il pianeta, poi la flora, la fauna, le stagioni, le atmosfere, le popolazioni...
+Il tono della narrazione è **fantasy, affascinante, misterioso e trascendente**: chi guarda
+assiste alla nascita di un mondo da parte di un creatore, non a una simulazione tecnica né
+a un documentario scientifico.
+
+Idee di riferimento (vedi `contesto/`, in particolare `The_creation_of_Elyra.pdf`):
+
+- **Ere della creazione**, ognuna con una serie di episodi: 01 *The Birth of a Planet*
+  (pianeta, oceani, continenti, atmosfera) → 02 *The First Life* (piante, foreste, funghi)
+  → 03 *The Animal Kingdom* (erbivori, predatori, creature marine e volanti) → 04 *The
+  Changing World* (stagioni, tempeste, ere glaciali) → 05 *The Rise of Civilization*
+  (popoli, culture, regni).
+- **Struttura di uno short** (25-40 s): gancio iniziale ("Oggi ho dato al mio pianeta la
+  sua prima foresta"), creazione, evoluzione, ripresa cinematografica del risultato, domanda
+  finale al pubblico ("Cosa dovrei creare adesso?").
+- **Il pubblico partecipa**: i commenti più votati possono decidere il prossimo atto.
+- **Planet Bible**: un'unica fonte di verità sulle caratteristiche del mondo, perché ogni
+  episodio mostri sempre **lo stesso** pianeta. Qui lo è già il generatore deterministico
+  (stesso seed → stesso mondo) e lo saranno i dati degli strati successivi.
+
+Tre regole che ne derivano e valgono per ogni scelta tecnica e visiva:
+
+1. **Coerenza visiva assoluta**: geografia, identità e atmosfera di Elyra sono riconoscibili in
+   ogni episodio. Niente cambiamenti che stravolgano il mondo già mostrato senza un motivo
+   narrativo (ogni modifica al generatore cambia il pianeta: va fatta con attenzione).
+2. **Progressione reale**: ogni atto lascia il mondo in uno stato nuovo e permanente; gli
+   strati (flora, fauna, stagioni, popoli) si aggiungono, non sostituiscono.
+3. **Spettacolo da riprendere**: ogni novità deve rendere bene **in un video verticale breve**,
+   dallo spazio fino al suolo. In futuro serviranno strumenti di regia: percorsi di camera
+   cinematografici, "comparsa" animata degli strati (la foresta che cresce, la prima pioggia),
+   inquadratura verticale 9:16, registrazione.
+
+La cartella **`contesto/`** raccoglie nel tempo immagini e documenti di ispirazione forniti
+dall'utente: **va guardata a ogni nuova richiesta** e resta sempre nei commit.
+
 ---
 
 ## 2. Requisiti funzionali (richiesti dall'utente)
@@ -406,6 +445,7 @@ l'ultima build: dopo ogni modifica va rilanciato `npm run build`.
 ```
 /
 ├── CONTEXT.md                 questo file
+├── contesto/                  ispirazione dell'utente (immagini, documenti): da guardare sempre
 ├── README.md                  descrizione + istruzioni
 ├── index.html
 ├── vite.config.js
@@ -466,6 +506,8 @@ l'ultima build: dopo ogni modifica va rilanciato `npm run build`.
 ## 7. Roadmap
 
 L'ordine segue lo scopo del progetto (§1): **pianeta → creature → villaggi**, poi la vita.
+Ogni fase è anche un'**era** della serie di video (§1.1): va pensata per essere raccontata e
+ripresa, non solo simulata.
 
 - **Fase 1 (attuale): il pianeta**. Continenti, oceani, laghi, fiumi, rilievi, biomi, clima,
   regni medievali con confini, acqua animata, navigazione, salvataggio.
@@ -486,6 +528,8 @@ L'ordine segue lo scopo del progetto (§1): **pianeta → creature → villaggi*
 3. Mantenere l'applicazione **sempre eseguibile** (`npm run dev` senza errori).
 4. Non introdurre dipendenze pesanti senza motivo.
 5. Aggiornare questo file quando cambiano i requisiti.
+6. A ogni nuova richiesta **guardare la cartella `contesto/`** (immagini e documenti di
+   ispirazione dell'utente) e tenerla sempre nei commit.
 
 ---
 

@@ -10,6 +10,14 @@ bande morbide con ombre fredde, chiome degli alberi tonde, dune e rocce a strati
 texture fotografica. Il rilievo è esagerato in funzione della quota (come Google Earth),
 così montagne e valli si leggono anche dallo spazio.
 
+
+## La serie
+
+L'app serve a produrre una serie di **video corti** che narrano, un atto alla volta, la
+creazione del mondo fantasy di Elyra: il pianeta, poi flora, fauna, stagioni, atmosfere e
+popoli, con un tono affascinante, misterioso e trascendente. Le idee di riferimento sono
+raccolte nella cartella [`contesto/`](contesto/).
+
 ## Avvio
 
 ```bash
