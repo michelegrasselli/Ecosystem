@@ -117,6 +117,7 @@ export function createTerrainMaterial(sunDir) {
       uniform float uExag;
       uniform float uMorph;
       attribute float aMorph;
+      attribute vec2 aVolc;
 
       attribute vec3 aColor;
       attribute float aWater;
@@ -131,6 +132,7 @@ export function createTerrainMaterial(sunDir) {
       varying float vHeight;
       varying vec4 vSurf;
       varying float vElev;
+      varying vec2 vVolc;
 
       void main() {
         vColor = aColor;
@@ -146,6 +148,7 @@ export function createTerrainMaterial(sunDir) {
         float morphKm = aMorph * 0.001 * (1.0 - uMorph) * uExag;
         float lift = (hKm - aSkirt) * (uExag - 1.0) + morphKm;
         vElev = hKm * uExag + morphKm;
+        vVolc = aVolc;
         vec3 p = position + up * lift;
 
         vec4 mv = modelViewMatrix * vec4(p, 1.0);
@@ -196,6 +199,7 @@ export function createTerrainMaterial(sunDir) {
       varying float vHeight;
       varying vec4 vSurf;
       varying float vElev;
+      varying vec2 vVolc;
 
       // ------------------------------------------------------------ rumore
 
@@ -484,13 +488,20 @@ export function createTerrainMaterial(sunDir) {
         float cliff = smoothstep(0.55, 1.05, slopeTrue * uShadeExag * 0.6);
         rock = max(rock, cliff * (1.0 - isWater));
         snow *= 1.0 - smoothstep(0.45, 0.85, slope);
+        // vulcani: la lava scioglie la neve, la terra bruciata non ha né neve
+        // né alberi
+        float lavaK = vVolc.x;
+        float burnK = vVolc.y;
+        snow *= 1.0 - smoothstep(0.02, 0.3, lavaK + burnK * 0.8);
 
         // niente alberi sulla neve e sulla roccia nuda
-        float noTrees = (1.0 - smoothstep(0.05, 0.35, snow)) * (1.0 - rock * 0.8);
+        float noTrees = (1.0 - smoothstep(0.05, 0.35, snow)) * (1.0 - rock * 0.8) * (1.0 - smoothstep(0.1, 0.6, burnK));
         trees *= noTrees;
         forest *= noTrees;
 
         float grassMask = (1.0 - forest) * (1.0 - sand) * (1.0 - rock) * (1.0 - snow);
+        // niente prato (né fiori) su terra bruciata e colate
+        grassMask *= 1.0 - smoothstep(0.05, 0.4, burnK);
 
         // ------------------------------------------------ micro-rilievo
         // Quota di dettaglio (km) per l'illuminazione da vicino: zolle e fili
@@ -714,6 +725,18 @@ export function createTerrainMaterial(sunDir) {
           base = mix(base, sn, snow);
         }
 
+        // terra bruciata attorno ai vulcani: suolo carbonizzato quasi nero a
+        // chiazze, cenere grigia, ceppi scuri sparsi da vicino
+        if (burnK > 0.01) {
+          vec3 charCol = vec3(0.13, 0.11, 0.10);
+          vec3 ashCol = vec3(0.30, 0.28, 0.26);
+          float ashPatch = smoothstep(0.35, 0.65, n3 * 0.6 + n4 * 0.4);
+          vec3 burnt = mix(charCol, ashCol, ashPatch * 0.45);
+          if (wN1 > 0.0) burnt *= 1.0 + (n6 - 0.5) * 0.2 * wN1;
+          if (w003 > 0.0) burnt = mix(burnt, charCol * 0.6, step(0.82, n5) * w003 * 0.8);
+          base = mix(base, burnt, smoothstep(0.0, 0.7, burnK) * 0.85);
+        }
+
         // tinta altimetrica: le quote alte schiariscono e raffreddano, le valli
         // restano più sature. Aiuta a leggere il rilievo anche dall'alto.
         // Pianure e coste: colore pieno, un po' più scuro e saturo. Alture: via
@@ -756,6 +779,63 @@ export function createTerrainMaterial(sunDir) {
         float ao = 1.0 - slope * 0.22;
 
         vec3 color = base * lightCol * ao;
+
+        // ============================================================ LAVA
+        // Lava fusa (laghi nei crateri, colate incandescenti, crepe nei campi
+        // di lava): materiale luminoso, non illuminato dal sole. Una crosta
+        // scura che si rompe in placche, con crepe arancio-gialle che pulsano e
+        // scorrono a valle (flow map a due fasi lungo la discesa del terreno;
+        // nei crateri piatti la lava ribolle sul posto). Visibile a ogni quota:
+        // le scale del disegno si accendono e spengono con lo zoom.
+        if (lavaK > 0.01) {
+          float tl = uTime;
+          float gl = length(grad);
+          vec3 down = gl > 0.004 ? -grad / gl : vec3(0.0);
+          float T = 4.0;
+          float p1 = fract(tl / T);
+          float p2 = fract(tl / T + 0.5);
+          float kf = abs(p1 * 2.0 - 1.0);
+          float heat = 0.0;
+          float cracks = 0.0;
+          float wl0 = scaleW(2.0, foot);
+          float wl1 = scaleW(0.5, foot);
+          float wl2 = scaleW(0.06, foot);
+          // placche di crosta a ~500 m, ~125 m, ~15 m
+          if (wl0 > 0.0) {
+            vec3 o1 = down * 0.25 * p1 * T;
+            vec3 o2 = down * 0.25 * p2 * T;
+            float a = mix(lnoise(pl - o1, 2.0), lnoise(pl - o2 + 3.3, 2.0), kf);
+            heat += smoothstep(0.38, 0.72, a) * wl0;
+            cracks += (1.0 - smoothstep(0.0, 0.06, abs(a - 0.5))) * wl0;
+          }
+          if (wl1 > 0.0) {
+            vec3 o1 = down * 0.06 * p1 * T;
+            vec3 o2 = down * 0.06 * p2 * T;
+            float a = mix(lnoise(pl - o1, 8.0), lnoise(pl - o2 + 5.1, 8.0), kf);
+            heat = mix(heat, smoothstep(0.35, 0.75, a), 0.55 * wl1);
+            cracks = max(cracks, (1.0 - smoothstep(0.0, 0.05, abs(a - 0.5))) * wl1);
+          }
+          if (wl2 > 0.0) {
+            vec3 o1 = down * 0.008 * p1 * T;
+            vec3 o2 = down * 0.008 * p2 * T;
+            float a = mix(lnoise(pl - o1, 64.0), lnoise(pl - o2 + 7.7, 64.0), kf);
+            cracks = max(cracks, (1.0 - smoothstep(0.0, 0.07, abs(a - 0.5))) * wl2);
+          }
+          // da lontano, senza disegno risolto: lava calda uniforme
+          heat = mix(0.75, heat, max(wl0, wl1));
+          // pulsazione lenta, sfasata nello spazio
+          float pulse = 0.85 + 0.15 * sin(tl * 1.7 + n1 * 9.0 + n2 * 5.0);
+          vec3 crust = vec3(0.09, 0.045, 0.03) * lightCol;
+          vec3 hot = mix(vec3(0.92, 0.24, 0.04), vec3(1.0, 0.62, 0.12), heat);
+          vec3 white = vec3(1.0, 0.88, 0.45);
+          float molten = clamp(heat * 0.85 + cracks * 0.9, 0.0, 1.0);
+          vec3 lavaCol = mix(crust, hot * pulse * 1.25, molten);
+          lavaCol = mix(lavaCol, white * 1.3, cracks * heat * 0.5);
+          float lk = smoothstep(0.05, 0.55, lavaK);
+          color = mix(color, lavaCol, lk);
+          // bagliore attorno alla lava (il valore interpolato sfuma ai bordi)
+          color += vec3(0.9, 0.32, 0.06) * (1.0 - lk) * smoothstep(0.01, 0.2, lavaK) * 0.35;
+        }
         // prospettiva aerea in base alla quota: viste da lontano, pianure e
         // fondovalle restano dietro un velo d'aria, le cime ne escono nitide
         float lowHaze = (1.0 - smoothstep(0.0, 1400.0, vHeight)) * smoothstep(30.0, 900.0, dist) * 0.12;

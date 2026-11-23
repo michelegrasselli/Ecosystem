@@ -78,6 +78,8 @@ const SURFACE = (() => {
   set(BIOME.VOLCANIC, 0.04, 0, 0.55, 0)
   // campi di lava: niente alberi né prati, roccia con il colore del basalto
   set(BIOME.LAVA_FIELD, 0, 0, 0.35, 0)
+  // terra bruciata: niente alberi, poca roccia
+  set(BIOME.SCORCHED, 0, 0.1, 0.15, 0)
   // roccia d'alta quota e neve perenne le calcola lo shader dalla quota del
   // fragment (linee continue che seguono il terreno, non scalini di maglia);
   // le calotte arrivano da `sample.ice`, che è già continuo
@@ -117,6 +119,8 @@ export function computeTileData(planet, face, level, ix, iy) {
   const surf = new Float32Array(total * 4)
   const skirt = new Float32Array(total)
   const morph = new Float32Array(total)
+  // vulcani: lava fusa (x) e terra bruciata (y), per lo shader
+  const volcA = new Float32Array(total * 2)
 
   // --- griglia estesa di una cella per lato ---
   // Le normali sui bordi devono usare lo stesso stencil della tile vicina:
@@ -130,6 +134,7 @@ export function computeTileData(planet, face, level, ix, iy) {
   const extCol = new Float32Array(ext * ext * 3)
   const extWater = new Float32Array(ext * ext)
   const extHeight = new Float32Array(ext * ext)
+  const extVolc = new Float32Array(ext * ext * 2)
   const extSurf = new Float32Array(ext * ext * 4)
 
   let hMax = 0
@@ -198,6 +203,8 @@ export function computeTileData(planet, face, level, ix, iy) {
       // quota reale (negativa sul mare): lo shader la usa per la profondità
       // dell'acqua; lo spostamento verticale usa solo la parte positiva
       extHeight[ei] = rawH
+      extVolc[ei * 2] = _sample.lava
+      extVolc[ei * 2 + 1] = _sample.burn
       // pesi di superficie mediati sulla classificazione morbida del pianeta
       // (stessa media del colore): foreste, sabbia e roccia sfumano insieme
       let s0 = 0
@@ -239,6 +246,8 @@ export function computeTileData(planet, face, level, ix, iy) {
       colors[i3 + 2] = extCol[src + 2]
       water[vi] = extWater[ei]
       heights[vi] = extHeight[ei]
+      volcA[vi * 2] = extVolc[ei * 2]
+      volcA[vi * 2 + 1] = extVolc[ei * 2 + 1]
       surf[vi * 4] = extSurf[ei * 4]
       surf[vi * 4 + 1] = extSurf[ei * 4 + 1]
       surf[vi * 4 + 2] = extSurf[ei * 4 + 2]
@@ -326,6 +335,8 @@ export function computeTileData(planet, face, level, ix, iy) {
     water[dst] = water[src]
     heights[dst] = heights[src]
     morph[dst] = morph[src]
+    volcA[dst * 2] = volcA[src * 2]
+    volcA[dst * 2 + 1] = volcA[src * 2 + 1]
     for (let c = 0; c < 4; c++) surf[dst * 4 + c] = surf[src * 4 + c]
     skirt[dst] = skirtDepth
   }
@@ -376,7 +387,7 @@ export function computeTileData(planet, face, level, ix, iy) {
   }
 
   return {
-    positions, normals, colors, water, heights, surf, skirt, morph, indices,
+    positions, normals, colors, water, heights, surf, skirt, morph, volc: volcA, indices,
     origin: [ox, oy, oz],
     hMax
   }
@@ -385,5 +396,5 @@ export function computeTileData(planet, face, level, ix, iy) {
 /** Buffer da trasferire (zero-copy) da un worker. */
 export function tileTransferables(d) {
   return [d.positions.buffer, d.normals.buffer, d.colors.buffer, d.water.buffer,
-    d.heights.buffer, d.surf.buffer, d.skirt.buffer, d.morph.buffer, d.indices.buffer]
+    d.heights.buffer, d.surf.buffer, d.skirt.buffer, d.morph.buffer, d.volc.buffer, d.indices.buffer]
 }

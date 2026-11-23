@@ -53,7 +53,7 @@ fantasy-medievale**: nomi, regni e insediamenti devono suonare come su una carta
 | R16 | **Niente notte, per ora**: tutto il pianeta inquadrato è illuminato | **fatto** (sole che segue la camera) |
 | R17 | Acqua (mari, fiumi, laghi) con **animazioni semplici di movimento** visibili zoomando, **già da lontano** | **fatto** (da ~3000 km di quota) |
 | R18 | Risoluzione **molto più alta**, soprattutto durante lo zoom, **senza perdere fluidità** | **fatto** (mai sotto la risoluzione nativa, frame 30-40% più leggero) |
-| R20 | **Vulcani sparsi per il mondo** (grandi e piccoli, anche isolati o su un'isola) con **campi di lava**, e **piccoli arcipelaghi** di isole | **fatto** (vedi §3.3) |
+| R20 | **Vulcani sparsi per il mondo** (grandi e piccoli, anche isolati o su un'isola) con **crateri e lava animata**, **campi di lava**, **terra bruciata** attorno ad alcuni, e **piccoli arcipelaghi** | **fatto** (vedi §3.3) |
 | R19 | L'app si apre anche con **doppio clic su index.html** (senza server) | **fatto** (build IIFE in dist/, vedi §4) |
 
 ---
@@ -278,23 +278,29 @@ comparivano come puntini bianchi **sopra** il pianeta.
 
 Generazione **procedurale deterministica** da un seed:
 
-- **Vulcani** (R20, `pickVolcanoes` in `planet.js`): una lista fissa scelta dal seed di
-  **30 vulcani sparsi** (18 sulla terraferma, 12 isole vulcaniche in mare aperto con fondale
-  sotto i 1500 m), a distanza minima di ~1300 km, entro ~60° di latitudine. Né le vecchie
-  "province vulcaniche" piene di coni piccoli, né i soli 12 giganti della versione
-  precedente. Coni di **27-95 km** di raggio, 3.2-6 km sopra il terreno (isole: 2.6-5 km sul
-  livello del mare, profilo più pieno così la parte emersa è larga). Fianchi concavi,
-  **costole e canaloni radiali**, cratere all'8% del raggio. Hanno un **lago di lava** solo
-  quelli con la cima sotto la linea delle nevi (gli altri sono giganti innevati dormienti):
-  con il seed di default 5 attivi. Basalto scuro (`BIOME.VOLCANIC`) solo sul cono alto.
-  Centri e distanze sulla direzione **non deformata**, così i coni restano rotondi.
-- **Campi di lava** (`BIOME.LAVA_FIELD`): attorno a tutti i vulcani attivi e a metà dei
-  dormienti, colate che scendono dal cono fino a ~2.6 raggi. I lobi sono irregolari: rumore
-  lungo l'angolo (periodico sul giro) che cambia anche con la distanza, così le colate
-  serpeggiano invece di formare una stella. Recenti (vulcani attivi): basalto quasi nero con
-  **crepe incandescenti**. Vecchie (dormienti): grigio-brune, con chiazze di vegetazione che
-  le ricolonizza. Niente laghi sulle colate; i fiumi possono attraversarle. Nello shader le
-  rocce molto scure tengono il proprio colore invece di diventare grigio roccia.
+- **Vulcani** (R20, `pickVolcanoes` in `planet.js`): lista fissa scelta dal seed di **46
+  vulcani** (30 sulla terraferma, 16 isole in mare aperto con fondale sotto i 1500 m), a
+  distanza minima di ~950 km, entro ~60° di latitudine. Coni di **38-140 km** di raggio,
+  3.2-6 km sopra il terreno (isole: 2.6-5 km sul livello del mare). Fianchi concavi con
+  costole radiali. **Cratere largo** (15% del raggio) con fondo piatto, pareti ripide e
+  **orlo rialzato**. Circa uno su due è **attivo** (21 con il seed di default): lago di lava
+  nel cratere e 4 **colate incandescenti** che scendono dai fianchi, sempre più strette.
+  Centri e distanze sulla direzione non deformata.
+- **Campi di colate** (`BIOME.LAVA_FIELD`): attorno a tutti gli attivi e a due dormienti su
+  tre, fino a ~3.3 raggi, a lobi irregolari (rumore lungo l'angolo che cambia con la
+  distanza). Recenti quasi nere con rade crepe ancora accese vicino al cono; vecchie
+  grigio-brune e in parte ricolonizzate dalla vegetazione. ~0.3% della superficie.
+- **Terra bruciata** (`BIOME.SCORCHED`): alone frastagliato fino a ~3.3 raggi attorno a tre
+  attivi su quattro e a un dormiente su cinque: suolo carbonizzato e cenere, niente alberi,
+  prati, fiori né neve. ~0.2% della superficie.
+- **Lava nello shader**: il pianeta esporta `sample.lava` (lava fusa: lago, colate, crepe) e
+  `sample.burn` (terra bruciata e colate), che arrivano allo shader come attributo
+  `aVolc`. La lava fusa è un materiale **luminoso** (non illuminato dal sole) e **animato**:
+  crosta scura che si rompe in placche e crepe arancio-gialle che pulsano e scorrono a valle
+  (flow map a due fasi lungo la discesa del terreno; nei crateri piatti ribolle sul posto), con
+  tre scale di disegno (~500 m, ~125 m, ~15 m) che si accendono con lo zoom e un bagliore ai
+  bordi. La neve non si posa su lava e terra bruciata, così anche un gigante innevato può
+  avere il cratere acceso. (Attenzione: `patch` è una parola riservata in GLSL.)
 - **Arcipelaghi** (`planet/features.js`): elementi puntuali trovati con una griglia 3D di
   celle (hash intero per cella, centro spostato e proiettato sulla sfera, finestra 2×2×2: il
   raggio deve restare ≤ 1/4 della cella), sulla direzione non deformata.

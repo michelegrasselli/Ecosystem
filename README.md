@@ -54,11 +54,12 @@ sotto la camera.
 
 ## Vulcani e isole
 
-Sul pianeta ci sono una trentina di vulcani sparsi, grandi e piccoli: diciotto sulla
-terraferma e dodici isole vulcaniche in mare aperto. I più alti sono giganti innevati
-dormienti; quelli con la cima sotto le nevi hanno un lago di lava nel cratere e un campo di
-colate nere con crepe incandescenti. Anche metà dei dormienti è circondata da vecchie
-colate, ormai in parte ricoperte dalla vegetazione. In mare compaiono anche arcipelaghi di isole e isolotti
+Sul pianeta ci sono 46 vulcani sparsi, grandi e piccoli: trenta sulla terraferma e sedici
+isole vulcaniche in mare aperto. Circa la metà è attiva: nel cratere, largo e con l'orlo
+rialzato, c'è un lago di lava animata (crosta scura che si spacca, crepe incandescenti che
+pulsano) e dai fianchi scendono colate accese. Attorno ai vulcani si stendono campi di colate
+nere o, per i più vecchi, grigio-brune e in parte ricoperte dalla vegetazione; molti attivi
+sono circondati da una zona di terra bruciata. In mare compaiono anche arcipelaghi di isole e isolotti
 circondati da acqua bassa. Il mare è animato a ogni quota: creste d'onda parallele che
 scorrono, visibili già da ~3000 km.
 

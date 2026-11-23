@@ -216,16 +216,20 @@ export class Planet {
     }
 
     // ---------- 5c. Vulcani ----------
-    // Pochi vulcani grandi e isolati (lista fissa scelta dal seed, vedi
-    // pickVolcanoes): coni di 40-95 km di raggio che svettano sul paesaggio,
-    // e in mare isole vulcaniche. Fianchi concavi, cratere in cima; gli attivi
-    // hanno un lago di lava. Centri e distanze sulla direzione NON deformata
-    // (x, y, z), così i coni restano rotondi.
+    // Vulcani sparsi per il mondo (lista fissa scelta dal seed, vedi
+    // pickVolcanoes): coni di 38-140 km di raggio e isole vulcaniche. Fianchi
+    // concavi con costole radiali, cratere largo con orlo rialzato e fondo
+    // piatto. Attorno: campi di colate (lobi irregolari) e, per alcuni, una
+    // zona di terra bruciata. Gli attivi hanno un lago di lava nel cratere e
+    // colate incandescenti sui fianchi: out.lava (0..1) le segnala allo shader,
+    // che le disegna luminose e animate; out.burn la terra bruciata.
+    // Centri e distanze sulla direzione NON deformata (x, y, z): coni rotondi.
     let volc = 0
     let lava = false
-    // campo di lava attorno al vulcano (colate di basalto a lobi)
     let lavaField = 0
     let fieldHot = false
+    let molten = 0
+    let burn = 0
     {
       let best = Infinity
       let bv = null
@@ -236,8 +240,8 @@ export class Planet {
         const dy = y - v.y
         const dz = z - v.z
         const d2 = dx * dx + dy * dy + dz * dz
-        // i campi di lava arrivano più lontano del cono
-        const lim = v.r * (1.3 + 1.5 * v.field)
+        // colate e terra bruciata arrivano più lontano del cono
+        const lim = v.r * Math.max(1.3 + 2.5 * v.field, 1.3 + 2.0 * v.burn)
         if (d2 < lim * lim) {
           const sv = Math.sqrt(d2) / v.r
           if (sv < best) {
@@ -251,7 +255,7 @@ export class Planet {
         const sp = best * (1 + 0.12 * nd.noise(px * 260 + 3.1, py * 260 - 7.4, pz * 260 + 1.6))
         const H = bv.H
         const peak = (isSea ? 0 : baseLevel) + H
-        // angolo attorno al centro (canaloni e lobi delle colate)
+        // angolo attorno al centro (canaloni, lobi delle colate)
         const ddx = x - bv.x
         const ddy = y - bv.y
         const ddz = z - bv.z
@@ -259,20 +263,25 @@ export class Planet {
           ddx * bv.e2[0] + ddy * bv.e2[1] + ddz * bv.e2[2],
           ddx * bv.e1[0] + ddy * bv.e1[1] + ddz * bv.e1[2]
         )
-        // Campo di lava: colate scure che scendono dal cono in pochi lobi
-        // lunghi (fino a ~2.5 raggi), con il bordo frastagliato. Sui vulcani
-        // attivi hanno crepe ancora incandescenti.
+        // rumore lungo l'angolo (periodico sul giro) che cambia con la
+        // distanza: lobi irregolari che serpeggiano, mai una stella regolare
+        const ca = Math.cos(ang) * 1.3
+        const sa = Math.sin(ang) * 1.3
+        const lobeN =
+          nd.noise(ca + bv.x * 40, sa + bv.y * 40, best * 0.55 + bv.z * 40) * 0.75 +
+          nd.noise(ca * 2.6 - bv.y * 30, sa * 2.6 + bv.z * 30, best * 1.4 - bv.x * 30) * 0.35
+        const lobe = smoothstep(-0.35, 0.65, lobeN)
+
+        // terra bruciata: un alone largo e frastagliato attorno al cono
+        if (bv.burn > 0 && !isSea) {
+          const reachB = 1.5 + 1.8 * bv.burn * (0.45 + 0.55 * (1 - lobe))
+          const eB = 1 + 0.2 * nd.noise(px * 500 + 6.6, py * 500 - 4.4, pz * 500 + 1.2)
+          burn = bv.burn * (1 - smoothstep(reachB * 0.55, reachB, best * eB))
+        }
+
+        // campi di colate: fino a ~3.3 raggi
         if (bv.field > 0 && !isSea) {
-          // lobi irregolari: rumore lungo l'angolo (periodico sul giro) che
-          // cambia anche con la distanza, così le colate serpeggiano invece di
-          // formare una stella regolare
-          const ca = Math.cos(ang) * 1.3
-          const sa = Math.sin(ang) * 1.3
-          const lobeN =
-            nd.noise(ca + bv.x * 40, sa + bv.y * 40, best * 0.55 + bv.z * 40) * 0.75 +
-            nd.noise(ca * 2.6 - bv.y * 30, sa * 2.6 + bv.z * 30, best * 1.4 - bv.x * 30) * 0.35
-          const lobe = smoothstep(-0.35, 0.65, lobeN)
-          const reach = 0.8 + 1.8 * bv.field * lobe
+          const reach = 0.8 + 2.5 * bv.field * lobe
           const edge = 1 + 0.16 * nd.noise(px * 900 - 3.3, py * 900 + 2.2, pz * 900 - 7.7)
           lavaField =
             (1 - smoothstep(reach - 0.35, reach + 0.05, best * edge)) * smoothstep(0.1, 0.3, best)
@@ -280,30 +289,58 @@ export class Planet {
             // colate fresche: un po' in rilievo, a lingue
             height += 35 * lavaField + nd.noise(px * 6000 + 1.4, py * 6000 - 3.6, pz * 6000 + 2.5) * 12 * lavaField
             fieldHot = bv.lava
+            // crepe ancora incandescenti nelle colate degli attivi
+            if (fieldHot) {
+              const crack = 1 - Math.abs(nd.noise(px * 9000 - 2.1, py * 9000 + 6.7, pz * 9000 - 4.3))
+              // rade e solo vicino al cono: le colate lontane si sono già spente
+              const nearCone = 1 - smoothstep(0.7, 1.25, best)
+              molten = Math.max(molten, smoothstep(0.975, 0.992, crack) * lavaField * nearCone * 0.5)
+            }
           }
         }
+
         if (sp < 1) {
           // in mare il profilo è più pieno: l'isola emersa è larga
           const w = Math.pow(1 - sp, isSea ? 1.45 : 2.3)
           height = lerp(height, peak, w)
-          // cratere: conca di ~8% del raggio, profonda ~7% dell'altezza
-          if (sp < VOLC_CRATER) {
-            const c = sp / VOLC_CRATER
-            height -= H * 0.07 * (1 - c * c)
-            lava = bv.lava && sp < VOLC_CRATER * 0.75
-          }
-          // canaloni radiali sui fianchi: costole e solchi che scendono dal
-          // cratere. Un cono liscio, con la luce alle spalle della camera,
-          // sembrava un disco piatto; le costole lo rendono leggibile
+          // canaloni radiali sui fianchi
           const wob = nd.noise(px * 140 + 2.7, py * 140 - 6.1, pz * 140 + 4.4) * 1.8
           const rib = Math.abs(Math.sin(ang * bv.ribs + wob))
           height += (rib - 0.6) * H * 0.07 * w * smoothstep(0.08, 0.3, sp)
           // colate e calanchi
           height += nd.noise(px * 1800 + 5.5, py * 1800 - 2.2, pz * 1800 + 8.1) * 90 * w
+
+          // colate incandescenti degli attivi: 4 canali che scendono dal
+          // cratere, sempre più stretti e spenti verso valle
+          if (bv.lava) {
+            const ch = Math.abs(Math.sin(ang * 2 + bv.phase + wob * 0.35))
+            const wch = 0.07 * (1 - smoothstep(0.15, bv.flowLen, sp)) + 0.012
+            const flow =
+              (1 - smoothstep(wch * 0.5, wch, ch)) *
+              smoothstep(VOLC_CRATER * 0.9, VOLC_CRATER * 1.3, sp) *
+              (1 - smoothstep(bv.flowLen - 0.12, bv.flowLen, sp))
+            if (flow > 0) {
+              molten = Math.max(molten, flow * 0.95)
+              height -= 25 * flow // il canale scava appena il fianco
+            }
+          }
           if (isSea && height > 0) baseLevel = 0
         }
-        // roccia scura solo sul cono alto: i fianchi bassi restano del
-        // paesaggio attorno (prima tutto il cono era un disco scuro e piatto)
+
+        // Cratere: largo (~15% del raggio), fondo piatto, pareti ripide e
+        // orlo rialzato; negli attivi il fondo è un lago di lava.
+        if (sp < VOLC_CRATER * 1.5) {
+          const c = sp / VOLC_CRATER
+          height += H * 0.035 * Math.exp(-Math.pow((c - 1) / 0.22, 2))
+          height -= H * 0.13 * (1 - smoothstep(0.62, 1.0, c))
+          if (bv.lava) {
+            const lake = 1 - smoothstep(0.62, 0.78, c)
+            if (lake > 0) molten = Math.max(molten, lake)
+            lava = lake > 0.5
+          }
+        }
+
+        // roccia scura solo sul cono alto
         volc = 1 - smoothstep(0.22, 0.55, sp)
       }
     }
@@ -497,6 +534,9 @@ export class Planet {
         } else if (lavaField > 0.5 && height < snowLine && biome !== BIOME.RIVER) {
           biome = BIOME.LAVA_FIELD
           out.mixCount = 1
+        } else if (burn > 0.5 && biome !== BIOME.RIVER) {
+          biome = BIOME.SCORCHED
+          out.mixCount = 1
         }
       }
     }
@@ -533,6 +573,14 @@ export class Planet {
       g = lerp(g, VOLCANIC_RGB[1], k)
       b = lerp(b, VOLCANIC_RGB[2], k)
     }
+    // terra bruciata: suolo carbonizzato grigio-bruno, cenere a chiazze
+    if (!isSea && burn > 0 && biome !== BIOME.LAKE && biome !== BIOME.RIVER) {
+      const k = burn * burn * (3 - 2 * burn) * 0.85
+      const ash = 0.8 + 0.4 * smoothstep(-0.3, 0.6, nd.noise(px * 700 + 3.9, py * 700 - 2.6, pz * 700 + 8.8))
+      r = lerp(r, SCORCHED_RGB[0] * ash, k)
+      g = lerp(g, SCORCHED_RGB[1] * ash, k)
+      b = lerp(b, SCORCHED_RGB[2] * ash, k)
+    }
     // campi di lava: basalto quasi nero; sui vulcani attivi crepe arancioni
     if (!isSea && lavaField > 0 && biome !== BIOME.LAKE && biome !== BIOME.RIVER) {
       // colate recenti quasi nere; quelle vecchie (vulcani dormienti) più
@@ -544,13 +592,7 @@ export class Planet {
       r = lerp(r, LAVA_FIELD_RGB[0] * tone * 1.08, k)
       g = lerp(g, LAVA_FIELD_RGB[1] * tone, k)
       b = lerp(b, LAVA_FIELD_RGB[2] * tone * 0.95, k)
-      if (fieldHot) {
-        const crack = 1 - Math.abs(nd.noise(px * 9000 - 2.1, py * 9000 + 6.7, pz * 9000 - 4.3))
-        const glow = smoothstep(0.9, 0.97, crack) * k
-        r = lerp(r, LAVA_RGB[0], glow)
-        g = lerp(g, LAVA_RGB[1], glow)
-        b = lerp(b, LAVA_RGB[2], glow)
-      }
+      // (le crepe incandescenti le disegna lo shader da out.lava)
     }
 
     // variazione di albedo: senza, il terreno sembra un tappeto di colore piatto.
@@ -602,6 +644,8 @@ export class Planet {
     out.height = height
     out.water = water
     out.ice = ice
+    out.lava = molten
+    out.burn = Math.max(burn, isSea ? 0 : lavaField * 0.6)
     out.biome = biome
     out.temp = temp
     out.moist = moist
@@ -631,13 +675,13 @@ export class Planet {
 }
 
 /** Vulcani: quanti, raggio del cono (sfera unitaria: 0.01 = 64 km, quindi 40-95 km), cratere. */
-const VOLC_LAND = 18
-const VOLC_SEA = 12
-const VOLC_R_MIN = 0.0042
-const VOLC_R_MAX = 0.015
-const VOLC_CRATER = 0.08
-/** Distanza minima tra due vulcani (radianti, ~1300 km): sparsi, mai a grappolo. */
-const VOLC_SEPARATION = 0.2
+const VOLC_LAND = 30
+const VOLC_SEA = 16
+const VOLC_R_MIN = 0.006
+const VOLC_R_MAX = 0.022
+const VOLC_CRATER = 0.15
+/** Distanza minima tra due vulcani (radianti, ~950 km): sparsi, mai a grappolo. */
+const VOLC_SEPARATION = 0.15
 
 /**
  * Sceglie i vulcani del pianeta: qualche cono sulla terraferma e qualche isola
@@ -686,22 +730,28 @@ function pickVolcanoes(planet) {
       e1,
       e2,
       ribs: 16 + Math.floor(rand() * 10),
-      // campo di lava: sempre attorno agli attivi (deciso sotto), metà dei
-      // dormienti ne ha uno più vecchio e corto
-      field: rand() < 0.5 ? 0.7 : 0,
+      // campo di colate: pieno attorno agli attivi (deciso sotto), due
+      // dormienti su tre ne hanno uno più vecchio e corto
+      field: rand() < 0.65 ? 0.55 + 0.35 * rand() : 0,
+      // terra bruciata attorno: quasi tutti gli attivi, qualche dormiente
+      burn: 0,
+      // colate incandescenti: orientamento e lunghezza (in raggi)
+      phase: rand() * 6.283,
+      flowLen: 0.55 + 0.35 * rand(),
       r: VOLC_R_MIN + (VOLC_R_MAX - VOLC_R_MIN) * u,
       // i coni più larghi sono anche più alti; le isole partono dal fondale
       H: isSea ? 2600 + 2400 * u : 3200 + 2800 * u,
       // lago di lava solo se la cima resta sotto la linea delle nevi: i
       // giganti innevati sono dormienti (la neve coprirebbe il cratere)
-      lava:
-        rand() < 0.8 &&
-        (isSea ? 2600 + 2400 * u : Math.max(smp.height, 0) + 3200 + 2800 * u) <
-          SNOW_LINE_BASE - Math.abs(Math.asin(yy) * 57.2958) * SNOW_LINE_LAT - 300,
+      // attivo con lago di lava: circa uno su due. Lo shader non disegna neve
+      // sulla lava, quindi anche un gigante innevato può avere il cratere acceso
+      lava: rand() < 0.5,
       sea: isSea
     })
     const last = out[out.length - 1]
     if (last.lava) last.field = 1
+    const rb = rand()
+    last.burn = last.lava ? (rb < 0.75 ? 0.8 + 0.2 * rand() : 0) : rb < 0.2 ? 0.6 : 0
     if (isSea) sea++
     else land++
   }
@@ -709,7 +759,7 @@ function pickVolcanoes(planet) {
 }
 const VOLCANIC_RGB = rgbFor(BIOME.VOLCANIC)
 const LAVA_FIELD_RGB = rgbFor(BIOME.LAVA_FIELD)
-const LAVA_RGB = rgbFor(BIOME.LAVA)
+const SCORCHED_RGB = rgbFor(BIOME.SCORCHED)
 
 /**
  * Strati di isole degli arcipelaghi: celle, probabilità, raggi (sfera unitaria:
@@ -750,6 +800,8 @@ function createSample() {
   return {
     mix: new Int32Array(8),
     mixCount: 1,
+    lava: 0,
+    burn: 0,
     height: 0,
     water: 0,
     ice: 0,
