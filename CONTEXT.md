@@ -53,7 +53,7 @@ fantasy-medievale**: nomi, regni e insediamenti devono suonare come su una carta
 | R16 | **Niente notte, per ora**: tutto il pianeta inquadrato è illuminato | **fatto** (sole che segue la camera) |
 | R17 | Acqua (mari, fiumi, laghi) con **animazioni semplici di movimento** visibili zoomando, **già da lontano** | **fatto** (da ~3000 km di quota) |
 | R18 | Risoluzione **molto più alta**, soprattutto durante lo zoom, **senza perdere fluidità** | **fatto** (mai sotto la risoluzione nativa, frame 30-40% più leggero) |
-| R20 | **Zone vulcaniche** e **piccoli arcipelaghi** di isole sparsi per il pianeta | **fatto** (vedi §3.3) |
+| R20 | **Pochi vulcani grandi** (anche isolati o su un'isola) e **piccoli arcipelaghi** di isole | **fatto** (vedi §3.3) |
 | R19 | L'app si apre anche con **doppio clic su index.html** (senza server) | **fatto** (build IIFE in dist/, vedi §4) |
 
 ---
@@ -174,6 +174,9 @@ fantasy-medievale**: nomi, regni e insediamenti devono suonare come su una carta
   in tratti, che si passano il testimone con lo zoom. Il treno da 48 km si vede **già da
   ~3000 km** di quota. In più chiazze d'onda lunga che scorrono e correnti dei fiumi (flow
   map a ~500 m da ~120 km, a ~250 m da vicino). Laghi e fiumi più calmi del mare (`calm`).
+  La **trama della superficie** (normale perturbata, scintillio del sole) usa anche due treni
+  di onde lunghe (~250 m e ~60 m, `hwFar`), animati e trasportati dalla corrente nei fiumi:
+  si vede da ~25 km di quota invece che solo dalle ultime centinaia di metri.
   Tre regole imparate a fatica:
   - l'ondulazione dei fronti deve usare un rumore **più largo** della lunghezza d'onda e
     un'ampiezza **sotto mezzo ciclo**, altrimenti i fronti si ripiegano in scarabocchi (le
@@ -263,17 +266,21 @@ comparivano come puntini bianchi **sopra** il pianeta.
 
 Generazione **procedurale deterministica** da un seed:
 
-- **Vulcani e arcipelaghi** (R20, `planet/features.js`): elementi puntuali trovati con una
-  griglia 3D di celle (hash intero per cella, centro spostato e proiettato sulla sfera,
-  finestra 2×2×2: il raggio deve restare ≤ 1/4 della cella). Centri e distanze usano la
-  direzione **non deformata**: con quella deformata dei continenti coni e isole uscivano
-  stirati tutti nella stessa direzione.
-  - **Vulcani**: in "province vulcaniche" (rumore a ~3000 km), celle di ~320 km, coni di
-    22-54 km di raggio, 1.8-4.4 km sopra il terreno (0.9-3.5 km sul livello del mare se in
-    mare: diventano isole vulcaniche). Fianchi concavi, cratere al 10% del raggio, metà
-    attivi con **lago di lava** (`BIOME.LAVA`); fianchi di basalto scuro
-    (`BIOME.VOLCANIC`, colore sfumato nel paesaggio). Niente laghi né fiumi sui coni.
-    ~0.26% della superficie.
+- **Vulcani** (R20, `pickVolcanoes` in `planet.js`): **pochi e grandi**, non più "province
+  vulcaniche" piene di coni piccoli. Una lista fissa scelta dal seed: **7 sulla terraferma e
+  5 isole vulcaniche in mare aperto** (fondale sotto i 1500 m), a distanza minima di ~2200 km
+  l'uno dall'altro, entro ~60° di latitudine. Coni di **40-95 km** di raggio, 3.2-6 km sopra
+  il terreno (isole: 2.6-5 km sul livello del mare, profilo più pieno così la parte emersa è
+  larga). Fianchi concavi, **costole e canaloni radiali** (un cono liscio, con la luce alle
+  spalle della camera, sembrava un disco piatto), cratere all'8% del raggio. Hanno un
+  **lago di lava** solo i vulcani la cui cima resta sotto la linea delle nevi (gli altri sono
+  giganti innevati dormienti): con il seed di default 2 attivi, un'isola e uno sulla
+  terraferma. Basalto scuro (`BIOME.VOLCANIC`) solo sul cono alto; i fianchi bassi restano
+  del paesaggio attorno. Centri e distanze sulla direzione **non deformata**, così i coni
+  restano rotondi. Costo: 12 confronti per campione.
+- **Arcipelaghi** (`planet/features.js`): elementi puntuali trovati con una griglia 3D di
+  celle (hash intero per cella, centro spostato e proiettato sulla sfera, finestra 2×2×2: il
+  raggio deve restare ≤ 1/4 della cella), sulla direzione non deformata.
   - **Arcipelaghi**: solo in mare, in fasce dedicate; isole di 6-16 km (celle di ~130 km) e
     isolotti di 2-4 km (celle di ~38 km), ciascuno con una piattaforma di acqua bassa di
     due raggi. Le isole ricevono colline proprie (la terraferma le ha dai passi 5 e 5b).
@@ -307,20 +314,24 @@ Generazione **procedurale deterministica** da un seed:
   con coordinate deformate da sinusoidi 3D per confini sinuosi. Nomi **inventati di sapore
   fantasy** (Aethermoor, Ashenvale, Starfall, Umbrafen, Farrowmere…), mescolati in modo
   deterministico dal seed.
-- **Etichette delle nazioni** (`ui/labels.js`, HTML): ogni nazione ha una serie di **punti di
-  ancoraggio fissi** sul proprio territorio — il baricentro della terraferma (`n.anchor`) più
-  fino a 16 punti sparsi sulla terra a distanza minima di ~640 km (`n.labelPoints`), calcolati
-  una volta sola. Il nome si appoggia al punto visibile più centrale e a schermo è solo la sua
-  proiezione: si muove esattamente con il terreno su cui è appoggiato. Il punto cambia solo
-  quando quello scelto esce dall'inquadratura (isteresi `KEEP_RADIUS = 1.1`) o un altro è
-  molto più centrale (`SWITCH_GAIN = 0.7`); se nessun punto è in vista (nazione vista di
-  taglio) si usa il baricentro della parte visibile, molto smorzato. Compressione morbida
-  (`tanh`, `INNER 0.5/0.42` → `OUTER 0.72/0.6`) che impedisce al nome di incollarsi al bordo;
-  inseguimento rapido (`1-exp(-dt·14)`, max 2400 px/s) perché il ritardo si legge come
-  "il nome si sposta da solo". Se due nomi si sovrappongono resta quello con più terra
-  inquadrata. La visibilità viene da una griglia di 16×11 raggi spalmata su 3 frame (4 righe
-  per frame): compaiono sotto i ~7000 km di quota; l'HUD mostra la nazione sotto la camera
-  ("international waters" solo sul mare).
+- **Etichette delle nazioni** (`ui/labels.js`, HTML):
+  - ogni nazione ha un **centro visivo** (`Nations.center`): il campione di terraferma più
+    interno, cioè quello che massimizza `min(distanza dal confine, 450 km × quota di terra
+    propria in un disco di 450 km)`. Il baricentro poteva cadere in mare o oltre un confine;
+    il centro visivo dista almeno ~200 km da ogni confine;
+  - se il centro visivo è ben inquadrato (entro il 78% dello schermo) il nome sta lì, al
+    centro della regione; altrimenti va al **centro della parte visibile** della nazione
+    (media dei raggi della griglia che la colpiscono, riportata sulla sua terra se cade
+    fuori). Così zoomando il nome resta nell'inquadratura e segue lo zoom, e **su un confine
+    si vedono entrambi i nomi**, ciascuno dal proprio lato;
+  - il nome è appoggiato a un punto del terreno (posizione = proiezione esatta, ogni frame);
+    quando il bersaglio cambia il punto scivola sulla sfera (`GLIDE = 2.6/s`); se il punto
+    è fuori schermo (salto della camera) salta subito al bersaglio, mai trascinato lungo il
+    bordo;
+  - compaiono sotto i ~7000 km di quota e **scompaiono sotto ~40 km** (sfumano tra 70 e 25
+    km), dove la nazione riempie lo schermo; se due nomi si sovrappongono resta quello con
+    più terra inquadrata. Griglia di 16×12 raggi spalmata su 3 frame; costo ~0.4 ms/frame.
+    L'HUD mostra la nazione sotto la camera ("international waters" solo sul mare).
 - **Due calotte polari**: a nord terre ghiacciate, a sud un continente polare (tipo
   Antartide) aggiunto al campo di continentalità oltre i ~64-80°. In entrambi i poli il
   mare gelato diventa **banchisa** (lastra di ghiaccio piatta, bioma `ICE`).

@@ -240,6 +240,38 @@ export class Nations {
       }
     })
 
+    // --- "centro visivo" di ogni nazione: dove va il nome ---
+    // Il baricentro può cadere in mare o oltre un confine (nazioni a mezzaluna,
+    // penisole). Si sceglie invece il campione di terraferma più INTERNO: il
+    // più lontano dai confini con le altre nazioni e circondato da più terra
+    // propria (indicatore della distanza dalla costa).
+    const R_KM = 6371
+    const nearDot = Math.cos(0.07) // ~450 km
+    for (const n of this.list) {
+      const f = n.labelPoints
+      const cnt = f.length / 3
+      let bestScore = -Infinity
+      let best = n.anchor
+      for (let k = 0; k < cnt; k++) {
+        const x = f[k * 3]
+        const y = f[k * 3 + 1]
+        const z = f[k * 3 + 2]
+        let around = 0
+        for (let j = 0; j < cnt; j++) {
+          if (x * f[j * 3] + y * f[j * 3 + 1] + z * f[j * 3 + 2] > nearDot) around++
+        }
+        // ~29 campioni in un disco di 450 km tutto di terra propria
+        const interior = Math.min(around / 29, 1)
+        const borderKm = this.borderDistance(x, y, z) * R_KM
+        const score = Math.min(borderKm, 450 * interior)
+        if (score > bestScore) {
+          bestScore = score
+          best = [x, y, z]
+        }
+      }
+      n.center = best
+    }
+
     // rango (titolo) per estensione della terraferma
     const bySize = this.list.slice().sort((a, b) => b.share - a.share)
     bySize.forEach((n, i) => {
@@ -252,6 +284,35 @@ export class Nations {
     this.uniformSeeds = new Float32Array(MAX_NATIONS * 3)
     this.seeds.forEach((s, i) => this.uniformSeeds.set(s, i * 3))
     this._w = { x: 0, y: 0, z: 0 }
+  }
+
+  /**
+   * Distanza angolare (radianti, nello spazio deformato) dal confine più
+   * vicino: la stessa misura con cui lo shader disegna le linee.
+   */
+  borderDistance(x, y, z) {
+    const w = nationWarp(x, y, z, this._w || (this._w = { x: 0, y: 0, z: 0 }))
+    let b1 = -2
+    let b2 = -2
+    let i1 = 0
+    let i2 = 0
+    for (let i = 0; i < this.seeds.length; i++) {
+      const s = this.seeds[i]
+      const d = w.x * s[0] + w.y * s[1] + w.z * s[2]
+      if (d > b1) {
+        b2 = b1
+        i2 = i1
+        b1 = d
+        i1 = i
+      } else if (d > b2) {
+        b2 = d
+        i2 = i
+      }
+    }
+    const a = this.seeds[i1]
+    const b = this.seeds[i2]
+    const len = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) || 1
+    return (b1 - b2) / len
   }
 
   /** Indice della nazione per una direzione unitaria (anche sul mare: la più vicina). */

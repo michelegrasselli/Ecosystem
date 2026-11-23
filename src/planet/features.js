@@ -1,6 +1,7 @@
-// Elementi puntuali del pianeta: vulcani e isole degli arcipelaghi.
+// Elementi puntuali del pianeta: isole degli arcipelaghi (i vulcani sono una
+// lista fissa, vedi pickVolcanoes in planet.js).
 //
-// Il resto del pianeta è rumore continuo; vulcani e isole sono invece "oggetti"
+// Il resto del pianeta è rumore continuo; le isole sono invece "oggetti"
 // con un centro e un raggio. Per trovarli senza scorrere una lista, lo spazio
 // 3D è diviso in celle cubiche: ogni cella può ospitare un elemento (deciso da
 // un hash intero del seed e delle coordinate della cella), con il centro

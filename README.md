@@ -54,8 +54,9 @@ sotto la camera.
 
 ## Vulcani e isole
 
-Nelle province vulcaniche svettano coni di basalto scuro; metà sono attivi e hanno un lago di
-lava nel cratere. In mare compaiono isole vulcaniche e arcipelaghi di isole e isolotti
+Sul pianeta ci sono una dozzina di grandi vulcani isolati: sette sulla terraferma e cinque
+isole vulcaniche in mare aperto. I più alti sono giganti innevati dormienti; quelli con la
+cima sotto le nevi hanno un lago di lava nel cratere. In mare compaiono anche arcipelaghi di isole e isolotti
 circondati da acqua bassa. Il mare è animato a ogni quota: creste d'onda parallele che
 scorrono, visibili già da ~3000 km.
 

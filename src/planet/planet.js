@@ -36,6 +36,9 @@ export class Planet {
       options.continentThreshold ?? CONTINENT_THRESHOLD
     this._out = createSample()
     this._vf = createFeatureSample()
+    // vulcani: lista fissa, scelta dopo che il resto del pianeta esiste
+    this.volcanoes = []
+    this.volcanoes = pickVolcanoes(this)
   }
 
   /** Crea un oggetto riutilizzabile per il campionamento. */
@@ -190,43 +193,72 @@ export class Planet {
     }
 
     // ---------- 5c. Vulcani ----------
-    // Coni isolati raccolti in "province vulcaniche" (circa un quinto del
-    // pianeta): sulla terraferma svettano sul paesaggio, in mare diventano
-    // isole vulcaniche. Fianchi concavi, cratere in cima; i vulcani attivi
-    // hanno un lago di lava. Vedi features.js per la ricerca a celle.
-    // Centri e distanze usano la direzione NON deformata (x, y, z): la
-    // deformazione dei continenti stira le forme fino a ~1.5x e coni e isole
-    // uscivano allungati tutti nella stessa direzione.
-    const vf = this._vf
-    vf.s = Infinity
+    // Pochi vulcani grandi e isolati (lista fissa scelta dal seed, vedi
+    // pickVolcanoes): coni di 40-95 km di raggio che svettano sul paesaggio,
+    // e in mare isole vulcaniche. Fianchi concavi, cratere in cima; gli attivi
+    // hanno un lago di lava. Centri e distanze sulla direzione NON deformata
+    // (x, y, z), così i coni restano rotondi.
     let volc = 0
     let lava = false
-    const vProv = smoothstep(0.1, 0.3, fbm(n, px * 2.1 + 91.3, py * 2.1 - 17.7, pz * 2.1 + 43.9, 2))
-    if (vProv > 0) {
-      nearestFeature(x, y, z, VOLC_CELL, this.seed ^ 0x5bd1e995, 0.6 * vProv, 0.0035, 0.0085, vf)
-      if (vf.s < 1.3) {
+    {
+      let best = Infinity
+      let bv = null
+      const vs = this.volcanoes
+      for (let i = 0; i < vs.length; i++) {
+        const v = vs[i]
+        const dx = x - v.x
+        const dy = y - v.y
+        const dz = z - v.z
+        const d2 = dx * dx + dy * dy + dz * dz
+        const lim = v.r * 1.3
+        if (d2 < lim * lim) {
+          const sv = Math.sqrt(d2) / v.r
+          if (sv < best) {
+            best = sv
+            bv = v
+          }
+        }
+      }
+      if (bv) {
         // contorno non perfettamente circolare
-        const sp = vf.s * (1 + 0.14 * nd.noise(px * 520 + 3.1, py * 520 - 7.4, pz * 520 + 1.6))
-        const H = (isSea ? 900 : 1800) + 2600 * ((vf.id * 13.7) % 1)
+        const sp = best * (1 + 0.12 * nd.noise(px * 260 + 3.1, py * 260 - 7.4, pz * 260 + 1.6))
+        const H = bv.H
         const peak = (isSea ? 0 : baseLevel) + H
         if (sp < 1) {
-          const w = Math.pow(1 - sp, 1.7)
+          // in mare il profilo è più pieno: l'isola emersa è larga
+          const w = Math.pow(1 - sp, isSea ? 1.45 : 2.3)
           height = lerp(height, peak, w)
-          // cratere: conca di ~10% del raggio, profonda ~9% dell'altezza
+          // cratere: conca di ~8% del raggio, profonda ~7% dell'altezza
           if (sp < VOLC_CRATER) {
             const c = sp / VOLC_CRATER
-            height -= H * 0.09 * (1 - c * c)
-            lava = (vf.id * 29.3) % 1 < 0.45 && sp < VOLC_CRATER * 0.75
+            height -= H * 0.07 * (1 - c * c)
+            lava = bv.lava && sp < VOLC_CRATER * 0.75
           }
-          // colate e calanchi sui fianchi
-          height += nd.noise(px * 3000 + 5.5, py * 3000 - 2.2, pz * 3000 + 8.1) * 45 * w
+          // canaloni radiali sui fianchi: costole e solchi che scendono dal
+          // cratere. Un cono liscio, con la luce alle spalle della camera,
+          // sembrava un disco piatto; le costole lo rendono leggibile
+          const ddx = x - bv.x
+          const ddy = y - bv.y
+          const ddz = z - bv.z
+          const ang = Math.atan2(
+            ddx * bv.e2[0] + ddy * bv.e2[1] + ddz * bv.e2[2],
+            ddx * bv.e1[0] + ddy * bv.e1[1] + ddz * bv.e1[2]
+          )
+          const wob = nd.noise(px * 140 + 2.7, py * 140 - 6.1, pz * 140 + 4.4) * 1.8
+          const rib = Math.abs(Math.sin(ang * bv.ribs + wob))
+          height += (rib - 0.6) * H * 0.07 * w * smoothstep(0.08, 0.3, sp)
+          // colate e calanchi
+          height += nd.noise(px * 1800 + 5.5, py * 1800 - 2.2, pz * 1800 + 8.1) * 90 * w
           if (isSea && height > 0) baseLevel = 0
         }
-        volc = 1 - smoothstep(0.5, 1.25, sp)
+        // roccia scura solo sul cono alto: i fianchi bassi restano del
+        // paesaggio attorno (prima tutto il cono era un disco scuro e piatto)
+        volc = 1 - smoothstep(0.22, 0.55, sp)
       }
     }
 
     // ---------- 5d. Arcipelaghi ----------
+    const vf = this._vf
     // Solo in mare, in fasce dedicate: isole di 6-16 km circondate da una
     // piattaforma di acqua bassa, più una manciata di isolotti di 2-4 km.
     let islandLand = 0
@@ -525,9 +557,78 @@ export class Planet {
   }
 }
 
-/** Vulcani: celle di ~320 km, cratere al 10% del raggio. */
-const VOLC_CELL = 0.05
-const VOLC_CRATER = 0.1
+/** Vulcani: quanti, raggio del cono (sfera unitaria: 0.01 = 64 km, quindi 40-95 km), cratere. */
+const VOLC_LAND = 7
+const VOLC_SEA = 5
+const VOLC_R_MIN = 0.0065
+const VOLC_R_MAX = 0.015
+const VOLC_CRATER = 0.08
+/** Distanza minima tra due vulcani (radianti, ~2200 km): restano isolati. */
+const VOLC_SEPARATION = 0.35
+
+/**
+ * Sceglie i vulcani del pianeta: qualche cono sulla terraferma e qualche isola
+ * vulcanica in mare aperto, ben distanziati, lontani dai poli. Deterministico
+ * dal seed. Va chiamata con planet.volcanoes vuoto (serve sapere dov'è il mare
+ * senza vulcani).
+ */
+function pickVolcanoes(planet) {
+  let a = (planet.seed ^ 0x2f6b1e93) >>> 0
+  const rand = () => {
+    a = (a + 0x6d2b79f5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+  const smp = createSample()
+  const out = []
+  let land = 0
+  let sea = 0
+  const minDot = Math.cos(VOLC_SEPARATION)
+  for (let tries = 0; tries < 4000 && (land < VOLC_LAND || sea < VOLC_SEA); tries++) {
+    const yy = (rand() * 2 - 1) * 0.86 // niente vulcani oltre ~60° di latitudine
+    const th = rand() * Math.PI * 2
+    const rr = Math.sqrt(1 - yy * yy)
+    const vx = Math.cos(th) * rr
+    const vz = Math.sin(th) * rr
+    if (out.some((v) => v.x * vx + v.y * yy + v.z * vz > minDot)) continue
+    planet.sample(vx, yy, vz, 1, smp)
+    const isSea = smp.height < 0
+    // in mare: abbastanza profondo da essere un'isola isolata, non un pezzo di costa
+    if (isSea && (sea >= VOLC_SEA || smp.height > -1500)) continue
+    if (!isSea && (land >= VOLC_LAND || smp.height > 2500 || smp.water > 0.5)) continue
+    const u = rand()
+    // base tangente attorno al centro, per l'angolo dei canaloni radiali
+    let e1x = -vz
+    let e1z = vx
+    const e1l = Math.hypot(e1x, e1z) || 1
+    e1x /= e1l
+    e1z /= e1l
+    const e1 = [e1x, 0, e1z]
+    const e2 = [yy * e1z, vz * e1x - vx * e1z, -yy * e1x]
+    out.push({
+      x: vx,
+      y: yy,
+      z: vz,
+      e1,
+      e2,
+      ribs: 16 + Math.floor(rand() * 10),
+      r: VOLC_R_MIN + (VOLC_R_MAX - VOLC_R_MIN) * u,
+      // i coni più larghi sono anche più alti; le isole partono dal fondale
+      H: isSea ? 2600 + 2400 * u : 3200 + 2800 * u,
+      // lago di lava solo se la cima resta sotto la linea delle nevi: i
+      // giganti innevati sono dormienti (la neve coprirebbe il cratere)
+      lava:
+        rand() < 0.8 &&
+        (isSea ? 2600 + 2400 * u : Math.max(smp.height, 0) + 3200 + 2800 * u) <
+          SNOW_LINE_BASE - Math.abs(Math.asin(yy) * 57.2958) * SNOW_LINE_LAT - 300,
+      sea: isSea
+    })
+    if (isSea) sea++
+    else land++
+  }
+  return out
+}
 const VOLCANIC_RGB = rgbFor(BIOME.VOLCANIC)
 
 /**

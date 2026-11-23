@@ -534,6 +534,12 @@ export function createTerrainMaterial(sunDir) {
         float flowMask = smoothstep(0.08, 0.6, gWl) * step(-0.5, vHeight) * isWater;
 
         float hw = 0.0;
+        // onde lunghe solo per la normale (riflessi e superficie mossa): la
+        // trama dell'acqua resta visibile da qualche km di quota invece che
+        // solo dalle ultime centinaia di metri
+        float hwFar = 0.0;
+        float waveWf = scaleW(0.25, foot);  // ~60 m
+        float waveWm = scaleW(1.0, foot);   // ~250 m
         float waveW1 = scaleW(0.03, foot);
         float waveW2 = scaleW(0.008, foot);
         float waveW3 = scaleW(0.002, foot);
@@ -557,8 +563,22 @@ export function createTerrainMaterial(sunDir) {
             flowing = (mix(f1, f2, k) - 0.5) * 0.0003 * waveW2;
           }
           hw = mix(still, flowing, flowMask);
+          float calmF = mix(1.0, 0.5, step(-0.5, vHeight));
+          if (waveWm > 0.0) hwFar += (lnoise(pl + D2 * tw * 0.010, 4.0) - 0.5) * 0.014 * waveWm * calmF;
+          if (waveWf > 0.0) {
+            if (flowMask > 0.01) {
+              // fiumi: onde trasportate dalla corrente (flow map a due fasi)
+              float T = 2.4;
+              float p1 = fract(tw / T);
+              float p2 = fract(tw / T + 0.5);
+              float a1 = lnoise(pl - flowDir * 0.02 * p1 * T, 16.0);
+              float a2 = lnoise(pl - flowDir * 0.02 * p2 * T + 5.1, 16.0);
+              hwFar += (mix(a1, a2, abs(p1 * 2.0 - 1.0)) - 0.5) * 0.004 * waveWf * flowMask;
+            }
+            hwFar += (lnoise(pl + D1 * tw * 0.004, 16.0) - 0.5) * 0.0042 * waveWf * calmF * (1.0 - flowMask);
+          }
         }
-        vec3 Nw = normalize(R - tangentGrad(hw, R) * 1.4);
+        vec3 Nw = normalize(R - tangentGrad(hw + hwFar, R) * 1.4);
 
         vec3 base = vColor;
 
@@ -738,6 +758,7 @@ export function createTerrainMaterial(sunDir) {
 
           // colore che segue le onde: creste più chiare, ventri più scuri
           wc *= 1.0 + clamp(hw * 900.0, -0.5, 0.5) * 0.18;
+          wc *= 1.0 + clamp(hwFar * 80.0, -0.5, 0.5) * 0.14;
 
           // fiumi: scie di schiuma allungate nel verso della corrente
           if (flowMask > 0.01 && waveW2 > 0.0) {
@@ -830,7 +851,7 @@ export function createTerrainMaterial(sunDir) {
           float specWide = pow(max(dot(R, H), 0.0), 120.0);
           // scintille solo dove le onde sono risolte: da lontano la normale è
           // piatta e il riflesso stretto diventerebbe un disco abbagliante
-          float specSharp = pow(nh, 900.0) * waveW1;
+          float specSharp = pow(nh, 900.0) * max(waveW1, waveWm * 0.85);
           // il bagliore largo è appena accennato: con il sole che segue la
           // camera cadrebbe sempre al centro dell'inquadratura come una macchia
           wcol += vec3(1.0, 0.96, 0.86) * (smoothstep(0.25, 0.9, specWide) * 0.06 + specSharp * 1.4) * day;
