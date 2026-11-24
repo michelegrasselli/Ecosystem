@@ -4,24 +4,131 @@
   "width": 1080,
   "height": 1920,
   "fov": 50,
-  "duration": 33,
-  "labels": { "from": 8, "to": 25.5 },
-  "fade": { "in": 1.6, "out": 1.6 },
+  "duration": 42,
+  "labels": {
+    "from": 9.5,
+    "to": 31
+  },
+  "fade": {
+    "in": 1.6,
+    "out": 1.6
+  },
   "shots": [
-    { "at": 0, "lat": 14, "lon": -40, "alt": 26000, "pitch": 90, "heading": 0 },
-    { "at": 7, "lat": 9, "lon": -68, "alt": 15000, "pitch": 90, "heading": 0 },
-    { "at": 13, "lat": 2, "lon": -92, "alt": 5200, "pitch": 82, "heading": 0 },
-    { "at": 19, "lat": -5.0, "lon": -100.75, "alt": 900, "pitch": 55, "heading": 0 },
-    { "at": 24.5, "lat": -2.1, "lon": -100.75, "alt": 260, "pitch": 40, "heading": 0 },
-    { "at": 29, "lat": -0.55, "lon": -100.75, "alt": 92, "pitch": 33, "heading": 0 },
-    { "at": 33, "lat": -0.42, "lon": -100.94, "alt": 74, "pitch": 30, "heading": 10 }
+    {
+      "at": 0,
+      "lat": 14,
+      "lon": -40,
+      "alt": 26000,
+      "pitch": 90,
+      "heading": 0
+    },
+    {
+      "at": 8.5,
+      "lat": 9,
+      "lon": -68,
+      "alt": 15000,
+      "pitch": 90,
+      "heading": 0
+    },
+    {
+      "at": 15,
+      "lat": 2,
+      "lon": -92,
+      "alt": 5200,
+      "pitch": 82,
+      "heading": 0
+    },
+    {
+      "at": 22.5,
+      "lat": -5,
+      "lon": -100.75,
+      "alt": 900,
+      "pitch": 55,
+      "heading": 0
+    },
+    {
+      "at": 29,
+      "lat": -2.1,
+      "lon": -100.75,
+      "alt": 260,
+      "pitch": 40,
+      "heading": 0
+    },
+    {
+      "at": 35,
+      "lat": -0.55,
+      "lon": -100.75,
+      "alt": 92,
+      "pitch": 33,
+      "heading": 0
+    },
+    {
+      "at": 42,
+      "lat": -0.42,
+      "lon": -100.94,
+      "alt": 74,
+      "pitch": 30,
+      "heading": 10
+    }
   ],
   "titles": [
-    { "from": 0.8, "to": 6.4, "text": "The Creation of Elyra", "sub": "Episode I — The Birth of a Planet", "pos": "center", "size": 1.05 },
-    { "from": 7.2, "to": 11.8, "text": "In the beginning, there was only silence.", "pos": "bottom", "size": 0.78 },
-    { "from": 12.6, "to": 18.2, "text": "Then the world took shape.", "sub": "Oceans. Continents. Mountains that touch the sky.", "pos": "bottom", "size": 0.78 },
-    { "from": 19.6, "to": 25.2, "text": "And deep beneath its skin…", "sub": "…the fire of creation still burns.", "pos": "bottom", "size": 0.78 },
-    { "from": 26.0, "to": 29.6, "text": "This is Elyra.", "pos": "top", "size": 0.95 },
-    { "from": 29.8, "to": 33, "text": "What should I create next?", "pos": "bottom", "size": 0.72 }
-  ]
+    {
+      "from": 0.8,
+      "to": 7,
+      "text": "The Creation of Elyra",
+      "sub": "Episode I — The Birth of a Planet",
+      "pos": "center",
+      "size": 1.05
+    }
+  ],
+  "music": {
+    "src": "contesto/Vangelis - Conquest of paradise.mp3",
+    "volume": 0.5,
+    "offset": 0,
+    "fadeIn": 2.5,
+    "fadeOut": 3,
+    "duck": 0.6
+  },
+  "narration": {
+    "voice": "bm_lewis",
+    "speed": 0.86,
+    "captions": true,
+    "captionSize": 0.6,
+    "lines": [
+      {
+        "at": 1.8,
+        "text": "Before time had a name, there was only the dark."
+      },
+      {
+        "at": 7.2,
+        "text": "Then I spoke a single word into the silence. Elyra."
+      },
+      {
+        "at": 13.4,
+        "text": "From the deep, the oceans rose. Continents broke the surface, and mountains reached for the stars."
+      },
+      {
+        "at": 22.7,
+        "text": "But no world is born in peace."
+      },
+      {
+        "at": 26.6,
+        "text": "Deep beneath its skin, the fire of creation still burns."
+      },
+      {
+        "at": 32.9,
+        "text": "This is Elyra. And this is only the beginning."
+      },
+      {
+        "at": 38.2,
+        "text": "What should I create next?"
+      }
+    ]
+  },
+  "voiceFx": {
+    "pitch": 0.95,
+    "reverb": 0.2,
+    "warmth": 4,
+    "volume": 1
+  }
 }

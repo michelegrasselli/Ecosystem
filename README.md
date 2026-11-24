@@ -44,6 +44,20 @@ Il pulsante 🎬 apre il pannello di regia:
    direttamente nel browser. Con `npm run dev` il file viene salvato in `videos/`,
    altrimenti viene scaricato.
 
+### Voce narrante e musica
+
+Le battute del narratore si scrivono nella sceneggiatura (`narration.lines`, con il
+secondo d'inizio) e si trasformano in audio con una voce maschile profonda, in locale
+(Kokoro TTS, nessun servizio esterno):
+
+```
+npm run narrate -- episodes/ep01-the-birth-of-a-planet.json
+```
+
+I file finiscono in `audio/<episodio>/`. Al render la voce viene mixata con la musica
+(`music.src`, a volume basso e che si abbassa ancora quando parla il narratore) e il
+video esce con la traccia audio AAC e i sottotitoli.
+
 ## Comandi di navigazione
 
 | Azione | Comando |

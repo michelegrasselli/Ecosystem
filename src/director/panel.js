@@ -84,9 +84,10 @@ export function createDirectorPanel(director) {
   btn.addEventListener('click', () => panel.classList.toggle('open'))
   $('.dp-close').addEventListener('click', () => panel.classList.remove('open'))
 
-  $('.dp-preview').addEventListener('click', () => {
+  $('.dp-preview').addEventListener('click', async () => {
     try {
-      director.preview(readScript())
+      status.textContent = 'preparing preview…'
+      await director.preview(readScript())
       status.textContent = 'preview…'
     } catch (e) {
       status.textContent = 'error: ' + e.message

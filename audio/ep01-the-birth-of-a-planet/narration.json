@@ -1,0 +1,64 @@
+{
+  "episode": "ep01-the-birth-of-a-planet",
+  "voice": "bm_lewis",
+  "speed": 0.86,
+  "pitch": 0.95,
+  "lines": [
+    {
+      "at": 1.8,
+      "file": "01.wav",
+      "duration": 4.3,
+      "played": 4.526315789473684,
+      "text": "Before time had a name, there was only the dark.",
+      "hash": "809d3a3a0523"
+    },
+    {
+      "at": 7.2,
+      "file": "02.wav",
+      "duration": 5.05,
+      "played": 5.315789473684211,
+      "text": "Then I spoke a single word into the silence. Elyra.",
+      "hash": "1022c03dfaa2"
+    },
+    {
+      "at": 13.4,
+      "file": "03.wav",
+      "duration": 7.95,
+      "played": 8.368421052631579,
+      "text": "From the deep, the oceans rose. Continents broke the surface, and mountains reached for the stars.",
+      "hash": "392b778d440a"
+    },
+    {
+      "at": 22.7,
+      "file": "04.wav",
+      "duration": 3.125,
+      "played": 3.2894736842105265,
+      "text": "But no world is born in peace.",
+      "hash": "a847d4011c45"
+    },
+    {
+      "at": 26.6,
+      "file": "05.wav",
+      "duration": 5.325,
+      "played": 5.605263157894737,
+      "text": "Deep beneath its skin, the fire of creation still burns.",
+      "hash": "a482addf32f3"
+    },
+    {
+      "at": 32.9,
+      "file": "06.wav",
+      "duration": 4.475,
+      "played": 4.7105263157894735,
+      "text": "This is Elyra. And this is only the beginning.",
+      "hash": "e04161b88238"
+    },
+    {
+      "at": 38.2,
+      "file": "07.wav",
+      "duration": 2.7,
+      "played": 2.842105263157895,
+      "text": "What should I create next?",
+      "hash": "e37a3b8b6d36"
+    }
+  ]
+}

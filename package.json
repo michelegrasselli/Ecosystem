@@ -7,13 +7,15 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "narrate": "node tools/narrate.mjs"
   },
   "dependencies": {
     "mp4-muxer": "^5.2.2",
     "three": "^0.180.0"
   },
   "devDependencies": {
+    "kokoro-js": "^1.2.1",
     "vite": "^7.0.0"
   }
 }

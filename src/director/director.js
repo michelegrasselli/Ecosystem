@@ -17,6 +17,7 @@
 import { normalizeScript, buildTimeline } from './timeline.js'
 import { drawOverlay } from './overlay.js'
 import { createRecorder, webCodecsAvailable } from './recorder.js'
+import { loadNarration, buildSoundtrack, DEFAULT_VOICE_FX } from './audio.js'
 
 // massimo di attesa per le tile di un singolo fotogramma (ms): oltre si va
 // avanti comunque, per non bloccare la ripresa su un caso limite
@@ -53,6 +54,10 @@ export function createDirector(host) {
   let previewStart = 0
   let abort = false
   let lastRender = null
+  let narration = null
+  let soundtrack = null
+  let audioCtx = null
+  let audioSrc = null
 
   // cornice dell'anteprima: maschera scura ai lati e canvas della sovrimpressione
   const frameEl = document.createElement('div')
@@ -108,18 +113,51 @@ export function createDirector(host) {
     host.resize()
   }
 
-  function load(input) {
+  /**
+   * Prepara la sceneggiatura: timeline della camera, narrazione e colonna
+   * sonora. Le battute della voce narrante diventano anche sottotitoli
+   * (narration.captions: false per non mostrarli), con i tempi reali della voce.
+   */
+  async function load(input) {
     script = normalizeScript(input)
     timeline = buildTimeline(script)
     camera.fov = script.fov
     camera.updateProjectionMatrix()
+    narration = await loadNarration(script)
+    if (script.narration && !narration) {
+      console.warn('narration not generated yet: run  npm run narrate -- episodes/' + script.name + '.json')
+    }
+    if (narration && script.narration.captions !== false) {
+      const pitch = { ...DEFAULT_VOICE_FX, ...(script.voiceFx || {}) }.pitch
+      const cap = script.narration.captionSize || 0.6
+      for (const l of narration.lines) {
+        script.titles.push({
+          from: l.at - 0.15,
+          to: l.at + l.duration / pitch + 0.7,
+          text: l.text,
+          pos: 'bottom',
+          size: cap,
+          caption: true
+        })
+      }
+    }
+    soundtrack = await buildSoundtrack(script, narration)
+  }
+
+  function stopAudio() {
+    try {
+      audioSrc?.stop()
+    } catch {
+      // già fermo
+    }
+    audioSrc = null
   }
 
   // ------------------------------------------------------------ anteprima
 
-  function preview(input) {
+  async function preview(input) {
     stop()
-    load(input)
+    await load(input)
     mode = 'preview'
     document.body.classList.add('director-on')
     frameEl.style.display = 'block'
@@ -134,8 +172,18 @@ export function createDirector(host) {
     overlayCanvas.style.top = box.y + 'px'
     overlayCanvas.style.width = box.w + 'px'
     overlayCanvas.style.height = box.h + 'px'
-    previewStart = performance.now()
     loadFonts()
+    previewStart = performance.now()
+    // colonna sonora sincronizzata con l'inizio dell'anteprima
+    if (soundtrack) {
+      audioCtx = audioCtx || new AudioContext()
+      await audioCtx.resume()
+      audioSrc = audioCtx.createBufferSource()
+      audioSrc.buffer = soundtrack
+      audioSrc.connect(audioCtx.destination)
+      audioSrc.start()
+      previewStart = performance.now()
+    }
   }
 
   /** Chiamata dal ciclo principale a ogni frame durante l'anteprima. */
@@ -158,6 +206,7 @@ export function createDirector(host) {
 
   function stop() {
     abort = true
+    stopAudio()
     if (mode === 'preview') restoreCanvas()
     mode = null
   }
@@ -173,7 +222,7 @@ export function createDirector(host) {
   async function render(input, opts = {}) {
     if (!webCodecsAvailable()) throw new Error('this browser cannot encode video (WebCodecs missing)')
     stop()
-    load(input)
+    await load(input)
     abort = false
     mode = 'render'
     const W = script.width
@@ -191,7 +240,7 @@ export function createDirector(host) {
     comp.width = W
     comp.height = H
     const ctx = comp.getContext('2d')
-    const recorder = await createRecorder({ width: W, height: H, fps })
+    const recorder = await createRecorder({ width: W, height: H, fps, audio: soundtrack })
 
     const sceneOpts = { drive: null, viewportHeight: H, labelW: W, labelH: H, offline: true, clock: 0 }
     try {
@@ -230,7 +279,7 @@ export function createDirector(host) {
         name: (script.name || 'episode') + '.mp4',
         frames: total,
         seconds: (performance.now() - t0) / 1000,
-        codec: recorder.codec
+        codec: recorder.codec + (recorder.audioCodec ? ' + ' + recorder.audioCodec : ' (no audio)')
       }
       return lastRender
     } finally {

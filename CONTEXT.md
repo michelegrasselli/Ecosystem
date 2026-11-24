@@ -424,7 +424,7 @@ Strumento di produzione dei video della serie (§1.1). Tutto nel browser, niente
   suolo, `pitch` 90 = zenit, `heading` 0 = nord, `cut: true` per uno stacco), `titles`
   (`from`, `to`, `text`, `sub`, `pos` top/center/bottom, `size`), `labels` (nomi dei
   regni: `true`, `false` o un intervallo `{ from, to }` con dissolvenza), `fade` (in/out dal nero), `fps`, `width`, `height` (default 1080×1920, 9:16),
-  `fov`, `duration`.
+  `fov`, `duration`, `music`, `narration`, `voiceFx` (vedi sotto).
 - **Movimento** (`timeline.js`): ogni canale (posizione sulla sfera come versore, quota in
   scala logaritmica, inclinazione, orientamento "srotolato") è interpolato con una cubica
   monotona PCHIP: velocità continua, niente oscillazioni oltre i punti chiave, partenza e
@@ -444,6 +444,30 @@ Strumento di produzione dei video della serie (§1.1). Tutto nel browser, niente
   rallentati a pagina nascosta).
 - **Codifica** (`recorder.js`): WebCodecs `VideoEncoder` (H.264 High 4.2, ripiego VP9),
   16 Mbit/s, fotogramma chiave ogni 2 s, impacchettato in MP4 "fast start" da `mp4-muxer`.
+  Audio: `AudioEncoder` AAC-LC 192 kbit/s (ripiego Opus), 48 kHz stereo; la colonna
+  sonora è già calcolata e viene codificata tutta prima dei fotogrammi.
+- **Voce narrante** (`tools/narrate.mjs`, `npm run narrate -- episodes/<ep>.json`): TTS
+  locale **Kokoro-82M** (`kokoro-js`, licenza Apache 2.0, modello ONNX q8 scaricato da
+  Hugging Face al primo uso, gira su CPU ~tempo reale). Lingua inglese. Le battute stanno in
+  `narration: { voice, speed, lines: [{ at, text }] }`; lo script scrive
+  `audio/<episodio>/NN.wav` (24 kHz) e `narration.json` con tempi e durate, salta le
+  battute già generate (hash di testo|voce|velocità) e avvisa se due battute si
+  sovrappongono o se l'ultima va oltre la fine. `audio/` è versionata (file piccoli).
+  Voce scelta: `bm_lewis` (britannica, la più grave: ~89 Hz di fondamentale contro i
+  111–138 Hz di am_michael, am_fenrir, bm_george), velocità 0.86.
+- **Colonna sonora** (`audio.js`): mix calcolato una volta con un `OfflineAudioContext`
+  (identico in anteprima e nel video). Voce: `playbackRate` 0.95 (tono più basso e
+  più solenne), passa-alto 55 Hz, low-shelf +4 dB a 180 Hz (calore), +1.5 dB a 3.2 kHz
+  (presenza), compressore morbido, riverbero sintetico da sala (2.6 s, mandata 0.2).
+  Musica (`music: { src, volume, offset, fadeIn, fadeOut, duck }`): curva di guadagno a
+  50 Hz con dissolvenze e **ducking** (scende a `duck` × volume mentre parla il narratore,
+  con rampe di 0.4/0.7 s). Default volume 0.5, duck 0.6: musica ~14 dB sotto la voce
+  (misurato: il brano di Vangelis da solo è già a −18/−23 dB RMS, con 0.16 spariva).
+  Limitatore finale a −3 dB. Le battute diventano anche **sottotitoli** in basso
+  (`narration.captions: false` per toglierli, `captionSize` per la dimensione).
+- **Attenzione**: dopo modifiche a `recorder.js` il server di Vite ha servito a lungo la
+  versione vecchia (modulo in cache, watcher che non aveva visto il cambio): se il video
+  esce "(no audio)" riavviare `npm run dev`.
 - **Salvataggio**: con il server di sviluppo il video va in `videos/` del progetto (plugin
   `directorSave` in `vite.config.js`, POST `/__director/save`); nella build statica si
   scarica dal browser. `videos/` è escluso da git (file pesanti).
@@ -509,7 +533,7 @@ l'ultima build: dopo ogni modifica va rilanciato `npm run build`.
 │   │   ├── materials.js       shader toon del terreno/acqua
 │   │   ├── atmosphere.js      alone atmosferico
 │   │   └── sky.js             sfondo + stelle
-│   ├── director/              regia: sceneggiatura, anteprima, ripresa MP4
+│   ├── director/              regia: sceneggiatura, anteprima, ripresa MP4, colonna sonora
 │   ├── camera/
 │   │   └── globeControls.js   navigazione stile Google Earth
 │   ├── state/
