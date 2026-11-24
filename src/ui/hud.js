@@ -1,4 +1,6 @@
-// HUD: coordinate, quota, bioma e temperatura del punto osservato.
+// HUD: coordinate, quota del terreno, nazione, bioma e temperatura del punto
+// sotto il cursore (o del centro della vista, se il cursore è fuori dalla
+// finestra), più la quota della camera.
 // Include il tasto "salva" volutamente poco visibile.
 
 import { BIOME_NAME } from '../planet/biomes.js'
@@ -9,6 +11,7 @@ export function createHud({ planet, nations, onSave, onHome, onZoomIn, onZoomOut
     lat: document.getElementById('hud-lat'),
     lon: document.getElementById('hud-lon'),
     alt: document.getElementById('hud-alt'),
+    elev: document.getElementById('hud-elev'),
     biome: document.getElementById('hud-biome'),
     temp: document.getElementById('hud-temp'),
     nation: document.getElementById('hud-nation'),
@@ -52,22 +55,39 @@ export function createHud({ planet, nations, onSave, onHome, onZoomIn, onZoomOut
     if (acc < 0.16) return
     acc = 0
 
-    el.lat.textContent = formatDeg(view.lat, 'N', 'S')
-    el.lon.textContent = formatDeg(view.lon, 'E', 'W')
     el.alt.textContent = formatAltitude(view.altitudeKm)
+    const picked = view.pick?.()
+    if (picked === null) {
+      // cursore sullo spazio vuoto
+      for (const k of ['lat', 'lon', 'elev', 'biome', 'temp', 'nation']) if (el[k]) el[k].textContent = '—'
+      return
+    }
+    const lat = picked ? picked.lat : view.lat
+    const lon = picked ? picked.lon : view.lon
+    el.lat.textContent = formatDeg(lat, 'N', 'S')
+    el.lon.textContent = formatDeg(lon, 'E', 'W')
 
-    planet.sampleLatLon(view.lat, view.lon, 1, sample)
+    planet.sampleLatLon(lat, lon, 1, sample)
+    if (el.elev) el.elev.textContent = formatElevation(sample.height)
     const name = BIOME_NAME[sample.biome] ?? '—'
     el.biome.textContent = name
     el.temp.textContent = sample.temp.toFixed(0) + ' °C'
     if (el.nation && nations) {
       // lakes and rivers belong to the nation: "international waters" only at sea
       const onLand = sample.height >= 0
-      el.nation.textContent = onLand ? nations.atLatLon(view.lat, view.lon).title : 'international waters'
+      el.nation.textContent = onLand ? nations.atLatLon(lat, lon).title : 'international waters'
     }
   }
 
   return { update, toast, flashSaved, elements: el }
+}
+
+/** Quota del terreno in metri sul livello del mare (negativa: profondità). */
+function formatElevation(m) {
+  const v = Math.round(m / 10) * 10
+  const abs = Math.abs(v).toLocaleString('en-US').replace(/,/g, '\u2009')
+  if (v === 0) return '0 m'
+  return (v < 0 ? '−' : '') + abs + ' m'
 }
 
 function formatDeg(value, pos, neg) {

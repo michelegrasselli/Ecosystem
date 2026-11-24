@@ -81,8 +81,9 @@ avvio. Il salvataggio automatico della sola camera avviene anche alla chiusura d
 La terraferma è divisa in 79 regni dai nomi inventati di sapore medievale (es. "Kingdom of Wendmere", "Duchy of Merrowdale"): il rango dipende dall'estensione del regno. Avvicinandosi
 (sotto i ~7000 km) compaiono i nomi, ancorati a punti fissi del territorio: restano fermi sul
 terreno anche durante zoom e spostamenti. I confini sono una linea scura
-tratteggiata su un alone chiaro, leggibile da vicino e anche dallo spazio. L'HUD indica la nazione
-sotto la camera.
+tratteggiata su un alone chiaro, leggibile da vicino e anche dallo spazio. L'HUD descrive il punto
+sotto il mouse: coordinate, quota del terreno, nazione, bioma e temperatura (più la quota
+della camera).
 
 ## Vulcani e isole
 

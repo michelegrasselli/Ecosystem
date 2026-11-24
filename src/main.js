@@ -6,7 +6,7 @@ import './ui/styles.css'
 import { Planet } from './planet/planet.js'
 import { DEFAULT_SEED, SUN_DIRECTION, SCENE_RADIUS, MIN_ALTITUDE } from './planet/constants.js'
 import { reliefExaggeration, shadingExaggeration } from './render/relief.js'
-import { damp } from './core/math.js'
+import { damp, dirToLatLon } from './core/math.js'
 import { createTerrainMaterial, setNations, updateNoiseFrame, RIPPLE_DIR, RIPPLE_K } from './render/materials.js'
 import { Nations } from './planet/nations.js'
 import { createNationLabels } from './ui/labels.js'
@@ -213,6 +213,53 @@ function updateSun() {
 }
 
 const groundSample = Planet.createSample()
+
+// ------------------------------------------------- punto puntato dal mouse
+// L'HUD descrive il punto del terreno sotto il cursore (non il centro della
+// vista). Fuori dalla finestra si torna al centro della vista; sullo spazio
+// vuoto l'HUD mostra trattini.
+const pointer = { x: 0, y: 0, inside: false }
+canvas.addEventListener('pointermove', (e) => {
+  pointer.x = e.clientX
+  pointer.y = e.clientY
+  pointer.inside = true
+})
+canvas.addEventListener('pointerleave', () => {
+  pointer.inside = false
+})
+const _pickRay = new THREE.Raycaster()
+const _pickNdc = new THREE.Vector2()
+const _pickSphere = new THREE.Sphere(new THREE.Vector3(), SCENE_RADIUS)
+const _pickHit = new THREE.Vector3()
+const pickSample = Planet.createSample()
+
+/**
+ * Lat/lon del terreno sotto il cursore. Il raggio si interseca con una sfera
+ * alla quota del terreno (con la stessa esagerazione del rilievo dello
+ * shader), affinata in tre passi: sui rilievi il punto non "scivola" dietro.
+ * @returns {{lat:number, lon:number}|null|undefined} undefined = cursore fuori
+ *   dalla finestra, null = cursore sullo spazio
+ */
+function pickGround() {
+  if (!pointer.inside || document.body.classList.contains('director-on')) return undefined
+  const r = canvas.getBoundingClientRect()
+  if (!(r.width > 0)) return undefined
+  _pickNdc.set(((pointer.x - r.left) / r.width) * 2 - 1, -((pointer.y - r.top) / r.height) * 2 + 1)
+  _pickRay.setFromCamera(_pickNdc, camera)
+  const exag = reliefExaggeration(controls.altitude)
+  let h = 0
+  for (let k = 0; k < 3; k++) {
+    _pickSphere.radius = SCENE_RADIUS + h
+    if (!_pickRay.ray.intersectSphere(_pickSphere, _pickHit)) {
+      if (k === 0) return null
+      break
+    }
+    _pickHit.normalize()
+    planet.sample(_pickHit.x, _pickHit.y, _pickHit.z, 1, pickSample)
+    h = Math.max(pickSample.height, 0) * 0.001 * exag
+  }
+  return dirToLatLon(_pickHit.x, _pickHit.y, _pickHit.z)
+}
 let last = performance.now()
 let frameCount = 0
 
@@ -288,7 +335,8 @@ function step(dt, now, opts = {}) {
     {
       lat: controls.lat,
       lon: controls.lon,
-      altitudeKm
+      altitudeKm,
+      pick: pickGround
     },
     dt
   )

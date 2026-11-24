@@ -198,10 +198,14 @@ export class Nations {
     // visibile (che lo faceva scivolare).
     const acc = this.seeds.map(() => [0, 0, 0, 0])
     const landPts = this.seeds.map(() => [])
+    const seaPts = []
     const M = 24000
     for (let i = 0; i < M; i++) {
       const p = fibonacciSphere(M, i)
-      if (!isLand(p[0], p[1], p[2])) continue
+      if (!isLand(p[0], p[1], p[2])) {
+        seaPts.push(p[0], p[1], p[2])
+        continue
+      }
       const id = this.idAt(p[0], p[1], p[2])
       const a = acc[id]
       a[0] += p[0]
@@ -242,28 +246,50 @@ export class Nations {
 
     // --- "centro visivo" di ogni nazione: dove va il nome ---
     // Il baricentro può cadere in mare o oltre un confine (nazioni a mezzaluna,
-    // penisole). Si sceglie invece il campione di terraferma più INTERNO: il
-    // più lontano dai confini con le altre nazioni e circondato da più terra
-    // propria (indicatore della distanza dalla costa).
-    const R_KM = 6371
-    const nearDot = Math.cos(0.07) // ~450 km
+    // penisole). Si usa invece il "polo di inaccessibilità": il campione di
+    // terraferma più lontano dal bordo della nazione, cioè dal confine più
+    // vicino (misura esatta, la stessa delle linee dello shader) e dalla costa
+    // (distanza dal campione di mare più vicino). Fra punti quasi ugualmente
+    // interni vince il più vicino al baricentro, così il nome sta in mezzo
+    // anche nelle nazioni allungate. (Prima la misura era limitata a 450 km:
+    // nelle nazioni grandi molti punti risultavano a pari merito e vinceva il
+    // primo trovato, spesso decentrato.)
+    const sea = new Float32Array(seaPts)
+    const seaCount = sea.length / 3
     for (const n of this.list) {
       const f = n.labelPoints
       const cnt = f.length / 3
+      const [cx, cy, cz] = n.anchor
+      if (cnt === 0) {
+        n.center = n.anchor
+        continue
+      }
+      // calotta che contiene la nazione: si confrontano solo i punti di mare vicini
+      let minDot = 1
+      for (let k = 0; k < cnt; k++) {
+        minDot = Math.min(minDot, f[k * 3] * cx + f[k * 3 + 1] * cy + f[k * 3 + 2] * cz)
+      }
+      const capDot = Math.cos(Math.min(Math.acos(Math.max(-1, Math.min(1, minDot))) + 0.25, Math.PI))
+      const near = []
+      for (let j = 0; j < seaCount; j++) {
+        if (sea[j * 3] * cx + sea[j * 3 + 1] * cy + sea[j * 3 + 2] * cz > capDot) near.push(j)
+      }
       let bestScore = -Infinity
       let best = n.anchor
       for (let k = 0; k < cnt; k++) {
         const x = f[k * 3]
         const y = f[k * 3 + 1]
         const z = f[k * 3 + 2]
-        let around = 0
-        for (let j = 0; j < cnt; j++) {
-          if (x * f[j * 3] + y * f[j * 3 + 1] + z * f[j * 3 + 2] > nearDot) around++
+        let maxSeaDot = -1
+        for (const j of near) {
+          const d = x * sea[j * 3] + y * sea[j * 3 + 1] + z * sea[j * 3 + 2]
+          if (d > maxSeaDot) maxSeaDot = d
         }
-        // ~29 campioni in un disco di 450 km tutto di terra propria
-        const interior = Math.min(around / 29, 1)
-        const borderKm = this.borderDistance(x, y, z) * R_KM
-        const score = Math.min(borderKm, 450 * interior)
+        // metà della spaziatura dei campioni (~73 km): la costa sta in mezzo
+        const coast = near.length ? Math.max(Math.acos(Math.min(1, maxSeaDot)) - 0.0115, 0) : 1
+        const edge = Math.min(this.borderDistance(x, y, z), coast)
+        const fromCentroid = Math.acos(Math.max(-1, Math.min(1, x * cx + y * cy + z * cz)))
+        const score = edge - 0.2 * fromCentroid
         if (score > bestScore) {
           bestScore = score
           best = [x, y, z]

@@ -385,24 +385,37 @@ Generazione **procedurale deterministica** da un seed:
   con coordinate deformate da sinusoidi 3D per confini sinuosi. Nomi **inventati di sapore
   fantasy** (Aethermoor, Ashenvale, Starfall, Umbrafen, Farrowmere…), mescolati in modo
   deterministico dal seed.
-- **Etichette delle nazioni** (`ui/labels.js`, HTML):
-  - ogni nazione ha un **centro visivo** (`Nations.center`): il campione di terraferma più
-    interno, cioè quello che massimizza `min(distanza dal confine, 450 km × quota di terra
-    propria in un disco di 450 km)`. Il baricentro poteva cadere in mare o oltre un confine;
-    il centro visivo dista almeno ~200 km da ogni confine;
-  - se il centro visivo è ben inquadrato (entro il 78% dello schermo) il nome sta lì, al
-    centro della regione; altrimenti va al **centro della parte visibile** della nazione
-    (media dei raggi della griglia che la colpiscono, riportata sulla sua terra se cade
-    fuori). Così zoomando il nome resta nell'inquadratura e segue lo zoom, e **su un confine
-    si vedono entrambi i nomi**, ciascuno dal proprio lato;
-  - il nome è appoggiato a un punto del terreno (posizione = proiezione esatta, ogni frame);
-    quando il bersaglio cambia il punto scivola sulla sfera (`GLIDE = 2.6/s`); se il punto
-    è fuori schermo (salto della camera) salta subito al bersaglio, mai trascinato lungo il
-    bordo;
+- **Etichette delle nazioni** (`ui/labels.js`, HTML, carattere **Cinzel** spaziato
+  come su una mappa antica):
+  - ogni nazione ha un **centro visivo** (`Nations.center`): il **polo di
+    inaccessibilità**, cioè il campione di terraferma più lontano dal bordo della nazione =
+    `min(distanza dal confine, distanza dalla costa)` (confine: misura esatta dello shader;
+    costa: campione di mare più vicino, griglia di Fibonacci di 24000 punti), meno
+    `0.2 × distanza dal baricentro` per centrare il nome nelle nazioni allungate. La
+    versione precedente limitava la misura a 450 km: nelle nazioni grandi molti punti
+    erano a pari merito e vinceva il primo, decentrato (es. Fennwald);
+  - il nome è sempre **appoggiato a un punto fisso del terreno** (l'ancora): la posizione è
+    la proiezione esatta di quel punto a ogni frame, quindi in zoom e pan si muove
+    rigidamente con la mappa. Prima inseguiva il centroide della parte visibile, ricalcolato
+    ogni 3 frame su una griglia grossolana: da qui gli scatti;
+  - ancora = centro visivo finché è entro l'80% dell'inquadratura e sulla terra visibile
+    della nazione; altrimenti il **punto più interno della parte visibile**: griglia di
+    raggi a celle quadrate (24 sul lato lungo, giro completo in 3 frame), distanza di ogni
+    cella dal bordo della sua regione (confini, coste e bordi dello schermo), cella
+    migliore (a pari merito la più vicina al baricentro visibile) mediata con le vicine
+    quasi altrettanto interne. Su un confine si vedono entrambi i nomi;
+  - **isteresi**: un'ancora della parte visibile resta finché è entro il 90% dello schermo
+    e la migliore non la batte di `1.5× + 0.75` celle;
+  - **cambio d'ancora**: se la nuova è vicina a schermo (< 10% del lato corto) il punto
+    scivola (5/s), altrimenti il nome sfuma, salta e ricompare (dissolvenza);
   - compaiono sotto i ~7000 km di quota e **scompaiono sotto ~40 km** (sfumano tra 70 e 25
-    km), dove la nazione riempie lo schermo; se due nomi si sovrappongono resta quello con
-    più terra inquadrata. Griglia di 16×12 raggi spalmata su 3 frame; costo ~0.4 ms/frame.
-    L'HUD mostra la nazione sotto la camera ("international waters" solo sul mare).
+    km); se due nomi si sovrappongono resta quello con più terra inquadrata, con
+    precedenza a quello già visibile (niente lampeggi).
+  - **HUD**: descrive il punto **sotto il cursore** (lat, lon, quota del terreno, nazione,
+    bioma, temperatura): raggio dalla camera intersecato con la sfera alla quota del
+    terreno esagerata come nello shader, affinato in 3 passi. Fuori dalla finestra torna
+    al centro della vista, sullo spazio mostra trattini. In fondo la quota della camera.
+    Caratteri: chiavi in Cinzel, valori in Cormorant Garamond (cifre allineate).
 - **Due calotte polari**: a nord terre ghiacciate, a sud un continente polare (tipo
   Antartide) aggiunto al campo di continentalità oltre i ~64-80°. In entrambi i poli il
   mare gelato diventa **banchisa** (lastra di ghiaccio piatta, bioma `ICE`).
