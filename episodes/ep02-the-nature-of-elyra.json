@@ -4,7 +4,7 @@
   "width": 1080,
   "height": 1920,
   "fov": 50,
-  "duration": 94,
+  "duration": 59,
   "labels": false,
   "fade": {
     "in": 1.6,
@@ -20,15 +20,15 @@
       "heading": 0
     },
     {
-      "at": 17.6,
-      "lat": 9,
-      "lon": -82,
-      "alt": 15000,
+      "at": 10.5,
+      "lat": 10,
+      "lon": -76,
+      "alt": 17000,
       "pitch": 90,
-      "heading": 12
+      "heading": 10
     },
     {
-      "at": 17.6,
+      "at": 10.5,
       "lat": 10.15,
       "lon": -4.2,
       "alt": 52,
@@ -37,7 +37,7 @@
       "cut": true
     },
     {
-      "at": 27.6,
+      "at": 20.2,
       "lat": 10,
       "lon": -4.75,
       "alt": 40,
@@ -45,24 +45,7 @@
       "heading": 266
     },
     {
-      "at": 27.6,
-      "lat": 4,
-      "lon": -118,
-      "alt": 11000,
-      "pitch": 90,
-      "heading": 0,
-      "cut": true
-    },
-    {
-      "at": 35.7,
-      "lat": 4,
-      "lon": -104,
-      "alt": 9000,
-      "pitch": 90,
-      "heading": 8
-    },
-    {
-      "at": 35.7,
+      "at": 20.2,
       "lat": -8,
       "lon": -66,
       "alt": 2600,
@@ -71,49 +54,15 @@
       "cut": true
     },
     {
-      "at": 45.7,
-      "lat": -5.5,
-      "lon": -61,
-      "alt": 450,
-      "pitch": 34,
+      "at": 27.4,
+      "lat": -5.8,
+      "lon": -61.5,
+      "alt": 600,
+      "pitch": 38,
       "heading": 95
     },
     {
-      "at": 45.7,
-      "lat": 6.1,
-      "lon": -2.2,
-      "alt": 110,
-      "pitch": 32,
-      "heading": 272,
-      "cut": true
-    },
-    {
-      "at": 53.1,
-      "lat": 6,
-      "lon": -2.7,
-      "alt": 75,
-      "pitch": 24,
-      "heading": 280
-    },
-    {
-      "at": 53.1,
-      "lat": 19.4,
-      "lon": 15,
-      "alt": 340,
-      "pitch": 42,
-      "heading": 355,
-      "cut": true
-    },
-    {
-      "at": 58.8,
-      "lat": 20.2,
-      "lon": 14.8,
-      "alt": 230,
-      "pitch": 32,
-      "heading": 5
-    },
-    {
-      "at": 58.8,
+      "at": 27.4,
       "lat": 62.6,
       "lon": -140.5,
       "alt": 140,
@@ -122,15 +71,15 @@
       "cut": true
     },
     {
-      "at": 68.8,
-      "lat": 63.6,
-      "lon": -140.2,
-      "alt": 80,
-      "pitch": 17,
-      "heading": 15
+      "at": 34,
+      "lat": 63.4,
+      "lon": -140.25,
+      "alt": 85,
+      "pitch": 18,
+      "heading": 12
     },
     {
-      "at": 68.8,
+      "at": 34,
       "lat": 11.6,
       "lon": -40.1,
       "alt": 420,
@@ -139,15 +88,15 @@
       "cut": true
     },
     {
-      "at": 76.5,
-      "lat": 13.5,
+      "at": 42.1,
+      "lat": 13.4,
       "lon": -40.1,
-      "alt": 95,
-      "pitch": 32,
+      "alt": 100,
+      "pitch": 33,
       "heading": 0
     },
     {
-      "at": 76.5,
+      "at": 42.1,
       "lat": 15.5,
       "lon": -29,
       "alt": 2600,
@@ -156,34 +105,34 @@
       "cut": true
     },
     {
-      "at": 84,
+      "at": 50,
       "lat": 15,
       "lon": -35,
-      "alt": 6500,
+      "alt": 7500,
       "pitch": 88,
       "heading": 0
     },
     {
-      "at": 94,
+      "at": 59,
       "lat": 18,
-      "lon": -52,
-      "alt": 23000,
+      "lon": -50,
+      "alt": 26000,
       "pitch": 90,
-      "heading": 18
+      "heading": 20
     }
   ],
   "titles": [
     {
-      "from": 0.8,
-      "to": 7.2,
+      "from": 0.6,
+      "to": 6.5,
       "text": "The Nature of Elyra",
       "sub": "Episode II",
       "pos": "center",
       "size": 1.05
     },
     {
-      "from": 87.6,
-      "to": 94,
+      "from": 51,
+      "to": 59,
       "text": "Elyra",
       "sub": "Episode II — The Nature of a World",
       "pos": "top",
@@ -206,47 +155,31 @@
     "captionSize": 0.6,
     "lines": [
       {
-        "at": 1.8,
-        "text": "Far beyond every map of the stars, Elyra turns alone in the dark."
+        "at": 1.5,
+        "text": "Elyra turns alone, far beyond every map of the stars. No moon has ever crossed its sky."
       },
       {
-        "at": 9.1,
-        "text": "A world of six thousand four hundred kilometres in radius. No moon lights its nights."
+        "at": 10.8,
+        "text": "Here, everything is lighter. Rain falls slowly, and the tides still rise, though nothing pulls them."
       },
       {
-        "at": 17.9,
-        "text": "Its gravity is gentle. Here, every stone weighs a little less, and every wave climbs a little higher."
+        "at": 20.5,
+        "text": "At night, its oceans glow faintly in the dark. No one knows why."
       },
       {
-        "at": 27.9,
-        "text": "A day lasts twenty-nine hours. A year, three hundred and seventy-seven days."
+        "at": 27.7,
+        "text": "The ice at its poles is older than the light that falls upon it."
       },
       {
-        "at": 36,
-        "text": "More than half of its face is water. Oceans seven kilometres deep, where no light has ever reached."
+        "at": 34.3,
+        "text": "And every ninety years, all of its volcanoes wake at once, like a single heartbeat."
       },
       {
-        "at": 46,
-        "text": "On the land, rivers carve their way through green valleys, toward the sea."
+        "at": 42.4,
+        "text": "Seventy-one realms lie waiting. No one has ever walked them."
       },
       {
-        "at": 53.4,
-        "text": "Further on, the deserts burn beneath a white sun."
-      },
-      {
-        "at": 59.1,
-        "text": "At the edges of the world, the ice has never melted. And the mountains climb above nine thousand metres."
-      },
-      {
-        "at": 69.2,
-        "text": "Forty-six volcanoes rise from its skin. Twenty-one of them still burn."
-      },
-      {
-        "at": 76.8,
-        "text": "Its land is already divided into seventy-one realms. But no one has ever walked them."
-      },
-      {
-        "at": 86.3,
+        "at": 50,
         "text": "Not yet."
       }
     ]
@@ -289,11 +222,11 @@
           0.035
         ],
         "leak": 0.05,
-        "focus": 1,
-        "sat": 0.85
+        "sat": 0.85,
+        "focus": 1
       },
       {
-        "at": 6.5,
+        "at": 6,
         "exposure": 1,
         "focus": 0,
         "fog": 0.3,
@@ -302,7 +235,7 @@
         "sat": 1
       },
       {
-        "at": 17.4,
+        "at": 10.3,
         "dust": 0.5,
         "embers": 0,
         "tintAmt": 0,
@@ -330,10 +263,11 @@
           0.012,
           0.035
         ],
-        "leak": 0.15
+        "leak": 0.15,
+        "sat": 1
       },
       {
-        "at": 17.8,
+        "at": 10.7,
         "dust": 0.5,
         "embers": 0,
         "tintAmt": 0,
@@ -361,10 +295,11 @@
           0.012,
           0.035
         ],
-        "leak": 0.15
+        "leak": 0.15,
+        "sat": 1
       },
       {
-        "at": 35.5,
+        "at": 20,
         "dust": 0.5,
         "embers": 0,
         "tintAmt": 0,
@@ -392,55 +327,52 @@
           0.012,
           0.035
         ],
-        "leak": 0.15
+        "leak": 0.15,
+        "sat": 1
       },
       {
-        "at": 35.9,
-        "tintAmt": 0.2,
+        "at": 20.4,
+        "dust": 0.55,
+        "embers": 0,
+        "tintAmt": 0.3,
         "tint": [
-          0.85,
+          0.75,
           0.95,
-          1.15
+          1.2
         ],
-        "fog": 0.3,
+        "exposure": 0.55,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.35,
+        "fog": 0.62,
         "fogColor": [
-          0.12,
-          0.25,
-          0.45
+          0.05,
+          0.45,
+          0.55
         ],
-        "exposure": 0.92,
-        "leak": 0.1,
-        "threshold": 0.72
+        "shadow": [
+          0,
+          0.02,
+          0.05
+        ],
+        "leak": 0.08,
+        "sat": 1.1
       },
       {
-        "at": 45.5,
-        "tintAmt": 0.2,
+        "at": 27.2,
+        "dust": 0.55,
+        "embers": 0,
+        "tintAmt": 0.3,
         "tint": [
-          0.85,
+          0.75,
           0.95,
-          1.15
+          1.2
         ],
-        "fog": 0.3,
-        "fogColor": [
-          0.12,
-          0.25,
-          0.45
-        ],
-        "exposure": 0.92,
-        "leak": 0.1,
-        "threshold": 0.72
-      },
-      {
-        "at": 45.9,
-        "dust": 0.5,
-        "embers": 0,
-        "tintAmt": 0,
-        "tint": [
-          1,
-          1,
-          1
-        ],
-        "exposure": 1,
+        "exposure": 0.55,
         "threshold": 0.72,
         "high": [
           1.04,
@@ -448,88 +380,24 @@
           0.9
         ],
         "contrast": 0.35,
-        "fog": 0.2,
+        "fog": 0.62,
         "fogColor": [
-          0.32,
-          0.3,
+          0.05,
+          0.45,
           0.55
         ],
         "shadow": [
           0,
-          0.012,
-          0.035
+          0.02,
+          0.05
         ],
-        "leak": 0.15
+        "leak": 0.08,
+        "sat": 1.1
       },
       {
-        "at": 52.9,
-        "dust": 0.5,
+        "at": 27.6,
+        "dust": 0.35,
         "embers": 0,
-        "tintAmt": 0,
-        "tint": [
-          1,
-          1,
-          1
-        ],
-        "exposure": 1,
-        "threshold": 0.72,
-        "high": [
-          1.04,
-          0.99,
-          0.9
-        ],
-        "contrast": 0.35,
-        "fog": 0.2,
-        "fogColor": [
-          0.32,
-          0.3,
-          0.55
-        ],
-        "shadow": [
-          0,
-          0.012,
-          0.035
-        ],
-        "leak": 0.15
-      },
-      {
-        "at": 53.3,
-        "tintAmt": 0.22,
-        "tint": [
-          1.18,
-          1,
-          0.8
-        ],
-        "exposure": 1,
-        "leak": 0.35,
-        "dust": 0.7,
-        "fog": 0.12,
-        "fogColor": [
-          0.45,
-          0.32,
-          0.15
-        ]
-      },
-      {
-        "at": 58.6,
-        "tintAmt": 0.22,
-        "tint": [
-          1.18,
-          1,
-          0.8
-        ],
-        "exposure": 1,
-        "leak": 0.35,
-        "dust": 0.7,
-        "fog": 0.12,
-        "fogColor": [
-          0.45,
-          0.32,
-          0.15
-        ]
-      },
-      {
-        "at": 59,
         "tintAmt": 0.25,
         "tint": [
           0.85,
@@ -550,11 +418,18 @@
           0.42,
           0.6
         ],
-        "dust": 0.35,
-        "leak": 0.1
+        "shadow": [
+          0,
+          0.012,
+          0.035
+        ],
+        "leak": 0.1,
+        "sat": 1
       },
       {
-        "at": 68.6,
+        "at": 33.8,
+        "dust": 0.35,
+        "embers": 0,
         "tintAmt": 0.25,
         "tint": [
           0.85,
@@ -575,30 +450,23 @@
           0.42,
           0.6
         ],
-        "dust": 0.35,
-        "leak": 0.1
+        "shadow": [
+          0,
+          0.012,
+          0.035
+        ],
+        "leak": 0.1,
+        "sat": 1
       },
       {
-        "at": 69,
+        "at": 34.2,
+        "dust": 0.1,
+        "embers": 1,
         "tintAmt": 0.35,
         "tint": [
           1.25,
           0.8,
           0.68
-        ],
-        "embers": 1,
-        "dust": 0.1,
-        "fog": 0.28,
-        "fogColor": [
-          0.5,
-          0.12,
-          0.04
-        ],
-        "contrast": 0.5,
-        "shadow": [
-          0.03,
-          0,
-          0.012
         ],
         "exposure": 1,
         "threshold": 0.72,
@@ -607,29 +475,30 @@
           0.99,
           0.9
         ],
-        "leak": 0.18
-      },
-      {
-        "at": 76.3,
-        "tintAmt": 0.35,
-        "tint": [
-          1.25,
-          0.8,
-          0.68
-        ],
-        "embers": 1,
-        "dust": 0.1,
+        "contrast": 0.5,
         "fog": 0.28,
         "fogColor": [
           0.5,
           0.12,
           0.04
         ],
-        "contrast": 0.5,
         "shadow": [
           0.03,
           0,
           0.012
+        ],
+        "leak": 0.18,
+        "sat": 1
+      },
+      {
+        "at": 41.9,
+        "dust": 0.1,
+        "embers": 1,
+        "tintAmt": 0.35,
+        "tint": [
+          1.25,
+          0.8,
+          0.68
         ],
         "exposure": 1,
         "threshold": 0.72,
@@ -638,10 +507,23 @@
           0.99,
           0.9
         ],
-        "leak": 0.18
+        "contrast": 0.5,
+        "fog": 0.28,
+        "fogColor": [
+          0.5,
+          0.12,
+          0.04
+        ],
+        "shadow": [
+          0.03,
+          0,
+          0.012
+        ],
+        "leak": 0.18,
+        "sat": 1
       },
       {
-        "at": 76.7,
+        "at": 42.3,
         "dust": 0.5,
         "embers": 0,
         "tintAmt": 0,
@@ -669,10 +551,11 @@
           0.012,
           0.035
         ],
-        "leak": 0.3
+        "leak": 0.3,
+        "sat": 1
       },
       {
-        "at": 92,
+        "at": 57,
         "leak": 0.15,
         "dust": 0.3,
         "fog": 0.3
@@ -680,19 +563,19 @@
     ],
     "flashes": [
       {
-        "at": 27.6,
-        "power": 0.7,
-        "rise": 0.4,
-        "decay": 1.3
+        "at": 40.3,
+        "power": 0.35,
+        "rise": 0.12,
+        "decay": 0.35
       },
       {
-        "at": 53.1,
-        "power": 0.6,
-        "rise": 0.35,
-        "decay": 1.2
+        "at": 40.75,
+        "power": 0.28,
+        "rise": 0.12,
+        "decay": 0.45
       },
       {
-        "at": 76.5,
+        "at": 42.1,
         "power": 0.65,
         "rise": 0.4,
         "decay": 1.3
@@ -700,23 +583,19 @@
     ],
     "dips": [
       {
-        "at": 17.6,
+        "at": 10.5,
         "dur": 1
       },
       {
-        "at": 35.7,
+        "at": 20.2,
         "dur": 1
       },
       {
-        "at": 45.7,
-        "dur": 0.9
-      },
-      {
-        "at": 58.8,
+        "at": 27.4,
         "dur": 1
       },
       {
-        "at": 68.8,
+        "at": 34,
         "dur": 1.1
       }
     ]

@@ -47,8 +47,8 @@ Il pulsante 🎬 apre il pannello di regia:
 ### Episodi
 
 - `ep01-the-birth-of-a-planet` — la nascita del pianeta (teaser, 48 s)
-- `ep02-the-nature-of-elyra` — com'è fatto Elyra: dimensioni, gravità, giorno e anno, mari,
-  fiumi, deserti, ghiacci, vulcani (94 s)
+- `ep02-the-nature-of-elyra` — le stranezze di Elyra: niente luna ma maree, oceani che
+  brillano di notte, ghiaccio più antico della luce, vulcani che si svegliano insieme (59 s)
 
 ### Effetti e montaggio
 

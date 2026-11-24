@@ -520,17 +520,20 @@ Strumento di produzione dei video della serie (§1.1). Tutto nel browser, niente
   fino al pianeta intero, che ruota piano; il titolo finale resta ~10 s.
   Le inquadrature migliori sulle montagne hanno la luce radente di lato (il sole è a nord-est
   della catena a 14°S 117°W: guardare verso nord o sud) e il cielo in alto (pitch 11–30).
-- **Episodio II — The Nature of Elyra** (`episodes/ep02-the-nature-of-elyra.json`, 94 s):
-  il narratore descrive il pianeta, una caratteristica per scena (spazio → costa con onde →
-  il pianeta dall'alto → oceano profondo → valle verde con fiumi → deserto → ghiacci e
-  vette → vulcano → ripresa all'indietro con i confini dei regni, "Not yet.").
+- **Episodio II — The Nature of Elyra** (`episodes/ep02-the-nature-of-elyra.json`, 59 s,
+  sotto il minuto): il narratore descrive le stranezze del pianeta, una per scena (spazio →
+  costa con onde → oceano "notturno" con foschia turchese → ghiacci e vette → vulcano con
+  due lampi a "battito" → ripresa all'indietro con i confini dei regni, "Not yet." e ~7 s
+  di titolo finale).
   **Canone di Elyra** (da rispettare nei prossimi episodi):
-  - dal generatore: raggio 6371 km ("six thousand four hundred kilometres"), ~43% di terre
-    emerse ("more than half of its face is water"), vetta più alta ~9.5 km, fondali fino a
-    ~7 km, 71 regni (nazioni), 46 vulcani di cui 21 attivi, due calotte di ghiaccio;
-  - inventati: gravità più debole della terrestre (~0.9 g: "every stone weighs a little
-    less"), giorno di 29 ore, anno di 377 giorni, **nessuna luna**, nessun abitante ("no
-    one has ever walked them. Not yet."). Il narratore è il creatore (prima persona).
+  - dal generatore: raggio 6371 km, ~43% di terre emerse, vetta più alta ~9.5 km, fondali
+    fino a ~7 km, 71 regni (nazioni), 46 vulcani di cui 21 attivi, due calotte di ghiaccio;
+  - inventati, volutamente diversi dalla Terra: **nessuna luna**, eppure le maree salgono
+    ("though nothing pulls them"); tutto è più leggero e la pioggia cade lenta (gravità
+    bassa); di notte gli **oceani brillano** debolmente e nessuno sa perché; il ghiaccio dei
+    poli è **più antico della luce** che lo illumina; **ogni novant'anni tutti i vulcani si
+    risvegliano insieme**, come un unico battito; 71 regni che nessuno ha mai percorso
+    ("Not yet."). Il narratore è il creatore (prima persona).
   - luoghi usati: costa con onde e catena innevata (10°N 4.5°W), valle verde con fiumi
     verso il mare (6°N 2.5°W), deserto (20°N 15°E), ghiacci e vette (63°N 140°W, luce
     radente), vulcano attivo (14.3°N 40.1°W), oceano profondo con isola (5.5°S 61°W).
