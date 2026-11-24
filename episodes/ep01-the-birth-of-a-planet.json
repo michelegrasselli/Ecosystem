@@ -4,11 +4,11 @@
   "width": 1080,
   "height": 1920,
   "fov": 50,
-  "duration": 42,
+  "duration": 48,
   "labels": false,
   "fade": {
     "in": 1.6,
-    "out": 1.6
+    "out": 2.4
   },
   "shots": [
     { "at": 0, "lat": 12, "lon": -55, "alt": 38000, "pitch": 90, "heading": 0 },
@@ -17,8 +17,8 @@
     { "at": 11.9, "cut": true, "lat": -24, "lon": -104, "alt": 2600, "pitch": 55, "heading": 300 },
     { "at": 18.2, "lat": -18, "lon": -112, "alt": 1100, "pitch": 38, "heading": 290 },
 
-    { "at": 18.2, "cut": true, "lat": -16.7, "lon": -118.3, "alt": 95, "pitch": 30, "heading": 15 },
-    { "at": 22.65, "lat": -16.2, "lon": -117.5, "alt": 72, "pitch": 25, "heading": 35 },
+    { "at": 18.2, "cut": true, "lat": -16.6, "lon": -117.75, "alt": 42, "pitch": 27, "heading": 5 },
+    { "at": 22.65, "lat": -16.38, "lon": -117.6, "alt": 30, "pitch": 11, "heading": 15 },
 
     { "at": 22.65, "cut": true, "lat": -4, "lon": -100.75, "alt": 700, "pitch": 62, "heading": 0 },
     { "at": 27, "lat": -1.6, "lon": -100.75, "alt": 220, "pitch": 42, "heading": 0 },
@@ -26,7 +26,8 @@
 
     { "at": 32.95, "cut": true, "lat": 0.2, "lon": -100.75, "alt": 350, "pitch": 75, "heading": 0 },
     { "at": 37, "lat": 1.5, "lon": -99.5, "alt": 3500, "pitch": 88, "heading": 0 },
-    { "at": 42, "lat": 4, "lon": -96, "alt": 21000, "pitch": 90, "heading": 0 }
+    { "at": 42, "lat": 4, "lon": -96, "alt": 21000, "pitch": 90, "heading": 0 },
+    { "at": 48, "lat": 6, "lon": -93, "alt": 27000, "pitch": 90, "heading": 22 }
   ],
   "titles": [
     {
@@ -39,7 +40,7 @@
     },
     {
       "from": 38.2,
-      "to": 42,
+      "to": 48,
       "text": "Elyra",
       "sub": "a world is waking",
       "pos": "top",
@@ -52,12 +53,16 @@
       { "at": 0, "exposure": 0.5, "focus": 1, "fog": 0.55, "fogColor": [0.28, 0.2, 0.55], "dust": 0.25, "leak": 0.05, "sat": 0.85 },
       { "at": 6.5, "exposure": 1, "focus": 0, "fog": 0.3, "dust": 0.5, "leak": 0.15, "sat": 1 },
       { "at": 11.9, "fog": 0.2, "fogColor": [0.32, 0.3, 0.55], "sat": 1.05 },
-      { "at": 18, "dust": 0.6, "leak": 0.18 },
+      { "at": 18, "dust": 0.6, "leak": 0.18, "exposure": 1, "threshold": 0.72, "high": [1.04, 0.99, 0.9], "contrast": 0.35 },
+      { "at": 18.3, "exposure": 0.78, "threshold": 0.85, "high": [0.95, 0.93, 0.88], "contrast": 0.45 },
+      { "at": 22.55, "exposure": 0.78, "threshold": 0.85, "high": [0.95, 0.93, 0.88] },
+      { "at": 22.8, "exposure": 1, "threshold": 0.72, "high": [1.04, 0.99, 0.9] },
       { "at": 22.4, "tintAmt": 0, "tint": [1.25, 0.8, 0.68], "embers": 0, "dust": 0.6, "fog": 0.2, "fogColor": [0.32, 0.3, 0.55], "contrast": 0.35, "shadow": [0, 0.012, 0.035] },
       { "at": 23.6, "tintAmt": 0.35, "embers": 0.9, "dust": 0.1, "fog": 0.28, "fogColor": [0.5, 0.12, 0.04], "contrast": 0.5, "shadow": [0.03, 0, 0.012] },
       { "at": 32.5, "tintAmt": 0.35, "embers": 1, "dust": 0.1, "fog": 0.28, "fogColor": [0.5, 0.12, 0.04], "contrast": 0.5, "shadow": [0.03, 0, 0.012], "leak": 0.18 },
       { "at": 33.6, "tintAmt": 0, "embers": 0, "dust": 0.6, "fog": 0.2, "fogColor": [0.32, 0.3, 0.55], "contrast": 0.35, "shadow": [0, 0.012, 0.035], "leak": 0.32 },
-      { "at": 41, "leak": 0.2, "dust": 0.45 }
+      { "at": 41, "leak": 0.2, "dust": 0.45 },
+      { "at": 47, "leak": 0.12, "dust": 0.3, "fog": 0.3 }
     ],
     "flashes": [
       { "at": 11.9, "power": 0.8, "rise": 0.5, "decay": 1.4 },
@@ -73,7 +78,7 @@
     "volume": 0.5,
     "offset": 0,
     "fadeIn": 2.5,
-    "fadeOut": 3,
+    "fadeOut": 4.5,
     "duck": 0.6
   },
   "narration": {

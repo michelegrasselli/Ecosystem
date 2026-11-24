@@ -230,6 +230,10 @@ export class Planet {
     let fieldHot = false
     let molten = 0
     let burn = 0
+    // distanza dal vulcano più vicino (in raggi del cono) e se è attivo:
+    // servono ai fiumi di lava (sezione 9)
+    let volcDist = Infinity
+    let volcHot = false
     {
       let best = Infinity
       let bv = null
@@ -251,6 +255,8 @@ export class Planet {
         }
       }
       if (bv) {
+        volcDist = best
+        volcHot = bv.lava
         // contorno non perfettamente circolare
         const sp = best * (1 + 0.12 * nd.noise(px * 260 + 3.1, py * 260 - 7.4, pz * 260 + 1.6))
         const H = bv.H
@@ -425,7 +431,7 @@ export class Planet {
     let isRiver = false
     let biome = BIOME.GRASSLAND
 
-    if (!isSea && q > 0.3 && Math.max(volc, lavaField) < 0.3) {
+    if (!isSea && q > 0.3 && Math.max(volc, lavaField, burn) < 0.3) {
       const lakeNoise = fbm(nd, px * 5.6 - 71.2, py * 5.6 + 29.4, pz * 5.6 - 13.8, 2)
       const flatness = smoothstep(2400, 180, height)
       const lakeMask = smoothstep(0.36, 0.68, lakeNoise) * flatness
@@ -446,7 +452,14 @@ export class Planet {
 
     // ---------- 9. Fiumi ----------
     let valley = 0
+    let lavaChannel = 0
     let riverAmount = 0
+    // Nelle aree vulcaniche (cono, campi di colate, terra bruciata) l'acqua
+    // non scorre: i fiumi che arrivano da fuori si esauriscono al bordo. Sui
+    // campi degli attivi lo stesso reticolo diventa di FIUMI DI LAVA, che si
+    // spengono allontanandosi dal cono (o arrivano al mare se è vicino).
+    const volcArea = Math.max(volc, lavaField, burn)
+    const waterK = 1 - smoothstep(0.08, 0.45, volcArea)
     if (!isSea && !isLake && volc < 0.3 && q > 0.42 && height > 4 && height < 3800) {
       // Due reticoli fluviali sovrapposti: fiumi maggiori (letto ~3.2 km) e
       // affluenti più fitti (letto ~2 km). Per ciascuno conta la distanza
@@ -461,7 +474,22 @@ export class Planet {
       // gli affluenti nascono più in alto e solo dove c'è abbastanza pioggia
       const corridor =
         smoothstep(0.0, 0.2, moist + (minor ? 0.2 : 0.35)) *
-        smoothstep(3800, 2200, height)
+        smoothstep(3800, 2200, height) *
+        waterK
+
+      // fiumi di lava: solo attorno ai vulcani attivi, dentro l'area
+      // vulcanica, sempre più sottili e spenti verso valle
+      if (volcHot && volcArea > 0.05) {
+        const heat = (1 - smoothstep(0.4, 2.4, volcDist)) * smoothstep(0.05, 0.4, volcArea)
+        // solo il reticolo maggiore, con un letto largo (~7 km): più stretto
+        // della maglia del terreno appariva come una fila di puntini
+        const lavaRiver = (1 - smoothstep(0.9, 2.2, t1)) * heat * smoothstep(3800, 2600, height)
+        if (lavaRiver > 0.02) {
+          molten = Math.max(molten, lavaRiver * 0.85)
+          height = lerp(height, Math.max(height - 18, 1.5), lavaRiver)
+          lavaChannel = Math.max(lavaChannel, lavaRiver)
+        }
+      }
 
       // fascia del letto (x2.2) per il colore, incisione alla larghezza vera
       riverAmount = (1 - smoothstep(0, 2.2, t)) * corridor
@@ -639,6 +667,14 @@ export class Planet {
       r = lerp(r, rc[0], blend * k)
       g = lerp(g, rc[1], blend * k)
       b = lerp(b, rc[2], blend * k)
+    }
+
+    // letto dei fiumi di lava: basalto scuro (il bagliore lo aggiunge lo shader da out.lava)
+    if (!isSea && lavaChannel > 0.02) {
+      const k = Math.min(lavaChannel * 1.2, 1) * 0.9
+      r = lerp(r, 0.13, k)
+      g = lerp(g, 0.085, k)
+      b = lerp(b, 0.07, k)
     }
 
     out.height = height

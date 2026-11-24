@@ -421,6 +421,13 @@ Generazione **procedurale deterministica** da un seed:
     terreno esagerata come nello shader, affinato in 3 passi. Fuori dalla finestra torna
     al centro della vista, sullo spazio mostra trattini. In fondo la quota della camera.
     Caratteri: chiavi in Cinzel, valori in Cormorant Garamond (cifre allineate).
+- **Niente acqua nelle aree vulcaniche** (`planet.js`, sez. 9): cono, campi di colate e
+  terra bruciata formano un'area vulcanica (`max(volc, lavaField, burn)`) dove fiumi,
+  valli fluviali e laghi non esistono: i fiumi che arrivano da fuori si esauriscono al
+  bordo (fattore `waterK`). Attorno ai vulcani **attivi** il reticolo maggiore diventa di
+  **fiumi di lava** (`out.lava`, letto di basalto scuro, largo ~7 km perché più stretto
+  della maglia appariva come una fila di puntini), sempre più sottili e spenti fra 0.4 e
+  2.4 raggi dal cono; se il mare è vicino ci arrivano.
 - **Due calotte polari**: a nord terre ghiacciate, a sud un continente polare (tipo
   Antartide) aggiunto al campo di continentalità oltre i ~64-80°. In entrambi i poli il
   mare gelato diventa **banchisa** (lastra di ghiaccio piatta, bioma `ICE`).
@@ -505,10 +512,14 @@ Strumento di produzione dei video della serie (§1.1). Tutto nel browser, niente
   browser nascosto) durante una ripresa cambiava proporzioni della camera e dimensioni
   del canvas a metà video (pianeta ovale). Ora `resize()` di main.js non fa nulla
   mentre `director.busy`.
-- **Montaggio dell'Episodio I (teaser)**: spazio profondo che va a fuoco nel buio → lampo
-  sulla parola "Elyra" e stacco su un orizzonte con l'atmosfera → discesa al buio e stacco
-  tra le cime innevate → discesa al buio, tinta rossa e braci sul vulcano → lampo su "This
-  is Elyra" e lunga ripresa all'indietro fino al pianeta intero, con il titolo finale.
+- **Montaggio dell'Episodio I (teaser, 48 s)**: spazio profondo che va a fuoco nel buio →
+  lampo sulla parola "Elyra" e stacco su un orizzonte con l'atmosfera → discesa al buio e
+  panoramica dal basso verso l'alto sulle cime innevate (esposizione 0.78 e soglia del
+  bagliore 0.85: la neve bianca altrimenti si "bruciava") → discesa al buio, tinta rossa,
+  braci e fiumi di lava sul vulcano → lampo su "This is Elyra" e lunga ripresa all'indietro
+  fino al pianeta intero, che ruota piano; il titolo finale resta ~10 s.
+  Le inquadrature migliori sulle montagne hanno la luce radente di lato (il sole è a nord-est
+  della catena a 14°S 117°W: guardare verso nord o sud) e il cielo in alto (pitch 11–30).
 - **Attenzione**: dopo modifiche a `recorder.js` il server di Vite ha servito a lungo la
   versione vecchia (modulo in cache, watcher che non aveva visto il cambio): se il video
   esce "(no audio)" riavviare `npm run dev`.
