@@ -11,6 +11,7 @@
 import { Planet } from '../planet/planet.js'
 import { BIOME } from '../planet/biomes.js'
 import { SCENE_RADIUS, SCENE_SCALE } from '../planet/constants.js'
+import { placeVegetation, VEG_MIN_LEVEL } from '../planet/flora.js'
 
 /** Direzione unitaria sul cubo per la faccia `face` e coordinate (u,v) in [-1,1]. */
 export function cubeFaceDir(face, u, v, out) {
@@ -136,6 +137,7 @@ export function computeTileData(planet, face, level, ix, iy) {
   const extHeight = new Float32Array(ext * ext)
   const extVolc = new Float32Array(ext * ext * 2)
   const extSurf = new Float32Array(ext * ext * 4)
+  const extBiome = new Uint8Array(ext * ext)
 
   let hMax = 0
 
@@ -205,6 +207,7 @@ export function computeTileData(planet, face, level, ix, iy) {
       extHeight[ei] = rawH
       extVolc[ei * 2] = _sample.lava
       extVolc[ei * 2 + 1] = _sample.burn
+      extBiome[ei] = _sample.biome
       // pesi di superficie mediati sulla classificazione morbida del pianeta
       // (stessa media del colore): foreste, sabbia e roccia sfumano insieme
       let s0 = 0
@@ -386,15 +389,36 @@ export function computeTileData(planet, face, level, ix, iy) {
     }
   }
 
+  // --- vegetazione (planet/flora.js): solo sulle tile fini ---
+  let veg = null
+  if (level >= VEG_MIN_LEVEL) {
+    const gBiome = new Uint8Array(gridVerts)
+    const gLava = new Float32Array(gridVerts)
+    for (let gy = 0; gy < row; gy++) {
+      for (let gx = 0; gx < row; gx++) {
+        const vi = gy * row + gx
+        gBiome[vi] = extBiome[(gy + 1) * ext + gx + 1]
+        gLava[vi] = volcA[vi * 2]
+      }
+    }
+    veg = placeVegetation({
+      face, level, ix, iy, res, cubeFaceDir, seed: planet.seed | 0,
+      grid: { biome: gBiome, height: heights, water, lava: gLava }
+    })
+  }
+
   return {
     positions, normals, colors, water, heights, surf, skirt, morph, volc: volcA, indices,
     origin: [ox, oy, oz],
-    hMax
+    hMax,
+    veg
   }
 }
 
 /** Buffer da trasferire (zero-copy) da un worker. */
 export function tileTransferables(d) {
-  return [d.positions.buffer, d.normals.buffer, d.colors.buffer, d.water.buffer,
+  const list = [d.positions.buffer, d.normals.buffer, d.colors.buffer, d.water.buffer,
     d.heights.buffer, d.surf.buffer, d.skirt.buffer, d.morph.buffer, d.volc.buffer, d.indices.buffer]
+  if (d.veg) list.push(d.veg.species.buffer, d.veg.pos.buffer, d.veg.attr.buffer)
+  return list
 }

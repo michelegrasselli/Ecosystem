@@ -89,6 +89,9 @@ export function createTerrainMaterial(sunDir) {
       uTime: { value: 0 },
       // eruzione (regia): 0 normale, 1 lava al massimo e bagliore largo
       uLavaBoost: { value: 0 },
+      // 1 quando le piante 3D sono a schermo (vicino al suolo): le chiome
+      // procedurali diventano sottobosco
+      uVegNear: { value: 0 },
       uExag: { value: 1 },
       uShadeExag: { value: 1.5 },
       uMorph: { value: 1 },
@@ -179,6 +182,7 @@ export function createTerrainMaterial(sunDir) {
       uniform float uHazeDensity;
       uniform float uTime;
       uniform float uLavaBoost;
+      uniform float uVegNear;
       uniform float uShadeExag;
       uniform highp sampler3D uNoiseTex;
       uniform vec3 uRippleDir;
@@ -639,6 +643,7 @@ export function createTerrainMaterial(sunDir) {
         }
 
         // foreste: radure e gruppi a media distanza, chiome tonde da vicino
+        float wCrown = w01 * (1.0 - uVegNear * 0.8);
         if (trees > 0.04 && sand < 0.9) {
           vec3 leaf = mix(vec3(0.27, 0.36, 0.22), vColor, forest);
           vec3 leafDark = leaf * vec3(0.62, 0.70, 0.74);
@@ -649,7 +654,7 @@ export function createTerrainMaterial(sunDir) {
             float clump = smoothstep(0.40, 0.60, lnoise(pl, 8.0));
             fcol = mix(fcol, mix(leafDark, leafLight, clump), 0.55 * w03 * forest);
           }
-          if (w01 > 0.0) {
+          if (wCrown > 0.0) {
             float dens = mix(trees * 0.9, 1.0, forest);
             float aa = clamp(foot * 64.0 * 1.4, 0.04, 0.6);
             vec4 cp = canopy(pl - R * vElev, 64.0, R, dens, aa, sunTanG);
@@ -659,7 +664,7 @@ export function createTerrainMaterial(sunDir) {
             crown *= 1.0 + (n6 - 0.5) * 0.25 * wN1 + (n7 - 0.5) * 0.25 * wN2;
             vec3 under = mix(base, leafDark * 0.75, forest);
             under *= 1.0 - cp.w * 0.32;
-            fcol = mix(fcol, mix(under, crown, cp.x), w01);
+            fcol = mix(fcol, mix(under, crown, cp.x), wCrown);
           }
           base = mix(base, fcol, max(forest, step(0.001, trees)));
         }

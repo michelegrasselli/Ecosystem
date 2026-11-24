@@ -91,6 +91,17 @@ Lo stato (seed del pianeta e posizione della camera) viene salvato in `localStor
 sotto la chiave `ecosystem-planet/state` e ripristinato automaticamente al successivo
 avvio. Il salvataggio automatico della sola camera avviene anche alla chiusura della pagina.
 
+## Flora
+
+Elyra è coperta di vegetazione: 20 specie, alcune terrestri e molte inventate, raccolte in
+boschi, boschetti e radure secondo il bioma. Foreste di latifoglie, conifere e giganti a
+ombrello; funghi-albero luminosi e salici dalle fronde accese nelle paludi; baccelli
+turchesi e fiori magenta nelle praterie; cactus e spine dorate nei deserti; alberi
+carbonizzati e coralli di brace sui suoli vulcanici; cristalli e batuffoli bianchi sui
+ghiacci; e nel mare basso i Tidecrown, che salgono dal fondo e spuntano dall'acqua con una
+campana viola e tentacoli luminosi. Da vicino le piante sono in 3D e si muovono nel vento;
+da lontano i boschi restano visibili come chiome disegnate sul terreno.
+
 ## Nazioni
 
 La terraferma è divisa in 79 regni dai nomi inventati di sapore medievale (es. "Kingdom of Wendmere", "Duchy of Merrowdale"): il rango dipende dall'estensione del regno. Avvicinandosi

@@ -432,6 +432,66 @@ Generazione **procedurale deterministica** da un seed:
   Antartide) aggiunto al campo di continentalità oltre i ~64-80°. In entrambi i poli il
   mare gelato diventa **banchisa** (lastra di ghiaccio piatta, bioma `ICE`).
 
+### 3.11 Flora: la vegetazione 3D (`planet/flora.js`, `render/plantModels.js`, `render/vegetation.js`)
+
+Richiesta: ogni bioma con molte piante (anche inventate, mistiche, aliene), boschi rigogliosi
+nei biomi verdi, piante bruciate/fantastiche nei suoli vulcanici e nei ghiacci, una pianta
+che sale dal fondo del mare, spazio libero lasciato per altro, resa definita a ogni zoom,
+effetto 3D e vento da vicino. Ispirazione: le immagini del PDF in `contesto/` (funghi
+giganti luminosi, baccelli turchesi maculati su steli, alberi a ombrello con tronchi
+intrecciati, cristalli, vegetazione cremisi sul suolo vulcanico, batuffoli bianchi ai
+margini dei ghiacci). Il PDF si legge estraendone le immagini JPEG (`/DCTDecode`) con uno
+script Node: non c'è pdftoppm e caricare pdf.js da CDN nella pagina non è consentito.
+
+- **20 specie** (`SPECIES`): Elderoak (latifoglia), Spirepine (conifera), Canopy Titan
+  (gigante a ombrello, tronco intrecciato, lucine turchesi sotto la chioma), Fernpalm,
+  Glowcap (fungo-albero luminoso arancio/viola), Lanternpod (baccelli turchesi maculati),
+  Bramblebush (cespuglio con bacche), Sunshade (ombrello piatto della savana), Mistweeper
+  (salice delle paludi con fronde dalle punte luminose), Prismbloom (cristalli viola),
+  Thornpillar (cactus a colonna), Sunspike (spine dorate), Ashwraith (albero carbonizzato
+  con braci nel tronco), Cinder Coral (corallo cremisi con punte di brace), Snowpuff
+  (batuffoli bianchi), Rimeglass (albero di cristallo di ghiaccio), **Tidecrown** (sale dal
+  fondo del mare: campana viola-rosa come una medusa gigante e tentacoli luminosi che
+  ricadono sull'acqua), Kelp Spire, Duskbloom (fiore-calice magenta), Veilwood (albero
+  sottile con chioma violacea).
+- **Per bioma** (`FLORA`): densità, copertura della macchia (il resto è radura) e mix di
+  specie. Foreste fitte (pluviale, temperata, boreale), boschetti nelle praterie, savana
+  rada, deserto di cactus e spine dorate, paludi di salici e funghi luminosi, ghiacci di
+  cristalli e batuffoli, suoli vulcanici di alberi bruciati e coralli di brace, mare basso
+  di guglie d'alga e Tidecrown (fino a 1800 m di profondità). Sopra la linea delle nevi
+  solo piante di ghiaccio; vicino alla linea specie alpine. Niente piante su fiumi, laghi
+  e lava (nelle paludi l'acqua "latente" 0.41 non conta).
+- **Dimensioni** (un po' più grandi del vero, per leggersi da qualche km): alberi 50-110
+  m, giganti ~200 m, Tidecrown ~160 m sopra l'acqua, cespugli e fiori 20-45 m.
+- **Posizionamento** (nei worker, dentro `computeTileData`): griglia GLOBALE di candidati
+  su ogni faccia del cubo (passo 45 m) con spostamento casuale; valori pseudo-casuali dalle
+  coordinate intere: una tile e le sue figlie vedono le stesse piante. Macchia = rumore a
+  ~2 km e ~0.5 km. Bioma dal vertice più vicino della tile; **quota sullo stesso triangolo
+  che disegna il terreno** (con la bilineare finivano sotto il terreno). Solo per tile di
+  livello >= 10 (~9.8 km); quota di piante tenute per livello `KEEP` (10: 8% ... 15+: 100%):
+  le tile grosse sono lontane. Costo: ~5 ms in più per tile nel worker.
+  `node tools/veg-stats.mjs [lat lon livello]` stampa piante e specie di alcune tile.
+- **Modelli** (`plantModels.js`): geometrie low-poly in stile illustrato alte 1, colori per
+  vertice, `aWind` (oscillazione crescente con l'altezza, tremolio delle foglie) e
+  `aGlow` (parti luminose). Due livelli di dettaglio: completo per le tile di livello >= 14
+  (vicine), semplificato per le altre (icosaedri semplici, meno lati, niente dettagli
+  minuti: 3-5 volte meno triangoli).
+- **Disegno** (`vegetation.js`): una mesh istanziata per specie e per dettaglio con le
+  istanze di tutte le tile disegnate; buffer ricomposti quando cambia l'insieme delle tile
+  (al più ogni 150 ms, a ogni fotogramma nella ripresa del regista). Posizioni divise in
+  parte alta e bassa float32 (niente tremolio a 25 m dal suolo); base sul terreno esagerato
+  (`uExag` condivisa), affondata del 6%. Vento, foglie che tremano, parti luminose che
+  pulsano, tinta variata per istanza (rotazione in YIQ, forte per i Glowcap), stessa foschia
+  del terreno. Sotto ~2-3 pixel la pianta sparisce in dissolvenza; le piante nuove crescono
+  in 0.6 s, quelle già presenti nella tile padre no.
+- **Insidia di three.js**: quando il buffer delle istanze cresce bisogna creare una
+  geometria NUOVA: three calcola il numero massimo di istanze una volta sola e con il
+  buffer sostituito disegnava solo le prime (si vedevano solo le specie rare).
+- **Da lontano** (oltre ~25 km di quota) le foreste le disegna lo shader del terreno
+  (chiome procedurali); da vicino `uVegNear` le attenua a sottobosco sotto gli alberi 3D.
+- Prestazioni misurate: ~60-70 mila piante a schermo nella foresta a 120 m di quota, 27
+  fps contro 30 senza piante (pannello del browser limitato a 30).
+
 ### 3.4 Persistenza (R7 + R8)
 
 - Salvataggio su **`localStorage`** (dati piccoli: seed, parametri, camera).
@@ -629,12 +689,15 @@ l'ultima build: dopo ogni modifica va rilanciato `npm run build`.
 │   │   ├── planet.js          campionamento quota/clima/bioma (deterministico)
 │   │   ├── biomes.js          palette e classificazione dei biomi
 │   │   ├── nations.js         nazioni: capoluoghi, confini, nomi
+│   │   ├── flora.js           specie vegetali e posizionamento delle piante
 │   │   └── constants.js       costanti fisiche e geografiche
 │   ├── render/
 │   │   ├── terrainLOD.js      quadtree cubo-sfera
 │   │   ├── tileData.js        dati di una tile (puro, griglia estesa + skirt)
 │   │   ├── tileBuilder.js     mesh three.js dai dati di tileData
-│   │   ├── tileWorker.js      Web Worker che calcola le tile
+│   │   ├── tileWorker.js      Web Worker che calcola le tile (e le piante)
+│   │   ├── plantModels.js     modelli 3D delle specie
+│   │   ├── vegetation.js      piante istanziate, vento, dettaglio per distanza
 │   │   ├── tilePool.js        pool di worker con priorità
 │   │   ├── relief.js          esagerazione del rilievo
 │   │   ├── materials.js       shader toon del terreno/acqua

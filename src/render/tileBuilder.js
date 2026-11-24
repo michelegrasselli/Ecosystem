@@ -36,6 +36,8 @@ export function createTileMesh(d, material) {
   mesh.matrixAutoUpdate = false
   mesh.updateMatrix()
   mesh.userData.hMax = hMax
+  // piante della tile (planet/flora.js), disegnate da render/vegetation.js
+  mesh.userData.veg = d.veg || null
   // avanzamento del morph (0 = forma del padre, 1 = forma propria), aggiornato
   // dal LOD; caricato nello shader solo quando cambia rispetto al draw prima
   mesh.userData.morph = 1

@@ -11,6 +11,7 @@ import { createTerrainMaterial, setNations, updateNoiseFrame, RIPPLE_DIR, RIPPLE
 import { Nations } from './planet/nations.js'
 import { createNationLabels } from './ui/labels.js'
 import { TerrainLOD } from './render/terrainLOD.js'
+import { Vegetation } from './render/vegetation.js'
 import { TilePool } from './render/tilePool.js'
 import { createSky } from './render/sky.js'
 import { createAtmosphere } from './render/atmosphere.js'
@@ -59,6 +60,8 @@ const nationLabels = createNationLabels(nations, planet, document.body)
 // generazione delle tile in Web Worker (stesso seed: pianeta identico)
 const tilePool = new TilePool(seed)
 const lod = new TerrainLOD(planet, scene, terrainMaterial, tilePool, nations)
+// piante 3D delle tile fini (planet/flora.js, render/vegetation.js)
+const vegetation = new Vegetation(scene, terrainMaterial)
 
 const sky = createSky()
 scene.add(sky.group)
@@ -307,6 +310,9 @@ function step(dt, now, opts = {}) {
   lod.buildBudgetMs = ready ? 6.5 : 46 // usato solo senza Web Worker
   lod.exaggeration = reliefExaggeration(altitudeKm)
   lod.update(camera, viewportPx)
+  vegetation.update(lod.drawn, camera, viewportPx, lod._now, !!opts.offline)
+  // con le piante 3D a schermo lo shader attenua le chiome dipinte
+  terrainMaterial.uniforms.uVegNear.value = 1 - THREE.MathUtils.smoothstep(altitudeKm, 25, 80)
 
   // uniform del terreno
   const u = terrainMaterial.uniforms
@@ -398,6 +404,7 @@ window.__planet = {
   nationLabels,
   controls,
   lod,
+  vegetation,
   scene,
   camera,
   renderer,
