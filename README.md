@@ -44,6 +44,13 @@ Il pulsante 🎬 apre il pannello di regia:
    direttamente nel browser. Con `npm run dev` il file viene salvato in `videos/`,
    altrimenti viene scaricato.
 
+### Effetti e montaggio
+
+Con il blocco `fx` nella sceneggiatura il video passa in una "post-produzione" nel
+browser: bagliore, messa a fuoco, nebbia mistica, luci d'obiettivo, color grading, grana,
+pulviscolo dorato e braci; i cambi di scena si nascondono con lampi di luce (`flashes`) o
+discese al buio (`dips`). Vedi `episodes/ep01-the-birth-of-a-planet.json`.
+
 ### Voce narrante e musica
 
 Le battute del narratore si scrivono nella sceneggiatura (`narration.lines`, con il

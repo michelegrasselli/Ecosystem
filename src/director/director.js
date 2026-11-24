@@ -18,6 +18,8 @@ import { normalizeScript, buildTimeline } from './timeline.js'
 import { drawOverlay } from './overlay.js'
 import { createRecorder, webCodecsAvailable } from './recorder.js'
 import { loadNarration, buildSoundtrack, DEFAULT_VOICE_FX } from './audio.js'
+import { createFx, evalFx } from './fx.js'
+import { createParticles } from './particles.js'
 
 // massimo di attesa per le tile di un singolo fotogramma (ms): oltre si va
 // avanti comunque, per non bloccare la ripresa su un caso limite
@@ -69,6 +71,43 @@ export function createDirector(host) {
 
   // canvas di composizione per la ripresa
   const comp = document.createElement('canvas')
+  // effetti (script.fx): immagine 3D + particelle su "pre", poi lo shader di fx.js
+  const pre = document.createElement('canvas')
+  const preCtx = pre.getContext('2d')
+  const particles = createParticles()
+  let fxEngine
+  function getFx() {
+    if (fxEngine === undefined) {
+      try {
+        fxEngine = createFx()
+      } catch (e) {
+        console.warn('fx disabled:', e.message)
+        fxEngine = null
+      }
+    }
+    return fxEngine
+  }
+
+  /**
+   * Compone un fotogramma: immagine 3D (letta subito dopo il render),
+   * particelle ed effetti se la sceneggiatura li chiede, poi la sovrimpressione.
+   */
+  function compose(ctx, W, H, t, frame) {
+    const fx = script.fx ? getFx() : null
+    if (fx) {
+      if (pre.width !== W || pre.height !== H) {
+        pre.width = W
+        pre.height = H
+      }
+      preCtx.drawImage(renderer.domElement, 0, 0, W, H)
+      const params = evalFx(script.fx, t)
+      particles.draw(preCtx, t, params)
+      ctx.drawImage(fx.apply(pre, params, t, frame), 0, 0, W, H)
+    } else {
+      ctx.drawImage(renderer.domElement, 0, 0, W, H)
+    }
+    drawOverlay(ctx, script, t, labelsFor(W, H))
+  }
 
   function labelsFor(width, height) {
     if (!script.labels) return null
@@ -198,8 +237,13 @@ export function createDirector(host) {
     const box = previewBox()
     host.stepScene(dt, now, { drive: cam, viewportHeight: box.h, labelW: box.w, labelH: box.h })
     const ctx = overlayCanvas.getContext('2d')
-    ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height)
-    drawOverlay(ctx, script, t, labelsFor(box.w, box.h))
+    if (script.fx) {
+      // con gli effetti la sovrimpressione contiene l'intero fotogramma
+      compose(ctx, overlayCanvas.width, overlayCanvas.height, t, Math.round(t * script.fps))
+    } else {
+      ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height)
+      drawOverlay(ctx, script, t, labelsFor(box.w, box.h))
+    }
     host.onPreviewTime?.(t, script.duration)
     return true
   }
@@ -207,8 +251,9 @@ export function createDirector(host) {
   function stop() {
     abort = true
     stopAudio()
-    if (mode === 'preview') restoreCanvas()
-    mode = null
+    const wasPreview = mode === 'preview'
+    mode = null // prima di restoreCanvas: il resize dell'app è bloccato mentre il regista lavora
+    if (wasPreview) restoreCanvas()
   }
 
   // --------------------------------------------------------------- ripresa
@@ -240,18 +285,22 @@ export function createDirector(host) {
     comp.width = W
     comp.height = H
     const ctx = comp.getContext('2d')
-    const recorder = await createRecorder({ width: W, height: H, fps, audio: soundtrack })
+    // opts.only: solo alcuni fotogrammi (prove di inquadratura), niente video
+    const only = Array.isArray(opts.only) ? opts.only.map((x) => Math.round(x)) : null
+    const recorder = only ? null : await createRecorder({ width: W, height: H, fps, audio: soundtrack })
+    const list = only || Array.from({ length: total }, (_, i) => i)
 
     const sceneOpts = { drive: null, viewportHeight: H, labelW: W, labelH: H, offline: true, clock: 0 }
     try {
-      for (let i = 0; i < total; i++) {
+      for (let n = 0; n < list.length; n++) {
+        const i = list[n]
         if (abort) throw new Error('render stopped')
         const t = i / fps
         sceneOpts.drive = timeline.evalAt(t)
         sceneOpts.clock = t * 1000
-        // primo fotogramma: qualche passo in più per assestare quota del
-        // suolo ed etichette
-        const warm = i === 0 ? 30 : 1
+        // primo fotogramma (o fotogrammi sparsi): qualche passo in più per
+        // assestare quota del suolo ed etichette
+        const warm = n === 0 || only ? 30 : 1
         for (let k = 0; k < warm; k++) host.stepScene(k === 0 ? 1 / fps : 0, t * 1000, sceneOpts)
         // si aspettano tutte le tile necessarie a questo fotogramma
         const waitStart = performance.now()
@@ -266,13 +315,17 @@ export function createDirector(host) {
         if (script.labels) for (let k = 0; k < 3; k++) host.stepScene(0, t * 1000, sceneOpts)
         host.stepScene(0, t * 1000, sceneOpts)
 
-        // composizione: immagine 3D (letta subito dopo il render) + sovrimpressione
-        ctx.drawImage(renderer.domElement, 0, 0, W, H)
-        drawOverlay(ctx, script, t, labelsFor(W, H))
+        // composizione: immagine 3D (letta subito dopo il render), effetti e sovrimpressione
+        compose(ctx, W, H, t, i)
+        if (only) {
+          await opts.onStill?.(comp, t, i)
+          continue
+        }
         await recorder.addFrame(comp, i)
         opts.onProgress?.(i + 1, total, comp)
         if (i % 4 === 0) await yieldTask()
       }
+      if (only) return null
       const blob = await recorder.finish()
       lastRender = {
         blob,

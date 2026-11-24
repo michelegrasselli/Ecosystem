@@ -442,7 +442,8 @@ Strumento di produzione dei video della serie (§1.1). Tutto nel browser, niente
   suolo, `pitch` 90 = zenit, `heading` 0 = nord, `cut: true` per uno stacco), `titles`
   (`from`, `to`, `text`, `sub`, `pos` top/center/bottom, `size`), `labels` (nomi dei
   regni: `true`, `false` o un intervallo `{ from, to }` con dissolvenza), `fade` (in/out dal nero), `fps`, `width`, `height` (default 1080×1920, 9:16),
-  `fov`, `duration`, `music`, `narration`, `voiceFx` (vedi sotto).
+  `fov`, `duration`, `music`, `narration`, `voiceFx`, `fx` (vedi sotto). `labels` è
+  `false` di default: per ora i video non mostrano i nomi delle nazioni.
 - **Movimento** (`timeline.js`): ogni canale (posizione sulla sfera come versore, quota in
   scala logaritmica, inclinazione, orientamento "srotolato") è interpolato con una cubica
   monotona PCHIP: velocità continua, niente oscillazioni oltre i punti chiave, partenza e
@@ -483,6 +484,31 @@ Strumento di produzione dei video della serie (§1.1). Tutto nel browser, niente
   (misurato: il brano di Vangelis da solo è già a −18/−23 dB RMS, con 0.16 spariva).
   Limitatore finale a −3 dB. Le battute diventano anche **sottotitoli** in basso
   (`narration.captions: false` per toglierli, `captionSize` per la dimensione).
+- **Effetti** (`fx.js`, `particles.js`, attivi se la sceneggiatura ha `fx`): il fotogramma
+  3D riceve prima le **particelle** (pulviscolo dorato con bokeh, braci che salgono) e poi
+  passa in uno shader WebGL2 su un canvas separato: bagliore su due livelli (1/4 e 1/16
+  della risoluzione), **messa a fuoco** (sfocatura che si apre), aberrazione cromatica,
+  "respiro" dell'inquadratura, **nebbia mistica** animata (fbm), **light leak** caldi e
+  viola negli angoli, color grading (ombre blu-viola, luci oro, saturazione, contrasto a S,
+  tinta di scena), vignettatura e grana. Parametri in `fx`: valori base, `keys`
+  (`{ at, ...parametri }`, interpolati con smoothstep), `flashes` (`{ at, power, rise,
+  decay }`: lampo di luce, ideale per nascondere uno stacco) e `dips` (`{ at, dur }`:
+  discesa al buio e sfocatura attorno a uno stacco). Default in `FX_DEFAULTS` (soglia del
+  bagliore 0.72: più bassa "brucia" la neve). Titoli non-sottotitoli: emergono da una
+  sfocatura con la spaziatura che si stringe e un alone dorato (`epic: false` per
+  disattivarlo, `reveal` = durata). In anteprima l'intero fotogramma composto va nel canvas
+  della sovrimpressione.
+- **Prove di inquadratura**: `director.render(script, { only: [indici dei fotogrammi],
+  onStill(canvas, t, i) })` calcola solo quei fotogrammi (niente video): utile per un
+  provino a mosaico prima del render completo.
+- **Resize bloccato durante la regia**: un `resize` della finestra (es. pannello del
+  browser nascosto) durante una ripresa cambiava proporzioni della camera e dimensioni
+  del canvas a metà video (pianeta ovale). Ora `resize()` di main.js non fa nulla
+  mentre `director.busy`.
+- **Montaggio dell'Episodio I (teaser)**: spazio profondo che va a fuoco nel buio → lampo
+  sulla parola "Elyra" e stacco su un orizzonte con l'atmosfera → discesa al buio e stacco
+  tra le cime innevate → discesa al buio, tinta rossa e braci sul vulcano → lampo su "This
+  is Elyra" e lunga ripresa all'indietro fino al pianeta intero, con il titolo finale.
 - **Attenzione**: dopo modifiche a `recorder.js` il server di Vite ha servito a lungo la
   versione vecchia (modulo in cache, watcher che non aveva visto il cambio): se il video
   esce "(no audio)" riavviare `npm run dev`.

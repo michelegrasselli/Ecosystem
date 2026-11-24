@@ -144,7 +144,11 @@ window.addEventListener('beforeunload', () => {
 
 // ----------------------------------------------------------------- resize
 
+let directorRef = null // impostato quando il regista è creato
 function resize() {
+  // durante anteprima e ripresa il formato lo decide il regista: un resize
+  // della finestra (es. pannello nascosto) deformava l'immagine a metà video
+  if (directorRef?.busy) return
   const w = window.innerWidth
   const h = window.innerHeight
   renderer.setSize(w, h, false)
@@ -376,6 +380,7 @@ const director = createDirector({
   resize,
   stepScene: step
 })
+directorRef = director
 const directorPanel = createDirectorPanel(director)
 
 requestAnimationFrame(frame)

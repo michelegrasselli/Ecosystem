@@ -23,7 +23,8 @@ export const DEFAULT_SCRIPT = {
   width: 1080,
   height: 1920,
   fov: 50,
-  labels: true,
+  // nomi delle nazioni nei video: per ora no
+  labels: false,
   fade: { in: 1.2, out: 1.2 },
   shots: [],
   titles: []

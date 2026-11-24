@@ -41,12 +41,15 @@ export function drawOverlay(ctx, script, t, labels) {
   const H = ctx.canvas.height
   const unit = H / 1920 // le misure sono pensate per 1080x1920
 
-  // vignettatura leggera: inquadratura più "da cinema"
-  const g = ctx.createRadialGradient(W / 2, H * 0.5, H * 0.28, W / 2, H * 0.5, H * 0.78)
-  g.addColorStop(0, 'rgba(0,0,0,0)')
-  g.addColorStop(1, 'rgba(0,0,0,0.38)')
-  ctx.fillStyle = g
-  ctx.fillRect(0, 0, W, H)
+  // vignettatura leggera: inquadratura più "da cinema" (con gli effetti la
+  // fa già lo shader di fx.js)
+  if (!script.fx) {
+    const g = ctx.createRadialGradient(W / 2, H * 0.5, H * 0.28, W / 2, H * 0.5, H * 0.78)
+    g.addColorStop(0, 'rgba(0,0,0,0)')
+    g.addColorStop(1, 'rgba(0,0,0,0.38)')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, W, H)
+  }
 
   // nomi dei regni: sempre (true), mai (false) o in un intervallo { from, to }
   let labelsK = script.labels ? 1 : 0
@@ -97,11 +100,31 @@ export function drawOverlay(ctx, script, t, labels) {
     // leggero salire durante la comparsa
     y += (1 - smooth(tt.from, tt.from + TITLE_FADE * 1.4, t)) * 14 * unit
 
+    // titoli "epici" (non i sottotitoli): emergono da una sfocatura, la
+    // spaziatura si stringe lentamente e un alone dorato pulsa piano
+    const epic = !tt.caption && tt.epic !== false
+    const reveal = epic ? smooth(tt.from, tt.from + (tt.reveal ?? 2.4), t) : 1
+    const track = epic ? 0.12 + 0.16 * (1 - reveal) + 0.03 * smooth(tt.from, tt.to, t) : 0.12
+    const blurPx = epic ? (1 - reveal) * 14 * unit : 0
+    ctx.font = `600 ${size.toFixed(1)}px ${TITLE_FONT}`
+    ctx.letterSpacing = `${(size * track).toFixed(1)}px`
+    if (epic) {
+      const y0 = y
+      ctx.save()
+      ctx.filter = `blur(${(blurPx + 10 * unit).toFixed(1)}px)`
+      ctx.globalAlpha = a * (0.55 + 0.15 * Math.sin(t * 1.3))
+      ctx.fillStyle = 'rgba(255,196,110,0.9)'
+      for (const line of lines) {
+        ctx.fillText(line, W / 2, y)
+        y += lh
+      }
+      ctx.restore()
+      y = y0
+      if (blurPx > 0.2) ctx.filter = `blur(${blurPx.toFixed(1)}px)`
+    }
     ctx.shadowColor = 'rgba(0,0,0,0.85)'
     ctx.shadowBlur = 18 * unit
     ctx.fillStyle = 'rgba(248,242,226,0.98)'
-    ctx.font = `600 ${size.toFixed(1)}px ${TITLE_FONT}`
-    ctx.letterSpacing = `${(size * 0.12).toFixed(1)}px`
     for (const line of lines) {
       ctx.fillText(line, W / 2, y)
       y += lh
@@ -111,6 +134,7 @@ export function drawOverlay(ctx, script, t, labels) {
       ctx.font = `italic 500 ${subSize.toFixed(1)}px ${SUB_FONT}`
       ctx.letterSpacing = `${(subSize * 0.04).toFixed(1)}px`
       ctx.fillStyle = 'rgba(232,222,198,0.95)'
+      if (epic) ctx.globalAlpha = a * smooth(tt.from + 0.8, tt.from + 2.2, t)
       for (const line of subLines) {
         ctx.fillText(line, W / 2, y)
         y += slh
