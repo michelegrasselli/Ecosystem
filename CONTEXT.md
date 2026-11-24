@@ -520,6 +520,22 @@ Strumento di produzione dei video della serie (§1.1). Tutto nel browser, niente
   fino al pianeta intero, che ruota piano; il titolo finale resta ~10 s.
   Le inquadrature migliori sulle montagne hanno la luce radente di lato (il sole è a nord-est
   della catena a 14°S 117°W: guardare verso nord o sud) e il cielo in alto (pitch 11–30).
+- **Episodio II — The Nature of Elyra** (`episodes/ep02-the-nature-of-elyra.json`, 94 s):
+  il narratore descrive il pianeta, una caratteristica per scena (spazio → costa con onde →
+  il pianeta dall'alto → oceano profondo → valle verde con fiumi → deserto → ghiacci e
+  vette → vulcano → ripresa all'indietro con i confini dei regni, "Not yet.").
+  **Canone di Elyra** (da rispettare nei prossimi episodi):
+  - dal generatore: raggio 6371 km ("six thousand four hundred kilometres"), ~43% di terre
+    emerse ("more than half of its face is water"), vetta più alta ~9.5 km, fondali fino a
+    ~7 km, 71 regni (nazioni), 46 vulcani di cui 21 attivi, due calotte di ghiaccio;
+  - inventati: gravità più debole della terrestre (~0.9 g: "every stone weighs a little
+    less"), giorno di 29 ore, anno di 377 giorni, **nessuna luna**, nessun abitante ("no
+    one has ever walked them. Not yet."). Il narratore è il creatore (prima persona).
+  - luoghi usati: costa con onde e catena innevata (10°N 4.5°W), valle verde con fiumi
+    verso il mare (6°N 2.5°W), deserto (20°N 15°E), ghiacci e vette (63°N 140°W, luce
+    radente), vulcano attivo (14.3°N 40.1°W), oceano profondo con isola (5.5°S 61°W).
+    Il sole è fisso sopra 25°N 47°W: le zone con il sole alto sono più vivide, quelle
+    lontane hanno luce radente e ombre lunghe.
 - **Attenzione**: dopo modifiche a `recorder.js` il server di Vite ha servito a lungo la
   versione vecchia (modulo in cache, watcher che non aveva visto il cambio): se il video
   esce "(no audio)" riavviare `npm run dev`.

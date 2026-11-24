@@ -44,6 +44,12 @@ Il pulsante 🎬 apre il pannello di regia:
    direttamente nel browser. Con `npm run dev` il file viene salvato in `videos/`,
    altrimenti viene scaricato.
 
+### Episodi
+
+- `ep01-the-birth-of-a-planet` — la nascita del pianeta (teaser, 48 s)
+- `ep02-the-nature-of-elyra` — com'è fatto Elyra: dimensioni, gravità, giorno e anno, mari,
+  fiumi, deserti, ghiacci, vulcani (94 s)
+
 ### Effetti e montaggio
 
 Con il blocco `fx` nella sceneggiatura il video passa in una "post-produzione" nel

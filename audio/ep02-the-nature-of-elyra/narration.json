@@ -1,0 +1,96 @@
+{
+  "episode": "ep02-the-nature-of-elyra",
+  "voice": "bm_lewis",
+  "speed": 0.86,
+  "pitch": 0.95,
+  "lines": [
+    {
+      "at": 1.8,
+      "file": "01.wav",
+      "duration": 5.975,
+      "played": 6.2894736842105265,
+      "text": "Far beyond every map of the stars, Elyra turns alone in the dark.",
+      "hash": "6a4f9042979b"
+    },
+    {
+      "at": 9.1,
+      "file": "02.wav",
+      "duration": 7.35,
+      "played": 7.7368421052631575,
+      "text": "A world of six thousand four hundred kilometres in radius. No moon lights its nights.",
+      "hash": "09ba4e87368b"
+    },
+    {
+      "at": 17.9,
+      "file": "03.wav",
+      "duration": 8.45,
+      "played": 8.894736842105262,
+      "text": "Its gravity is gentle. Here, every stone weighs a little less, and every wave climbs a little higher.",
+      "hash": "7a31c6bfac6a"
+    },
+    {
+      "at": 27.9,
+      "file": "04.wav",
+      "duration": 6.65,
+      "played": 7.000000000000001,
+      "text": "A day lasts twenty-nine hours. A year, three hundred and seventy-seven days.",
+      "hash": "d866cfbe0d9c"
+    },
+    {
+      "at": 36,
+      "file": "05.wav",
+      "duration": 8.45,
+      "played": 8.894736842105262,
+      "text": "More than half of its face is water. Oceans seven kilometres deep, where no light has ever reached.",
+      "hash": "32f34389680b"
+    },
+    {
+      "at": 46,
+      "file": "06.wav",
+      "duration": 6.05,
+      "played": 6.368421052631579,
+      "text": "On the land, rivers carve their way through green valleys, toward the sea.",
+      "hash": "b5ac8da9ad21"
+    },
+    {
+      "at": 53.4,
+      "file": "07.wav",
+      "duration": 4.375,
+      "played": 4.605263157894737,
+      "text": "Further on, the deserts burn beneath a white sun.",
+      "hash": "43d6ae0f0b68"
+    },
+    {
+      "at": 59.1,
+      "file": "08.wav",
+      "duration": 8.5,
+      "played": 8.947368421052632,
+      "text": "At the edges of the world, the ice has never melted. And the mountains climb above nine thousand metres.",
+      "hash": "5c45d5cbb7a3"
+    },
+    {
+      "at": 69.2,
+      "file": "09.wav",
+      "duration": 6.175,
+      "played": 6.5,
+      "text": "Forty-six volcanoes rise from its skin. Twenty-one of them still burn.",
+      "hash": "d122fb3cdba8"
+    },
+    {
+      "at": 76.8,
+      "file": "10.wav",
+      "duration": 7.375,
+      "played": 7.7631578947368425,
+      "text": "Its land is already divided into seventy-one realms. But no one has ever walked them.",
+      "hash": "1430743494a4"
+    },
+    {
+      "at": 86.3,
+      "file": "11.wav",
+      "duration": 1.875,
+      "played": 1.973684210526316,
+      "text": "Not yet.",
+      "hash": "4898a31229b9"
+    }
+  ]
+}
