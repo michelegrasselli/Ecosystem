@@ -20,6 +20,7 @@ import { createRecorder, webCodecsAvailable } from './recorder.js'
 import { loadNarration, buildSoundtrack, DEFAULT_VOICE_FX } from './audio.js'
 import { createFx, evalFx } from './fx.js'
 import { createParticles } from './particles.js'
+import { createEruption } from './eruption.js'
 
 // massimo di attesa per le tile di un singolo fotogramma (ms): oltre si va
 // avanti comunque, per non bloccare la ripresa su un caso limite
@@ -75,6 +76,7 @@ export function createDirector(host) {
   const pre = document.createElement('canvas')
   const preCtx = pre.getContext('2d')
   const particles = createParticles()
+  const eruption = host.planet ? createEruption(host.planet) : null
   let fxEngine
   function getFx() {
     if (fxEngine === undefined) {
@@ -86,6 +88,23 @@ export function createDirector(host) {
       }
     }
     return fxEngine
+  }
+
+  /** Vulcano del pennacchio al tempo t: fx.plumes [{ from, to, at: [lat, lon] }] o fx.plumeAt. */
+  function plumeAt(t) {
+    const fx = script.fx
+    const p = (fx.plumes || []).find((q) => t >= q.from && t <= q.to)
+    return p ? p.at : fx.plumeAt
+  }
+
+  /**
+   * Effetti che agiscono sulla scena 3D (vanno impostati PRIMA del render):
+   * per ora la lava più accesa durante le eruzioni.
+   */
+  function sceneFx(t) {
+    const u = host.terrainMaterial?.uniforms?.uLavaBoost
+    if (!u) return
+    u.value = script && script.fx ? evalFx(script.fx, t).lavaBoost || 0 : 0
   }
 
   /**
@@ -101,7 +120,9 @@ export function createDirector(host) {
       }
       preCtx.drawImage(renderer.domElement, 0, 0, W, H)
       const params = evalFx(script.fx, t)
+      params.plumeAt = plumeAt(t)
       particles.draw(preCtx, t, params)
+      eruption?.draw(preCtx, t, params, camera, host.exaggeration ? host.exaggeration() : 1)
       ctx.drawImage(fx.apply(pre, params, t, frame), 0, 0, W, H)
     } else {
       ctx.drawImage(renderer.domElement, 0, 0, W, H)
@@ -235,6 +256,7 @@ export function createDirector(host) {
     }
     const cam = timeline.evalAt(t)
     const box = previewBox()
+    sceneFx(t)
     host.stepScene(dt, now, { drive: cam, viewportHeight: box.h, labelW: box.w, labelH: box.h })
     const ctx = overlayCanvas.getContext('2d')
     if (script.fx) {
@@ -252,6 +274,7 @@ export function createDirector(host) {
     abort = true
     stopAudio()
     const wasPreview = mode === 'preview'
+    if (host.terrainMaterial?.uniforms?.uLavaBoost) host.terrainMaterial.uniforms.uLavaBoost.value = 0
     mode = null // prima di restoreCanvas: il resize dell'app è bloccato mentre il regista lavora
     if (wasPreview) restoreCanvas()
   }
@@ -298,6 +321,7 @@ export function createDirector(host) {
         const t = i / fps
         sceneOpts.drive = timeline.evalAt(t)
         sceneOpts.clock = t * 1000
+        sceneFx(t)
         // primo fotogramma (o fotogrammi sparsi): qualche passo in più per
         // assestare quota del suolo ed etichette
         const warm = n === 0 || only ? 30 : 1
@@ -337,6 +361,7 @@ export function createDirector(host) {
       return lastRender
     } finally {
       mode = null
+      if (host.terrainMaterial?.uniforms?.uLavaBoost) host.terrainMaterial.uniforms.uLavaBoost.value = 0
       renderer.setPixelRatio(prevRatio)
       restoreCanvas()
     }

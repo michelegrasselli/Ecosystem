@@ -87,6 +87,8 @@ export function createTerrainMaterial(sunDir) {
       uHazeColor: { value: new THREE.Color(0.62, 0.74, 0.85) },
       uHazeDensity: { value: 0.00002 },
       uTime: { value: 0 },
+      // eruzione (regia): 0 normale, 1 lava al massimo e bagliore largo
+      uLavaBoost: { value: 0 },
       uExag: { value: 1 },
       uShadeExag: { value: 1.5 },
       uMorph: { value: 1 },
@@ -176,6 +178,7 @@ export function createTerrainMaterial(sunDir) {
       uniform vec3 uHazeColor;
       uniform float uHazeDensity;
       uniform float uTime;
+      uniform float uLavaBoost;
       uniform float uShadeExag;
       uniform highp sampler3D uNoiseTex;
       uniform vec3 uRippleDir;
@@ -828,13 +831,15 @@ export function createTerrainMaterial(sunDir) {
           vec3 crust = vec3(0.09, 0.045, 0.03) * lightCol;
           vec3 hot = mix(vec3(0.92, 0.24, 0.04), vec3(1.0, 0.62, 0.12), heat);
           vec3 white = vec3(1.0, 0.88, 0.45);
-          float molten = clamp(heat * 0.85 + cracks * 0.9, 0.0, 1.0);
+          float molten = clamp(heat * 0.85 + cracks * 0.9 + uLavaBoost * 0.45, 0.0, 1.0);
           vec3 lavaCol = mix(crust, hot * pulse * 1.25, molten);
           lavaCol = mix(lavaCol, white * 1.3, cracks * heat * 0.5);
           float lk = smoothstep(0.05, 0.55, lavaK);
           color = mix(color, lavaCol, lk);
           // bagliore attorno alla lava (il valore interpolato sfuma ai bordi)
           color += vec3(0.9, 0.32, 0.06) * (1.0 - lk) * smoothstep(0.01, 0.2, lavaK) * 0.35;
+          // eruzione: la lava brucia più forte e il bagliore si allarga
+          color += hot * uLavaBoost * (lk * 0.55 + (1.0 - lk) * smoothstep(0.0, 0.25, lavaK) * 0.9);
         }
         // prospettiva aerea in base alla quota: viste da lontano, pianure e
         // fondovalle restano dietro un velo d'aria, le cime ne escono nitide

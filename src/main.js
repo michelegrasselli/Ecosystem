@@ -377,6 +377,10 @@ const director = createDirector({
   camera,
   lod,
   nationLabels,
+  planet,
+  terrainMaterial,
+  // esagerazione del rilievo alla quota attuale (per appoggiare effetti sui vulcani)
+  exaggeration: () => reliefExaggeration(controls.altitude),
   resize,
   stepScene: step
 })

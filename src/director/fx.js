@@ -8,7 +8,9 @@
 //    ("light leak") che si muovono lente negli angoli;
 //  - color grading: ombre fredde (blu-viola), luci calde (oro), saturazione,
 //    contrasto a S, una tinta per scena (es. rosso nelle scene di fuoco);
-//  - vignettatura e grana della pellicola.
+//  - vignettatura e grana della pellicola;
+//  - tremore della camera (shakes) e onde d'urto (shocks) che deformano
+//    l'immagine con un anello di luce che si allarga.
 //
 // Tutto dipende solo dal tempo del video: rigirando si ottiene lo stesso
 // risultato. I parametri vengono da script.fx (vedi evalFx).
@@ -77,6 +79,8 @@ uniform vec3 uTint;
 uniform vec3 uFogColor;
 uniform vec3 uShadow;
 uniform vec3 uHigh;
+uniform vec2 uShake;
+uniform vec4 uShock; // centro (x, y in 0..1), raggio (in altezze dello schermo), intensità
 in vec2 vUv;
 out vec4 o;
 
@@ -110,6 +114,18 @@ void main() {
   float aspect = uRes.x / uRes.y;
   // "respiro" lentissimo dell'inquadratura
   vec2 uv = (vUv - 0.5) / (1.0 + uBreath * (0.5 + 0.5 * sin(uTime * 0.21))) + 0.5;
+  // tremore: spostamento casuale (con un leggero ingrandimento per non
+  // scoprire i bordi)
+  uv = (uv - 0.5) / (1.0 + length(uShake) * 2.0) + 0.5 + uShake;
+  // onda d'urto: l'anello spinge l'immagine verso l'esterno
+  float ring = 0.0;
+  if (uShock.w > 0.001) {
+    vec2 sd = (uv - uShock.xy) * vec2(aspect, 1.0);
+    float sl = length(sd);
+    float rd = sl - uShock.z;
+    ring = exp(-rd * rd / 0.0025) * uShock.w;
+    uv -= (sl > 1e-4 ? sd / sl : vec2(0.0)) / vec2(aspect, 1.0) * ring * 0.035;
+  }
   vec2 d = uv - 0.5;
   vec2 da = d * vec2(aspect, 1.0);
   float r2 = dot(da, da);
@@ -135,6 +151,8 @@ void main() {
   c += (b1 * 0.7 + b2 * 1.3) * uBloom;
 
   c *= uExposure;
+  // anello luminoso dell'onda d'urto
+  c += vec3(1.0, 0.78, 0.5) * ring * 0.55;
 
   // nebbia mistica: due strati di rumore che scorrono in direzioni diverse
   vec2 fp = vec2(uv.x * aspect, uv.y) * 2.4;
@@ -187,6 +205,12 @@ export const FX_DEFAULTS = {
   tintAmt: 0,
   shadow: [0.0, 0.012, 0.035],
   high: [1.04, 0.99, 0.9],
+  // lava dello shader del terreno più accesa (eruzioni)
+  lavaBoost: 0,
+  // vulcani accesi visti da lontano e pennacchi delle eruzioni (eruption.js)
+  volcanoGlow: 0,
+  plume: 0,
+  ash: 0,
   // particelle (particles.js): pulviscolo dorato e braci che salgono
   dust: 0.5,
   embers: 0,
@@ -259,6 +283,27 @@ export function evalFx(fx, t) {
   out.focus = Math.min(1, out.focus + dip * 0.8 + flash * 0.25)
   out.ca += flash * 0.006
   out.flash = flash
+
+  // tremore: decresce dopo ogni colpo; direzione pseudo-casuale per fotogramma
+  let shake = 0
+  for (const s of fx.shakes || []) {
+    const dur = s.dur ?? 1.5
+    if (t >= s.at && t <= s.at + dur) shake = Math.max(shake, (s.power ?? 1) * Math.pow(1 - (t - s.at) / dur, 2))
+  }
+  const fr = Math.floor(t * 30)
+  const h1 = Math.sin(fr * 12.9898) * 43758.5453
+  const h2 = Math.sin(fr * 78.233) * 12345.678
+  out.shake = [(h1 - Math.floor(h1) - 0.5) * shake * 0.012, (h2 - Math.floor(h2) - 0.5) * shake * 0.012]
+
+  // onda d'urto: raggio che cresce, intensità che si spegne
+  out.shock = [0.5, 0.5, 0, 0]
+  for (const k of fx.shocks || []) {
+    const dur = k.dur ?? 1.6
+    if (t < k.at || t > k.at + dur) continue
+    const x = (t - k.at) / dur
+    out.shock = [k.x ?? 0.5, k.y ?? 0.5, (k.radius ?? 1.1) * (1 - Math.pow(1 - x, 2.2)), (k.power ?? 1) * (1 - x) * (1 - x)]
+  }
+  out.lavaBoost = out.lavaBoost ?? 0
   return out
 }
 
@@ -420,6 +465,8 @@ export function createFx() {
     gl.uniform3fv(u.uFogColor, p.fogColor)
     gl.uniform3fv(u.uShadow, p.shadow)
     gl.uniform3fv(u.uHigh, p.high)
+    gl.uniform2fv(u.uShake, p.shake || [0, 0])
+    gl.uniform4fv(u.uShock, p.shock || [0.5, 0.5, 0, 0])
     gl.drawArrays(gl.TRIANGLES, 0, 3)
     return canvas
   }

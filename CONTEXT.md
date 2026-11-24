@@ -551,6 +551,27 @@ Strumento di produzione dei video della serie (§1.1). Tutto nel browser, niente
   lampi a battito → costa verde all'alba (6°N 2°W) → ripresa all'indietro e titolo.
   Nuove particelle in `particles.js`: **plancton luminoso** (`fx.plankton`), puntini
   turchesi con bokeh che pulsano a onde dal basso verso l'alto.
+- **Episodio IV — The Ninety-Year Heartbeat** (`episodes/ep04-the-ninety-year-heartbeat.json`,
+  47 s): il cuore di Elyra batte una volta ogni novant'anni e tutti i vulcani si
+  risvegliano insieme; il fuoco squarcia il cielo, la cenere inghiotte il sole, il mondo
+  brucia per una lunga notte; ma la cenere cade sulla terra come un dono e la luce dei
+  mari la segue nel suolo: al ritorno del sole "something green is waiting".
+  **Canone**: la prima vegetazione nasce dal battito (cenere fertile + la vita luminosa
+  dei mari portata nel suolo); il prossimo episodio mostrerà le prime piante.
+  Scene: spazio con battito (onda d'urto + tremore) → accensione a cascata di tutti i
+  vulcani visti dallo spazio (onda d'urto grande) → eruzione ravvicinata del vulcano
+  14.3°N 40.1°W (pennacchio, fontana di lapilli, lava accesa, fulmini, tremore) → il
+  pianeta scuro che brucia → notte sulla costa con cenere e plancton → alba.
+  **Nuovi effetti**: in `fx.js` `shakes` (`{ at, power, dur }`: tremore della camera) e
+  `shocks` (`{ at, power, radius, dur, x, y }`: anello che deforma l'immagine e si
+  allarga); fulmini = `flashes` brevissimi a coppie. In `eruption.js`: `volcanoGlow`
+  (tutti i vulcani del pianeta si accendono a cascata, proiettati con la camera),
+  `plume` (colonna di fumo con base accesa e fontana di lapilli sul vulcano di
+  `fx.plumes [{ from, to, at: [lat, lon] }]` o `fx.plumeAt`), `ash` (cenere che cade).
+  Nello shader del terreno `uLavaBoost` (parametro `fx.lavaBoost`, impostato dal regista
+  prima del render di ogni fotogramma e azzerato alla fine): lava più accesa e bagliore
+  più largo. Il regista riceve da main.js anche `planet`, `terrainMaterial` ed
+  `exaggeration()`.
 - **Attenzione**: dopo modifiche a `recorder.js` il server di Vite ha servito a lungo la
   versione vecchia (modulo in cache, watcher che non aveva visto il cambio): se il video
   esce "(no audio)" riavviare `npm run dev`.

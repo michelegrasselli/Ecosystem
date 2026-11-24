@@ -1,0 +1,683 @@
+{
+  "name": "ep04-the-ninety-year-heartbeat",
+  "fps": 30,
+  "width": 1080,
+  "height": 1920,
+  "fov": 50,
+  "duration": 47,
+  "labels": false,
+  "fade": {
+    "in": 1.2,
+    "out": 2.4
+  },
+  "shots": [
+    {
+      "at": 0,
+      "lat": 14,
+      "lon": -48,
+      "alt": 30000,
+      "pitch": 90,
+      "heading": 0
+    },
+    {
+      "at": 13.4,
+      "lat": 12,
+      "lon": -52,
+      "alt": 16000,
+      "pitch": 90,
+      "heading": 10
+    },
+    {
+      "at": 13.4,
+      "lat": 11.9,
+      "lon": -40.1,
+      "alt": 70,
+      "pitch": 15,
+      "heading": 0,
+      "cut": true
+    },
+    {
+      "at": 19.2,
+      "lat": 12.3,
+      "lon": -40.1,
+      "alt": 55,
+      "pitch": 13,
+      "heading": 0
+    },
+    {
+      "at": 19.2,
+      "lat": 12,
+      "lon": -45,
+      "alt": 8500,
+      "pitch": 90,
+      "heading": 0,
+      "cut": true
+    },
+    {
+      "at": 27.4,
+      "lat": 12,
+      "lon": -50,
+      "alt": 10500,
+      "pitch": 90,
+      "heading": 6
+    },
+    {
+      "at": 27.4,
+      "lat": 6.05,
+      "lon": -1.7,
+      "alt": 60,
+      "pitch": 20,
+      "heading": 272,
+      "cut": true
+    },
+    {
+      "at": 36,
+      "lat": 6.05,
+      "lon": -2.3,
+      "alt": 45,
+      "pitch": 16,
+      "heading": 276
+    },
+    {
+      "at": 47,
+      "lat": 6.1,
+      "lon": -2.9,
+      "alt": 40,
+      "pitch": 14,
+      "heading": 280
+    }
+  ],
+  "titles": [
+    {
+      "from": 0.5,
+      "to": 5.8,
+      "text": "The Ninety-Year Heartbeat",
+      "sub": "Episode IV",
+      "pos": "center",
+      "size": 1
+    },
+    {
+      "from": 41.2,
+      "to": 47,
+      "text": "Elyra",
+      "sub": "Episode IV — The Ninety-Year Heartbeat",
+      "pos": "top",
+      "size": 1.35,
+      "reveal": 2.6
+    }
+  ],
+  "music": {
+    "src": "contesto/Vangelis - Conquest of paradise.mp3",
+    "volume": 0.5,
+    "offset": 0,
+    "fadeIn": 2,
+    "fadeOut": 4,
+    "duck": 0.6
+  },
+  "narration": {
+    "voice": "bm_lewis",
+    "speed": 0.86,
+    "captions": true,
+    "captionSize": 0.6,
+    "lines": [
+      {
+        "at": 1.3,
+        "text": "Every ninety years, Elyra's heart beats once."
+      },
+      {
+        "at": 7.2,
+        "text": "And when it does, every volcano wakes at the same instant."
+      },
+      {
+        "at": 13.6,
+        "text": "Fire tears the sky open. Ash swallows the sun."
+      },
+      {
+        "at": 19.4,
+        "text": "For a long night, the world burns."
+      },
+      {
+        "at": 23.8,
+        "text": "But fire is not only an ending."
+      },
+      {
+        "at": 27.8,
+        "text": "The ash falls on the land like a gift, and the light of the seas follows it into the soil."
+      },
+      {
+        "at": 36.2,
+        "text": "When the sun returns, something green is waiting."
+      }
+    ]
+  },
+  "voiceFx": {
+    "pitch": 0.95,
+    "reverb": 0.2,
+    "warmth": 4,
+    "volume": 1
+  },
+  "fx": {
+    "keys": [
+      {
+        "at": 0,
+        "dust": 0.2,
+        "embers": 0,
+        "plankton": 0,
+        "ash": 0,
+        "plume": 0,
+        "volcanoGlow": 0,
+        "lavaBoost": 0,
+        "tintAmt": 0,
+        "tint": [
+          1,
+          1,
+          1
+        ],
+        "exposure": 0.4,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.35,
+        "fog": 0.5,
+        "fogColor": [
+          0.28,
+          0.2,
+          0.55
+        ],
+        "shadow": [
+          0,
+          0.012,
+          0.035
+        ],
+        "leak": 0.05,
+        "sat": 0.9,
+        "focus": 0.8
+      },
+      {
+        "at": 4,
+        "exposure": 0.8,
+        "focus": 0,
+        "fog": 0.35,
+        "dust": 0.3
+      },
+      {
+        "at": 11.5,
+        "volcanoGlow": 0,
+        "tintAmt": 0,
+        "exposure": 0.8
+      },
+      {
+        "at": 12.9,
+        "volcanoGlow": 1,
+        "tintAmt": 0.25,
+        "tint": [
+          1.3,
+          0.78,
+          0.62
+        ],
+        "exposure": 0.7,
+        "embers": 0.3
+      },
+      {
+        "at": 13.2,
+        "dust": 0,
+        "embers": 0.6,
+        "plankton": 0,
+        "ash": 0.55,
+        "plume": 0,
+        "volcanoGlow": 1,
+        "lavaBoost": 1,
+        "tintAmt": 0.4,
+        "tint": [
+          1.3,
+          0.75,
+          0.6
+        ],
+        "exposure": 0.7,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.5,
+        "fog": 0.4,
+        "fogColor": [
+          0.35,
+          0.08,
+          0.02
+        ],
+        "shadow": [
+          0,
+          0.012,
+          0.035
+        ],
+        "leak": 0.1,
+        "sat": 1,
+        "focus": 0
+      },
+      {
+        "at": 13.5,
+        "dust": 0,
+        "embers": 1,
+        "plankton": 0,
+        "ash": 0.45,
+        "plume": 1,
+        "volcanoGlow": 0,
+        "lavaBoost": 1,
+        "tintAmt": 0.38,
+        "tint": [
+          1.3,
+          0.78,
+          0.62
+        ],
+        "exposure": 0.88,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.55,
+        "fog": 0.35,
+        "fogColor": [
+          0.45,
+          0.1,
+          0.03
+        ],
+        "shadow": [
+          0.035,
+          0,
+          0.01
+        ],
+        "leak": 0.2,
+        "sat": 1,
+        "focus": 0
+      },
+      {
+        "at": 19,
+        "dust": 0,
+        "embers": 1,
+        "plankton": 0,
+        "ash": 0.45,
+        "plume": 1,
+        "volcanoGlow": 0,
+        "lavaBoost": 1,
+        "tintAmt": 0.38,
+        "tint": [
+          1.3,
+          0.78,
+          0.62
+        ],
+        "exposure": 0.88,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.55,
+        "fog": 0.35,
+        "fogColor": [
+          0.45,
+          0.1,
+          0.03
+        ],
+        "shadow": [
+          0.035,
+          0,
+          0.01
+        ],
+        "leak": 0.2,
+        "sat": 1,
+        "focus": 0
+      },
+      {
+        "at": 19.4,
+        "dust": 0,
+        "embers": 0.6,
+        "plankton": 0,
+        "ash": 0.55,
+        "plume": 0,
+        "volcanoGlow": 1,
+        "lavaBoost": 1,
+        "tintAmt": 0.4,
+        "tint": [
+          1.3,
+          0.75,
+          0.6
+        ],
+        "exposure": 0.42,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.5,
+        "fog": 0.4,
+        "fogColor": [
+          0.35,
+          0.08,
+          0.02
+        ],
+        "shadow": [
+          0,
+          0.012,
+          0.035
+        ],
+        "leak": 0.1,
+        "sat": 1,
+        "focus": 0
+      },
+      {
+        "at": 23.6,
+        "dust": 0,
+        "embers": 0.6,
+        "plankton": 0,
+        "ash": 0.55,
+        "plume": 0,
+        "volcanoGlow": 1,
+        "lavaBoost": 1,
+        "tintAmt": 0.4,
+        "tint": [
+          1.3,
+          0.75,
+          0.6
+        ],
+        "exposure": 0.42,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.5,
+        "fog": 0.4,
+        "fogColor": [
+          0.35,
+          0.08,
+          0.02
+        ],
+        "shadow": [
+          0,
+          0.012,
+          0.035
+        ],
+        "leak": 0.1,
+        "sat": 1,
+        "focus": 0
+      },
+      {
+        "at": 26.8,
+        "exposure": 0.32,
+        "embers": 0.15,
+        "focus": 0.15
+      },
+      {
+        "at": 27.2,
+        "dust": 0,
+        "embers": 0.15,
+        "plankton": 0,
+        "ash": 0.55,
+        "plume": 0,
+        "volcanoGlow": 1,
+        "lavaBoost": 1,
+        "tintAmt": 0.4,
+        "tint": [
+          1.3,
+          0.75,
+          0.6
+        ],
+        "exposure": 0.32,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.5,
+        "fog": 0.4,
+        "fogColor": [
+          0.35,
+          0.08,
+          0.02
+        ],
+        "shadow": [
+          0,
+          0.012,
+          0.035
+        ],
+        "leak": 0.1,
+        "sat": 1,
+        "focus": 0.15
+      },
+      {
+        "at": 27.6,
+        "dust": 0,
+        "embers": 0,
+        "plankton": 0.9,
+        "ash": 0.75,
+        "plume": 0,
+        "volcanoGlow": 0,
+        "lavaBoost": 0,
+        "tintAmt": 0.3,
+        "tint": [
+          0.75,
+          0.95,
+          1.2
+        ],
+        "exposure": 0.45,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.38,
+        "fog": 0.5,
+        "fogColor": [
+          0.05,
+          0.4,
+          0.5
+        ],
+        "shadow": [
+          0,
+          0.02,
+          0.05
+        ],
+        "leak": 0.05,
+        "sat": 1,
+        "focus": 0
+      },
+      {
+        "at": 35.2,
+        "dust": 0,
+        "embers": 0,
+        "plankton": 0.9,
+        "ash": 0.75,
+        "plume": 0,
+        "volcanoGlow": 0,
+        "lavaBoost": 0,
+        "tintAmt": 0.3,
+        "tint": [
+          0.75,
+          0.95,
+          1.2
+        ],
+        "exposure": 0.45,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.38,
+        "fog": 0.5,
+        "fogColor": [
+          0.05,
+          0.4,
+          0.5
+        ],
+        "shadow": [
+          0,
+          0.02,
+          0.05
+        ],
+        "leak": 0.05,
+        "sat": 1,
+        "focus": 0
+      },
+      {
+        "at": 38,
+        "dust": 0.6,
+        "embers": 0,
+        "plankton": 0.3,
+        "ash": 0.12,
+        "plume": 0,
+        "volcanoGlow": 0,
+        "lavaBoost": 0,
+        "tintAmt": 0.2,
+        "tint": [
+          1.15,
+          1,
+          0.85
+        ],
+        "exposure": 1.05,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.35,
+        "fog": 0.2,
+        "fogColor": [
+          0.45,
+          0.32,
+          0.2
+        ],
+        "shadow": [
+          0,
+          0.012,
+          0.035
+        ],
+        "leak": 0.5,
+        "sat": 1,
+        "focus": 0
+      },
+      {
+        "at": 45,
+        "leak": 0.3
+      }
+    ],
+    "plumes": [
+      {
+        "from": 13,
+        "to": 19.3,
+        "at": [
+          14.3,
+          -40.1
+        ]
+      }
+    ],
+    "flashes": [
+      {
+        "at": 6.2,
+        "power": 0.3,
+        "rise": 0.08,
+        "decay": 0.5
+      },
+      {
+        "at": 11.9,
+        "power": 0.6,
+        "rise": 0.15,
+        "decay": 0.9
+      },
+      {
+        "at": 13.4,
+        "power": 0.8,
+        "rise": 0.3,
+        "decay": 0.9
+      },
+      {
+        "at": 15.3,
+        "power": 0.5,
+        "rise": 0.03,
+        "decay": 0.1
+      },
+      {
+        "at": 15.48,
+        "power": 0.35,
+        "rise": 0.03,
+        "decay": 0.12
+      },
+      {
+        "at": 17.6,
+        "power": 0.55,
+        "rise": 0.03,
+        "decay": 0.14
+      },
+      {
+        "at": 17.75,
+        "power": 0.3,
+        "rise": 0.03,
+        "decay": 0.1
+      }
+    ],
+    "dips": [
+      {
+        "at": 19.2,
+        "dur": 0.8
+      },
+      {
+        "at": 27.4,
+        "dur": 1
+      }
+    ],
+    "shakes": [
+      {
+        "at": 6.2,
+        "power": 0.6,
+        "dur": 0.9
+      },
+      {
+        "at": 11.9,
+        "power": 1.1,
+        "dur": 1.6
+      },
+      {
+        "at": 13.4,
+        "power": 0.8,
+        "dur": 2.6
+      },
+      {
+        "at": 16.1,
+        "power": 0.55,
+        "dur": 1.6
+      },
+      {
+        "at": 18,
+        "power": 0.4,
+        "dur": 1.2
+      }
+    ],
+    "shocks": [
+      {
+        "at": 6.2,
+        "power": 0.7,
+        "radius": 0.95,
+        "dur": 1.4
+      },
+      {
+        "at": 11.9,
+        "power": 1.2,
+        "radius": 1.35,
+        "dur": 1.9
+      }
+    ]
+  }
+}
