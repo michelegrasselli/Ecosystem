@@ -49,6 +49,7 @@ Il pulsante 🎬 apre il pannello di regia:
 - `ep01-the-birth-of-a-planet` — la nascita del pianeta (teaser, 48 s)
 - `ep02-the-nature-of-elyra` — le stranezze di Elyra: niente luna ma maree, oceani che
   brillano di notte, ghiaccio più antico della luce, vulcani che si svegliano insieme (59 s)
+- `ep03-the-first-breath` — la prima vita si risveglia nei mari attorno ai vulcani (58 s)
 
 ### Effetti e montaggio
 

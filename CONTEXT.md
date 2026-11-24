@@ -539,6 +539,18 @@ Strumento di produzione dei video della serie (§1.1). Tutto nel browser, niente
     radente), vulcano attivo (14.3°N 40.1°W), oceano profondo con isola (5.5°S 61°W).
     Il sole è fisso sopra 25°N 47°W: le zone con il sole alto sono più vivide, quelle
     lontane hanno luce radente e ombre lunghe.
+- **Episodio III — The First Breath** (`episodes/ep03-the-first-breath.json`, 58 s):
+  preannuncia la prima vita. Storia: Elyra ha atteso per mille ere; i suoi oceani
+  brillavano di notte e nessuno sapeva perché ("But I knew."): sotto le onde, dove il
+  fuoco dei vulcani incontra il mare freddo, qualcosa ha cominciato a muoversi, troppo
+  piccolo per essere visto ("But it is alive."); un giorno lascerà l'acqua e salirà sulla
+  terra ("The first breath of Elyra is coming."). **Canone**: la luce degli oceani è la
+  prima vita, nata attorno ai vulcani sottomarini; non è ancora uscita dall'acqua.
+  Scene: spazio → mare notturno (foschia turchese, plancton) → isola vulcanica attiva
+  (58.2°N 64.2°W, raggio 63 km, sole alto) vista dall'alto e poi a pelo d'acqua con due
+  lampi a battito → costa verde all'alba (6°N 2°W) → ripresa all'indietro e titolo.
+  Nuove particelle in `particles.js`: **plancton luminoso** (`fx.plankton`), puntini
+  turchesi con bokeh che pulsano a onde dal basso verso l'alto.
 - **Attenzione**: dopo modifiche a `recorder.js` il server di Vite ha servito a lungo la
   versione vecchia (modulo in cache, watcher che non aveva visto il cambio): se il video
   esce "(no audio)" riavviare `npm run dev`.

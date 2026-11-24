@@ -2,7 +2,8 @@
 // prendono bagliore e sfocatura come il resto della scena):
 //  - pulviscolo dorato: granelli che fluttuano lenti a diverse profondità,
 //    i più vicini grandi e sfocati (bokeh), con un leggero scintillio;
-//  - braci: scintille arancioni che salgono tremolando (scene di fuoco).
+//  - braci: scintille arancioni che salgono tremolando (scene di fuoco);
+//  - plancton luminoso: puntini turchesi che pulsano a onde (la prima vita).
 // Posizioni funzione solo del tempo: deterministiche e ripetibili.
 
 function rng(seed) {
@@ -41,13 +42,19 @@ export function createParticles(seed = 1307) {
   for (let i = 0; i < 110; i++) {
     embers.push({ x: r(), y: r(), z: r(), ph: r() * 6.283, sp: 0.6 + r() * 1.0, fl: 3 + r() * 6 })
   }
+  const plankton = []
+  for (let i = 0; i < 220; i++) {
+    const z = r()
+    plankton.push({ x: r(), y: r(), z: z * z, ph: r() * 6.283, sp: 0.3 + r() * 0.7, pu: 0.6 + r() * 1.2 })
+  }
   const gold = sprite('rgba(255,246,220,1)', 'rgba(255,214,140,0.45)')
   const ember = sprite('rgba(255,236,190,1)', 'rgba(255,120,40,0.55)')
+  const glow = sprite('rgba(220,255,250,1)', 'rgba(60,230,210,0.5)')
 
   /**
    * @param {CanvasRenderingContext2D} ctx
    * @param {number} t secondi
-   * @param {{ dust: number, embers: number }} amt intensità (0..1+)
+   * @param {{ dust: number, embers: number, plankton: number }} amt intensità (0..1+)
    */
   function draw(ctx, t, amt) {
     const W = ctx.canvas.width
@@ -81,6 +88,22 @@ export function createParticles(seed = 1307) {
         if (a < 0.004) continue
         ctx.globalAlpha = Math.min(a, 1)
         ctx.drawImage(ember, x * W - size / 2, y * H - size / 2, size, size)
+      }
+    }
+    // plancton luminoso: puntini turchesi che fluttuano lenti e pulsano a
+    // onde, come se qualcosa di vivo respirasse sotto la superficie
+    if (amt.plankton > 0.005) {
+      for (const p of plankton) {
+        const y = frac(p.y - t * 0.004 * p.sp + Math.sin(t * 0.3 + p.ph) * 0.004)
+        const x = frac(p.x + Math.sin(t * 0.2 * p.sp + p.ph) * 0.02 + t * 0.003 * (p.z - 0.5))
+        // onda di luce che attraversa lo sciame dal basso verso l'alto
+        const wave = 0.5 + 0.5 * Math.sin(t * 1.4 * p.pu - y * 7 + p.ph * 0.3)
+        const bokeh = p.z > 0.75
+        const size = (bokeh ? 30 + 56 * p.z : 5 + 16 * p.z) * unit
+        const a = amt.plankton * (bokeh ? 0.12 : 0.38 + 0.6 * p.z) * (0.25 + 0.75 * wave * wave)
+        if (a < 0.004) continue
+        ctx.globalAlpha = Math.min(a, 1)
+        ctx.drawImage(glow, x * W - size / 2, y * H - size / 2, size, size)
       }
     }
     ctx.restore()

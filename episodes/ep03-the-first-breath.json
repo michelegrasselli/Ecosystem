@@ -1,0 +1,741 @@
+{
+  "name": "ep03-the-first-breath",
+  "fps": 30,
+  "width": 1080,
+  "height": 1920,
+  "fov": 50,
+  "duration": 58,
+  "labels": false,
+  "fade": {
+    "in": 1.6,
+    "out": 2.4
+  },
+  "shots": [
+    {
+      "at": 0,
+      "lat": 35,
+      "lon": -62,
+      "alt": 36000,
+      "pitch": 90,
+      "heading": 0
+    },
+    {
+      "at": 7.2,
+      "lat": 30,
+      "lon": -64,
+      "alt": 22000,
+      "pitch": 90,
+      "heading": 0
+    },
+    {
+      "at": 7.2,
+      "lat": -7.2,
+      "lon": -63.5,
+      "alt": 90,
+      "pitch": 22,
+      "heading": 95,
+      "cut": true
+    },
+    {
+      "at": 17,
+      "lat": -6.9,
+      "lon": -62.6,
+      "alt": 55,
+      "pitch": 16,
+      "heading": 100
+    },
+    {
+      "at": 17,
+      "lat": 55.85,
+      "lon": -64.2,
+      "alt": 420,
+      "pitch": 58,
+      "heading": 0,
+      "cut": true
+    },
+    {
+      "at": 27.6,
+      "lat": 56.4,
+      "lon": -64.2,
+      "alt": 150,
+      "pitch": 36,
+      "heading": 0
+    },
+    {
+      "at": 27.6,
+      "lat": 57,
+      "lon": -64.35,
+      "alt": 22,
+      "pitch": 9,
+      "heading": 4,
+      "cut": true
+    },
+    {
+      "at": 37.9,
+      "lat": 57.15,
+      "lon": -64.3,
+      "alt": 18,
+      "pitch": 8,
+      "heading": 2
+    },
+    {
+      "at": 37.9,
+      "lat": 6.05,
+      "lon": -1.7,
+      "alt": 60,
+      "pitch": 20,
+      "heading": 272,
+      "cut": true
+    },
+    {
+      "at": 45.8,
+      "lat": 6.05,
+      "lon": -2.5,
+      "alt": 42,
+      "pitch": 16,
+      "heading": 276
+    },
+    {
+      "at": 45.8,
+      "lat": 6.2,
+      "lon": -3,
+      "alt": 900,
+      "pitch": 75,
+      "heading": 0,
+      "cut": true
+    },
+    {
+      "at": 52,
+      "lat": 10,
+      "lon": -12,
+      "alt": 7000,
+      "pitch": 88,
+      "heading": 0
+    },
+    {
+      "at": 58,
+      "lat": 16,
+      "lon": -25,
+      "alt": 24000,
+      "pitch": 90,
+      "heading": 15
+    }
+  ],
+  "titles": [
+    {
+      "from": 0.6,
+      "to": 6.2,
+      "text": "The First Breath",
+      "sub": "Episode III",
+      "pos": "center",
+      "size": 1.05
+    },
+    {
+      "from": 50.6,
+      "to": 58,
+      "text": "Elyra",
+      "sub": "Episode III — The First Breath",
+      "pos": "top",
+      "size": 1.35,
+      "reveal": 2.8
+    }
+  ],
+  "music": {
+    "src": "contesto/Vangelis - Conquest of paradise.mp3",
+    "volume": 0.5,
+    "offset": 0,
+    "fadeIn": 2.5,
+    "fadeOut": 4.5,
+    "duck": 0.6
+  },
+  "narration": {
+    "voice": "bm_lewis",
+    "speed": 0.86,
+    "captions": true,
+    "captionSize": 0.6,
+    "lines": [
+      {
+        "at": 1.5,
+        "text": "For a thousand ages, Elyra waited in silence."
+      },
+      {
+        "at": 7.5,
+        "text": "Its oceans glowed in the night, and no one knew why."
+      },
+      {
+        "at": 14,
+        "text": "But I knew."
+      },
+      {
+        "at": 17.6,
+        "text": "Deep beneath the waves, where the fire of the volcanoes meets the cold of the sea, something has begun to stir."
+      },
+      {
+        "at": 28,
+        "text": "Too small to be seen. Too young to have a name."
+      },
+      {
+        "at": 34.2,
+        "text": "But it is alive."
+      },
+      {
+        "at": 38.5,
+        "text": "And one day, it will leave the water, and climb onto the land."
+      },
+      {
+        "at": 46.5,
+        "text": "The first breath of Elyra is coming."
+      }
+    ]
+  },
+  "voiceFx": {
+    "pitch": 0.95,
+    "reverb": 0.2,
+    "warmth": 4,
+    "volume": 1
+  },
+  "fx": {
+    "keys": [
+      {
+        "at": 0,
+        "dust": 0.2,
+        "embers": 0,
+        "plankton": 0,
+        "tintAmt": 0,
+        "tint": [
+          1,
+          1,
+          1
+        ],
+        "exposure": 0.45,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.35,
+        "fog": 0.55,
+        "fogColor": [
+          0.28,
+          0.2,
+          0.55
+        ],
+        "shadow": [
+          0,
+          0.012,
+          0.035
+        ],
+        "leak": 0.05,
+        "sat": 0.85,
+        "focus": 1
+      },
+      {
+        "at": 5.5,
+        "exposure": 0.9,
+        "focus": 0,
+        "fog": 0.35,
+        "dust": 0.35,
+        "leak": 0.1,
+        "sat": 0.95
+      },
+      {
+        "at": 7,
+        "dust": 0.35,
+        "embers": 0,
+        "plankton": 0,
+        "tintAmt": 0,
+        "tint": [
+          1,
+          1,
+          1
+        ],
+        "exposure": 0.9,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.35,
+        "fog": 0.35,
+        "fogColor": [
+          0.32,
+          0.3,
+          0.55
+        ],
+        "shadow": [
+          0,
+          0.012,
+          0.035
+        ],
+        "leak": 0.15,
+        "sat": 1,
+        "focus": 0
+      },
+      {
+        "at": 7.4,
+        "dust": 0.15,
+        "embers": 0,
+        "plankton": 0.45,
+        "tintAmt": 0.32,
+        "tint": [
+          0.72,
+          0.95,
+          1.2
+        ],
+        "exposure": 0.52,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.35,
+        "fog": 0.6,
+        "fogColor": [
+          0.05,
+          0.45,
+          0.55
+        ],
+        "shadow": [
+          0,
+          0.02,
+          0.05
+        ],
+        "leak": 0.06,
+        "sat": 1.1,
+        "focus": 0
+      },
+      {
+        "at": 13.6,
+        "dust": 0.15,
+        "embers": 0,
+        "plankton": 0.45,
+        "tintAmt": 0.32,
+        "tint": [
+          0.72,
+          0.95,
+          1.2
+        ],
+        "exposure": 0.52,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.35,
+        "fog": 0.6,
+        "fogColor": [
+          0.05,
+          0.45,
+          0.55
+        ],
+        "shadow": [
+          0,
+          0.02,
+          0.05
+        ],
+        "leak": 0.06,
+        "sat": 1.1,
+        "focus": 0
+      },
+      {
+        "at": 16.6,
+        "dust": 0.15,
+        "embers": 0,
+        "plankton": 0.75,
+        "tintAmt": 0.32,
+        "tint": [
+          0.72,
+          0.95,
+          1.2
+        ],
+        "exposure": 0.48,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.35,
+        "fog": 0.6,
+        "fogColor": [
+          0.05,
+          0.45,
+          0.55
+        ],
+        "shadow": [
+          0,
+          0.02,
+          0.05
+        ],
+        "leak": 0.06,
+        "sat": 1.1,
+        "focus": 0
+      },
+      {
+        "at": 16.8,
+        "dust": 0.15,
+        "embers": 0,
+        "plankton": 0.75,
+        "tintAmt": 0.32,
+        "tint": [
+          0.72,
+          0.95,
+          1.2
+        ],
+        "exposure": 0.48,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.35,
+        "fog": 0.6,
+        "fogColor": [
+          0.05,
+          0.45,
+          0.55
+        ],
+        "shadow": [
+          0,
+          0.02,
+          0.05
+        ],
+        "leak": 0.06,
+        "sat": 1.1,
+        "focus": 0
+      },
+      {
+        "at": 17.2,
+        "dust": 0.1,
+        "embers": 0.6,
+        "plankton": 0.5,
+        "tintAmt": 0.28,
+        "tint": [
+          1.2,
+          0.85,
+          0.8
+        ],
+        "exposure": 1,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.48,
+        "fog": 0.4,
+        "fogColor": [
+          0.25,
+          0.2,
+          0.3
+        ],
+        "shadow": [
+          0.02,
+          0.005,
+          0.02
+        ],
+        "leak": 0.12,
+        "sat": 1,
+        "focus": 0
+      },
+      {
+        "at": 27.4,
+        "dust": 0.1,
+        "embers": 0.6,
+        "plankton": 0.5,
+        "tintAmt": 0.28,
+        "tint": [
+          1.2,
+          0.85,
+          0.8
+        ],
+        "exposure": 1,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.48,
+        "fog": 0.4,
+        "fogColor": [
+          0.25,
+          0.2,
+          0.3
+        ],
+        "shadow": [
+          0.02,
+          0.005,
+          0.02
+        ],
+        "leak": 0.12,
+        "sat": 1,
+        "focus": 0
+      },
+      {
+        "at": 27.8,
+        "dust": 0.15,
+        "embers": 0,
+        "plankton": 1.1,
+        "tintAmt": 0.25,
+        "tint": [
+          0.72,
+          0.95,
+          1.2
+        ],
+        "exposure": 0.6,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.35,
+        "fog": 0.5,
+        "fogColor": [
+          0.05,
+          0.45,
+          0.55
+        ],
+        "shadow": [
+          0,
+          0.02,
+          0.05
+        ],
+        "leak": 0.06,
+        "sat": 1.1,
+        "focus": 0.22
+      },
+      {
+        "at": 34,
+        "dust": 0.15,
+        "embers": 0,
+        "plankton": 1.1,
+        "tintAmt": 0.25,
+        "tint": [
+          0.72,
+          0.95,
+          1.2
+        ],
+        "exposure": 0.6,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.35,
+        "fog": 0.5,
+        "fogColor": [
+          0.05,
+          0.45,
+          0.55
+        ],
+        "shadow": [
+          0,
+          0.02,
+          0.05
+        ],
+        "leak": 0.06,
+        "sat": 1.1,
+        "focus": 0.22
+      },
+      {
+        "at": 35.6,
+        "plankton": 1.6,
+        "exposure": 0.68
+      },
+      {
+        "at": 37.7,
+        "plankton": 1.3,
+        "exposure": 0.62
+      },
+      {
+        "at": 37.8,
+        "dust": 0.15,
+        "embers": 0,
+        "plankton": 1.3,
+        "tintAmt": 0.25,
+        "tint": [
+          0.72,
+          0.95,
+          1.2
+        ],
+        "exposure": 0.6,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.35,
+        "fog": 0.5,
+        "fogColor": [
+          0.05,
+          0.45,
+          0.55
+        ],
+        "shadow": [
+          0,
+          0.02,
+          0.05
+        ],
+        "leak": 0.06,
+        "sat": 1.1,
+        "focus": 0.22
+      },
+      {
+        "at": 38.1,
+        "dust": 0.55,
+        "embers": 0,
+        "plankton": 0.25,
+        "tintAmt": 0.18,
+        "tint": [
+          1.15,
+          1,
+          0.85
+        ],
+        "exposure": 1,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.35,
+        "fog": 0.18,
+        "fogColor": [
+          0.45,
+          0.32,
+          0.2
+        ],
+        "shadow": [
+          0,
+          0.012,
+          0.035
+        ],
+        "leak": 0.42,
+        "sat": 1,
+        "focus": 0
+      },
+      {
+        "at": 45.6,
+        "dust": 0.55,
+        "embers": 0,
+        "plankton": 0.25,
+        "tintAmt": 0.18,
+        "tint": [
+          1.15,
+          1,
+          0.85
+        ],
+        "exposure": 1,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.35,
+        "fog": 0.18,
+        "fogColor": [
+          0.45,
+          0.32,
+          0.2
+        ],
+        "shadow": [
+          0,
+          0.012,
+          0.035
+        ],
+        "leak": 0.42,
+        "sat": 1,
+        "focus": 0
+      },
+      {
+        "at": 46,
+        "dust": 0.5,
+        "embers": 0,
+        "plankton": 0.2,
+        "tintAmt": 0,
+        "tint": [
+          1,
+          1,
+          1
+        ],
+        "exposure": 1,
+        "threshold": 0.72,
+        "high": [
+          1.04,
+          0.99,
+          0.9
+        ],
+        "contrast": 0.35,
+        "fog": 0.2,
+        "fogColor": [
+          0.32,
+          0.3,
+          0.55
+        ],
+        "shadow": [
+          0,
+          0.012,
+          0.035
+        ],
+        "leak": 0.3,
+        "sat": 1,
+        "focus": 0
+      },
+      {
+        "at": 56,
+        "leak": 0.15,
+        "dust": 0.3,
+        "fog": 0.3,
+        "plankton": 0.1
+      }
+    ],
+    "flashes": [
+      {
+        "at": 35.4,
+        "power": 0.4,
+        "rise": 0.12,
+        "decay": 0.35
+      },
+      {
+        "at": 35.85,
+        "power": 0.32,
+        "rise": 0.12,
+        "decay": 0.5
+      },
+      {
+        "at": 45.8,
+        "power": 0.65,
+        "rise": 0.4,
+        "decay": 1.3
+      }
+    ],
+    "dips": [
+      {
+        "at": 7.2,
+        "dur": 1
+      },
+      {
+        "at": 17,
+        "dur": 1
+      },
+      {
+        "at": 27.6,
+        "dur": 1.1
+      },
+      {
+        "at": 37.9,
+        "dur": 1
+      }
+    ]
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "episode": "ep03-the-first-breath",
+  "voice": "bm_lewis",
+  "speed": 0.86,
+  "pitch": 0.95,
+  "lines": [
+    {
+      "at": 1.5,
+      "file": "01.wav",
+      "duration": 4.775,
+      "played": 5.026315789473685,
+      "text": "For a thousand ages, Elyra waited in silence.",
+      "hash": "3f57fed42dcc"
+    },
+    {
+      "at": 7.5,
+      "file": "02.wav",
+      "duration": 4.825,
+      "played": 5.078947368421053,
+      "text": "Its oceans glowed in the night, and no one knew why.",
+      "hash": "d9af56bf1a1a"
+    },
+    {
+      "at": 14,
+      "file": "03.wav",
+      "duration": 2.025,
+      "played": 2.1315789473684212,
+      "text": "But I knew.",
+      "hash": "61b55c6b7d58"
+    },
+    {
+      "at": 17.6,
+      "file": "04.wav",
+      "duration": 8.85,
+      "played": 9.31578947368421,
+      "text": "Deep beneath the waves, where the fire of the volcanoes meets the cold of the sea, something has begun to stir.",
+      "hash": "d83791805557"
+    },
+    {
+      "at": 28,
+      "file": "05.wav",
+      "duration": 4.25,
+      "played": 4.473684210526316,
+      "text": "Too small to be seen. Too young to have a name.",
+      "hash": "7de8d504a6b8"
+    },
+    {
+      "at": 34.2,
+      "file": "06.wav",
+      "duration": 2.475,
+      "played": 2.605263157894737,
+      "text": "But it is alive.",
+      "hash": "1fce8f91e619"
+    },
+    {
+      "at": 38.5,
+      "file": "07.wav",
+      "duration": 5.275,
+      "played": 5.552631578947369,
+      "text": "And one day, it will leave the water, and climb onto the land.",
+      "hash": "569b49453ed0"
+    },
+    {
+      "at": 46.5,
+      "file": "08.wav",
+      "duration": 3.525,
+      "played": 3.710526315789474,
+      "text": "The first breath of Elyra is coming.",
+      "hash": "f72c995ae91f"
+    }
+  ]
+}

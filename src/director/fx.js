@@ -189,7 +189,8 @@ export const FX_DEFAULTS = {
   high: [1.04, 0.99, 0.9],
   // particelle (particles.js): pulviscolo dorato e braci che salgono
   dust: 0.5,
-  embers: 0
+  embers: 0,
+  plankton: 0
 }
 
 const smooth = (x) => x * x * (3 - 2 * x)
