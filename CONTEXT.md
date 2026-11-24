@@ -405,9 +405,14 @@ Generazione **procedurale deterministica** da un seed:
     migliore (a pari merito la più vicina al baricentro visibile) mediata con le vicine
     quasi altrettanto interne. Su un confine si vedono entrambi i nomi;
   - **isteresi**: un'ancora della parte visibile resta finché è entro il 90% dello schermo
-    e la migliore non la batte di `1.5× + 0.75` celle;
-  - **cambio d'ancora**: se la nuova è vicina a schermo (< 10% del lato corto) il punto
-    scivola (5/s), altrimenti il nome sfuma, salta e ricompare (dissolvenza);
+    e la migliore non la batte di `1.25× + 0.5` celle;
+  - **cambio d'ancora**: il punto del nome raggiunge il nuovo bersaglio con una **molla
+    smorzata criticamente** sulla sfera (pulsazione 2 rad/s, ~2 s, sotto-passi di 1/60 s):
+    posizione e velocità continue, niente salti né dissolvenze (le dissolvenze e lo
+    scivolamento esponenziale risultavano scattosi). Solo se l'ancora esce dallo schermo
+    il nome sfuma e riappare al bersaglio. Misura su zoom 3000→200 km + pan: velocità max
+    ~15 px/frame (quella del terreno), accelerazione max ~6 px/frame²;
+  - dimensione dei nomi 9–13 px secondo l'estensione della nazione;
   - compaiono sotto i ~7000 km di quota e **scompaiono sotto ~40 km** (sfumano tra 70 e 25
     km); se due nomi si sovrappongono resta quello con più terra inquadrata, con
     precedenza a quello già visibile (niente lampeggi).

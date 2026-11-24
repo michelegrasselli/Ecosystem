@@ -19,8 +19,8 @@
 //     proprio lato.
 //
 // L'ancora cambia solo quando serve (esce dall'inquadratura, o ce n'è una
-// molto migliore: isteresi). Il cambio è una dissolvenza: il nome sfuma, si
-// sposta e ricompare; se il nuovo punto è vicino scivola invece con dolcezza.
+// molto migliore: isteresi). Il nome raggiunge la nuova ancora lentamente, con
+// una molla smorzata: posizione e velocità restano continue, niente scatti.
 //
 // I nomi compaiono sotto i ~7000 km di quota e scompaiono vicino al suolo
 // (sotto ~40 km), dove la nazione riempie tutto lo schermo.
@@ -41,11 +41,11 @@ const CENTER_INSIDE = 0.8
 // un'ancora della parte visibile resta finché è dentro questa frazione
 const ANCHOR_INSIDE = 0.9
 // cambio d'ancora: la nuova deve essere migliore di così (in celle)
-const SWITCH_RATIO = 1.5
-const SWITCH_MARGIN = 0.75
-// sotto questa distanza a schermo (frazione del lato corto) si scivola, sopra si dissolve
-const GLIDE_MAX = 0.1
-const GLIDE = 5 // 1/s
+const SWITCH_RATIO = 1.25
+const SWITCH_MARGIN = 0.5
+// pulsazione della molla che porta il nome verso la nuova ancora (rad/s):
+// ~2 s per arrivare, con partenza e arrivo dolci
+const SPRING = 2.0
 // margine dai bordi dello schermo per il nome (px)
 const MARGIN = 10
 
@@ -67,7 +67,7 @@ export function createNationLabels(nations, planet, container) {
     el.textContent = n.name
     root.appendChild(el)
     // nazioni più estese: nome un po' più grande
-    const size = 12 + Math.min(Math.sqrt(n.share) * 24, 7)
+    const size = 9 + Math.min(Math.sqrt(n.share) * 14, 4)
     el.style.fontSize = size.toFixed(1) + 'px'
     const c = n.center || n.anchor
     return {
@@ -80,8 +80,8 @@ export function createNationLabels(nations, planet, container) {
       t: [c[0], c[1], c[2]],
       tIsCenter: true,
       isCenter: true,
-      gliding: false,
-      swapping: false, // dissolvenza in corso verso una nuova ancora
+      v: [0, 0, 0], // velocità della molla
+      swapping: false, // ancora finita fuori schermo: salto quando il nome è sparito
       cells: 0,
       seen: false,
       x: 0,
@@ -325,24 +325,43 @@ export function createNationLabels(nations, planet, container) {
       if (cur > 0 && bestDist[id] < cur * SWITCH_RATIO + SWITCH_MARGIN) return
     }
 
-    // cambio d'ancora
-    const ax = pa ? pa.x : NaN
-    const ay = pa ? pa.y : NaN
-    const pn = project(want, camera, width, height, horizonDot, camDist)
+    // cambio d'ancora: nuovo bersaglio; il nome ci arriva con la molla
     it.t = want.slice()
     it.tIsCenter = wantIsCenter
+    it.isCenter = wantIsCenter
     if (it.alpha < 0.03) {
       // invisibile: si salta subito
       it.p = want.slice()
-      it.isCenter = wantIsCenter
+      it.v[0] = it.v[1] = it.v[2] = 0
       it.swapping = false
-      it.gliding = false
-    } else if (pn && Number.isFinite(ax) && Math.hypot(pn.x - ax, pn.y - ay) < GLIDE_MAX * Math.min(width, height)) {
-      it.gliding = true
-      it.swapping = false
-    } else {
-      it.swapping = true
-      it.gliding = false
+    }
+  }
+
+  /**
+   * Molla smorzata criticamente (sulla sfera) dal punto del nome al bersaglio:
+   * posizione E velocità continue, quindi niente scatti anche quando il
+   * bersaglio cambia di colpo. Passi brevi per stabilità.
+   */
+  function springStep(it, dt) {
+    const w = SPRING
+    let rest = Math.min(dt, 0.25)
+    while (rest > 1e-6) {
+      const h = Math.min(rest, 1 / 60)
+      rest -= h
+      for (let k = 0; k < 3; k++) {
+        const a = w * w * (it.t[k] - it.p[k]) - 2 * w * it.v[k]
+        it.v[k] += a * h
+        it.p[k] += it.v[k] * h
+      }
+      const l = Math.hypot(it.p[0], it.p[1], it.p[2]) || 1
+      it.p[0] /= l
+      it.p[1] /= l
+      it.p[2] /= l
+      // velocità tangente alla sfera
+      const vr = it.v[0] * it.p[0] + it.v[1] * it.p[1] + it.v[2] * it.p[2]
+      it.v[0] -= vr * it.p[0]
+      it.v[1] -= vr * it.p[1]
+      it.v[2] -= vr * it.p[2]
     }
   }
 
@@ -377,7 +396,6 @@ export function createNationLabels(nations, planet, container) {
     const horizonDot = SCENE_RADIUS / camDist - 0.002
     const freshScan = generation !== lastGeneration
     lastGeneration = generation
-    const kGlide = 1 - Math.exp(-dt * GLIDE)
 
     visible.length = 0
     for (const it of items) {
@@ -391,27 +409,14 @@ export function createNationLabels(nations, planet, container) {
       }
       if (freshScan) chooseAnchor(it, camera, width, height, horizonDot, camDist)
 
-      // ancora: scivola verso il bersaglio, oppure (dissolvenza) salta quando
-      // il nome è sparito
+      // ancora: segue il bersaglio con la molla; se era finita fuori
+      // dall'inquadratura (movimento rapido) salta quando il nome è sparito
       if (it.swapping && it.alpha < 0.03) {
         it.p = it.t.slice()
-        it.isCenter = it.tIsCenter
+        it.v[0] = it.v[1] = it.v[2] = 0
         it.swapping = false
-      } else if (it.gliding) {
-        const px = it.p[0] + (it.t[0] - it.p[0]) * kGlide
-        const py = it.p[1] + (it.t[1] - it.p[1]) * kGlide
-        const pz = it.p[2] + (it.t[2] - it.p[2]) * kGlide
-        const l = Math.hypot(px, py, pz) || 1
-        it.p[0] = px / l
-        it.p[1] = py / l
-        it.p[2] = pz / l
-        const dx = it.p[0] - it.t[0]
-        const dy = it.p[1] - it.t[1]
-        const dz = it.p[2] - it.t[2]
-        if (dx * dx + dy * dy + dz * dz < 1e-14) {
-          it.gliding = false
-          it.isCenter = it.tIsCenter
-        }
+      } else {
+        springStep(it, dt)
       }
 
       // posizione a schermo: proiezione esatta dell'ancora
