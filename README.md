@@ -92,7 +92,7 @@ avvio. Il salvataggio automatico della sola camera avviene anche alla chiusura d
 
 ## Flora
 
-Elyra è coperta da una flora colossale: 40 specie, alcune terrestri e molte inventate, alte
+Elyra è coperta da una flora colossale: 47 specie, alcune terrestri e molte inventate, alte
 da 1.5 km a oltre 20 km, così da 300 km di quota si esplora tra gli alberi e dallo spazio si
 vedono le macchie dei boschi. Le piante sono
 raccolte a macchie: boschi fittissimi, boschetti, radure quasi spoglie. Foreste di
@@ -103,8 +103,16 @@ meduse; le Valli dei Cristalli, vaste regioni di roccia viola con prismi azzurri
 giganti, alberi di cristallo e granuli luminosi;
 cactus, spine dorate e palme d'oasi nei deserti; alberi carbonizzati, rami in fiamme, coralli
 di brace e schegge d'ossidiana sui suoli vulcanici; cristalli, sfere di ghiaccio accese e
-batuffoli bianchi sui ghiacci; e nel mare basso i Tidecrown, che salgono dal fondo e spuntano
-dall'acqua con una campana viola e tentacoli luminosi. Da vicino le piante sono in 3D e si
+batuffoli bianchi sui ghiacci; e nel mare basso ventagli di corallo, alghe dalle vesciche
+dorate, anemoni dai tentacoli turchesi, conchiglie giganti con la perla accesa, loti, torri
+a spirale di conchiglia, mangrovie e i Tidecrown, che salgono dal fondo e spuntano
+dall'acqua con una campana viola e tentacoli luminosi.
+
+**Enciclopedia**: fermando il mouse per un attimo su un punto del pianeta compare l'elenco
+delle piante del bioma; passando su una pianta si apre la sua pagina, con una "foto"
+renderizzata in stile fantasy, tipo, altezza, habitat, tossicità, caratteristiche, storia e
+curiosità. Fermando il mouse sul nome di una nazione compare la sua pagina: superficie,
+popolazione, capitale, biomi, vicini, stemma e storia. Da vicino le piante sono in 3D e si
 muovono nel vento, e il terreno mostra erba pettinata dal vento, increspature della sabbia,
 cumuli di neve e basalto spaccato.
 

@@ -77,7 +77,15 @@ export const SPECIES = [
   { id: 36, key: 'rosequartz', name: 'Rose Quartz', h: 0.9, var: 0.4 }, // ciuffo di prismi rosa-viola
   { id: 37, key: 'shardwillow', name: 'Shardwillow', h: 1.4, var: 0.3 }, // albero di cristallo con grappoli pendenti
   { id: 38, key: 'glimmermoss', name: 'Glimmermoss', h: 0.18, var: 0.4 }, // tappeto di granuli luminosi
-  { id: 39, key: 'geodebloom', name: 'Geode Bloom', h: 0.5, var: 0.4 } // geode aperto con cristalli viola
+  { id: 39, key: 'geodebloom', name: 'Geode Bloom', h: 0.5, var: 0.4 }, // geode aperto con cristalli viola
+  // mare basso e lagune: piante d'acqua di forme, altezze e colori diversi
+  { id: 40, key: 'coralfan', name: 'Coralfan', h: 0.35, var: 0.4 }, // ventagli di corallo rosso-arancio fuori dall'acqua
+  { id: 41, key: 'bubblekelp', name: 'Bubblekelp', h: 0.5, var: 0.4 }, // steli d'alga con vesciche dorate galleggianti
+  { id: 42, key: 'anemone', name: 'Seaglass Anemone', h: 0.4, var: 0.4 }, // colonna rosa con corona di tentacoli luminosi
+  { id: 43, key: 'pearlmouth', name: 'Pearlmouth', h: 0.24, var: 0.35 }, // conchiglia gigante socchiusa con perla luminosa
+  { id: 44, key: 'tidelotus', name: 'Tide Lotus', h: 0.3, var: 0.4 }, // foglie galleggianti e fiori di loto bianco-azzurri
+  { id: 45, key: 'conchspire', name: 'Conch Spire', h: 1.1, var: 0.3 }, // torre a spirale di conchiglia con punta luminosa
+  { id: 46, key: 'saltroot', name: 'Saltroot', h: 0.9, var: 0.3 } // mangrovia su radici ad arco, incrostate di sale
 ].map((sp) => ({ ...sp, h: sp.h * FLORA_SCALE }))
 export const SPECIES_COUNT = SPECIES.length
 
@@ -97,7 +105,7 @@ const W = (mix) => {
     return [S[k], w / tot]
   })
 }
-const rule = (d, cover, sparse, tree, mix, open) => ({ d, cover, sparse, tree, mix: W(mix), open: W(open || mix) })
+const rule = (d, cover, sparse, tree, mix, open, pond) => ({ d, cover, sparse, tree, mix: W(mix), open: W(open || mix), pond: pond ? W(pond) : null })
 const set = (b, ...a) => (FLORA[b] = rule(...a))
 
 set(BIOME.RAINFOREST, 0.92, 0.62, 0.06, 1,
@@ -120,10 +128,12 @@ set(BIOME.SHRUBLAND, 0.6, 0.45, 0.06, 0.4,
   { bramble: 0.5, sunspike: 0.25, duskbloom: 0.25 })
 set(BIOME.WETLAND, 0.8, 0.55, 0.14, 0.45,
   { reedmace: 0.35, mistweeper: 0.2, jellybell: 0.1, glowcap: 0.08, featherfern: 0.1, moonshroom: 0.1, bogcypress: 0.07 },
-  { reedmace: 0.6, featherfern: 0.15, moonshroom: 0.15, duskbloom: 0.1 })
+  { reedmace: 0.6, featherfern: 0.15, moonshroom: 0.15, duskbloom: 0.1 },
+  { tidelotus: 0.75, reedmace: 0.25 })
 set(BIOME.SWAMP, 0.85, 0.62, 0.12, 0.9,
   { bogcypress: 0.32, mistweeper: 0.18, jellybell: 0.1, glowcap: 0.1, reedmace: 0.12, featherfern: 0.08, moonshroom: 0.06, broadleaf: 0.04 },
-  { reedmace: 0.5, jellybell: 0.15, featherfern: 0.2, moonshroom: 0.15 })
+  { reedmace: 0.5, jellybell: 0.15, featherfern: 0.2, moonshroom: 0.15 },
+  { tidelotus: 0.6, saltroot: 0.2, reedmace: 0.2 })
 set(BIOME.DESERT, 0.4, 0.28, 0.025, 0.15,
   { thornpillar: 0.4, sunspike: 0.3, dunepalm: 0.3 },
   { sunspike: 0.55, thornpillar: 0.45 })
@@ -156,8 +166,11 @@ set(BIOME.SCORCHED, 0.5, 0.5, 0.04, 0.4,
 set(BIOME.CRYSTAL_VALLEY, 0.5, 0.36, 0.06, 0.6,
   { crystalspire: 0.3, rosequartz: 0.2, shardwillow: 0.16, prismbloom: 0.1, geodebloom: 0.1, glimmermoss: 0.08, frostlantern: 0.03, featherfern: 0.03 },
   { glimmermoss: 0.35, geodebloom: 0.25, rosequartz: 0.2, prismbloom: 0.2 })
-set(BIOME.OCEAN_SHELF, 0.16, 0.25, 0.004, 0, { kelpspire: 0.86, tidecrown: 0.14 }, { kelpspire: 1 })
-set(BIOME.OCEAN, 0.05, 0.2, 0, 0, { tidecrown: 1 })
+// mare: meno fitto di prima e molto più vario (forme, altezze, colori)
+set(BIOME.OCEAN_SHELF, 0.085, 0.25, 0.002, 0,
+  { kelpspire: 0.17, coralfan: 0.16, bubblekelp: 0.15, anemone: 0.12, saltroot: 0.1, tidelotus: 0.09, pearlmouth: 0.08, conchspire: 0.06, tidecrown: 0.07 },
+  { coralfan: 0.3, pearlmouth: 0.25, tidelotus: 0.25, anemone: 0.2 })
+set(BIOME.OCEAN, 0.022, 0.2, 0, 0, { tidecrown: 0.36, conchspire: 0.34, bubblekelp: 0.3 })
 // sopra la linea delle nevi (la neve la disegna lo shader per quota)
 const ABOVE_SNOW = FLORA[BIOME.SNOW]
 const NEAR_SNOW = rule(0.42, 0.4, 0.03, 0.3,
@@ -355,9 +368,10 @@ export function placeVegetation(t) {
       // fiumi e laghi; nelle paludi l'acqua 'latente' (vedi tileData.js) non conta
       const marsh = b === BIOME.WETLAND || b === BIOME.SWAMP
       if (!sea && g.water[near] > (marsh ? 0.5 : 0.3)) continue
-      // lagune delle paludi: acqua aperta, niente piante
-      if (marsh && pondField(face, cx, cy, seed) > POND_OPEN) continue
+      // lagune delle paludi: acqua aperta, solo qualche pianta galleggiante
+      const inPond = marsh && pondField(face, cx, cy, seed) > POND_OPEN
       let r = FLORA[b]
+      if (inPond && !(r && r.pond && hash4(face, ci, cj, seed + 37) < 0.09)) continue
       cubeFaceDir(face, u, v, dir)
       if (sea) {
         if (h > -15 || h < -1800) continue
@@ -374,11 +388,11 @@ export function placeVegetation(t) {
       const m = macchia(face, cx, cy, seed)
       const [edge, core] = woodland(m, r.cover)
       const p = r.sparse * (1 - edge) + edge * r.d * (0.4 + 0.6 * core)
-      if (hash4(face, ci, cj, seed + 37) >= p) continue
+      if (!inPond && hash4(face, ci, cj, seed + 37) >= p) continue
 
       // specie: nel bosco il mix del bosco, nelle radure quello delle radure
       const inWood = hash4(face, ci, cj, seed + 41) < edge
-      const mix = inWood ? r.mix : r.open
+      const mix = inPond && r.pond ? r.pond : inWood ? r.mix : r.open
       let pick = hash4(face, ci, cj, seed + 53)
       let sp = mix[0][0]
       for (let k = 0; k < mix.length; k++) {
@@ -390,6 +404,8 @@ export function placeVegetation(t) {
       }
       // i giganti stanno al centro dei boschi, non ai margini
       if ((sp === S.canopyTitan || sp === S.mossfather) && core < 0.8) sp = r === FLORA[BIOME.RAINFOREST] ? S.fernpalm : S.elderoak
+      // le mangrovie e i loti stanno solo nell'acqua bassa vicino alla costa
+      if (sea && (sp === S.saltroot || sp === S.tidelotus) && h < -110) sp = S.coralfan
 
       const spec = SPECIES[sp]
       const hv = hash4(face, ci, cj, seed + 71)
@@ -427,4 +443,43 @@ export function placeVegetation(t) {
   }
   if (n === 0) return null
   return { count: n, species: species.slice(0, n), pos: pos.slice(0, n * 3), attr: attr.slice(0, n * 5) }
+}
+
+// ------------------------------------------------------- enciclopedia
+const ruleOf = (biome) => FLORA[biome] || null
+
+/**
+ * Specie di un bioma con il loro peso (0..1), dalla più comune alla più rara:
+ * bosco, radure e lagune insieme.
+ * @returns {Array<{ id:number, w:number, where:string }>}
+ */
+export function biomeFlora(biome) {
+  const r = ruleOf(biome)
+  if (!r) return []
+  const acc = new Map()
+  const add = (list, k, where) => {
+    if (!list) return
+    for (const [id, w] of list) {
+      const e = acc.get(id) || { id, w: 0, where }
+      e.w += w * k
+      acc.set(id, e)
+    }
+  }
+  add(r.mix, r.cover, 'woods')
+  add(r.open, (1 - r.cover) * 0.6, 'clearings')
+  add(r.pond, 0.12, 'lagoons')
+  const out = [...acc.values()]
+  const tot = out.reduce((a, e) => a + e.w, 0) || 1
+  for (const e of out) e.w /= tot
+  return out.sort((a, b) => b.w - a.w)
+}
+
+/** Biomi in cui cresce una specie, dal più importante. */
+export function speciesHabitats(id) {
+  const out = []
+  for (const k of Object.keys(FLORA)) {
+    const e = biomeFlora(+k).find((x) => x.id === id)
+    if (e) out.push({ biome: +k, w: e.w })
+  }
+  return out.sort((a, b) => b.w - a.w).map((x) => x.biome)
 }

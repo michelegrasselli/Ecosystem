@@ -498,6 +498,17 @@ export function createNationLabels(nations, planet, container) {
 
   return {
     update,
+    /** Nazione del nome visibile sotto il punto (px CSS), o null. */
+    hitTest(x, y) {
+      let best = null
+      for (const it of items) {
+        if (it.alpha < 0.35 || !it.w) continue
+        if (Math.abs(x - it.x) <= it.w * 0.5 + 6 && Math.abs(y - it.y) <= it.h * 0.5 + 5) {
+          if (!best || it.alpha > best.alpha) best = it
+        }
+      }
+      return best ? best.n : null
+    },
     /** Stato interno delle etichette (debug). */
     debug: () =>
       items.map((it) => ({

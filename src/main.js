@@ -17,6 +17,7 @@ import { createSky } from './render/sky.js'
 import { createAtmosphere } from './render/atmosphere.js'
 import { GlobeControls } from './camera/globeControls.js'
 import { createHud } from './ui/hud.js'
+import { createEncyclopedia } from './ui/encyclopedia.js'
 import { loadState, saveState, defaultState } from './state/saveSystem.js'
 import { createDirector } from './director/director.js'
 import { createDirectorPanel } from './director/panel.js'
@@ -267,6 +268,9 @@ function pickGround() {
   }
   return dirToLatLon(_pickHit.x, _pickHit.y, _pickHit.z)
 }
+// enciclopedia: fermando il mouse su un bioma o sul nome di una nazione
+const encyclopedia = createEncyclopedia({ canvas, planet, nations, nationLabels, pick: pickGround })
+
 let last = performance.now()
 let frameCount = 0
 
@@ -405,6 +409,7 @@ window.__planet = {
   controls,
   lod,
   vegetation,
+  encyclopedia,
   scene,
   camera,
   renderer,

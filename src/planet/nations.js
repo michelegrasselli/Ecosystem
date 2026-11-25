@@ -240,7 +240,11 @@ export class Nations {
         anchor: [ax, ay, az],
         // ancore del nome: ogni campione di terraferma della nazione
         labelPoints: labelPts[i],
-        share: a[3] / totalLand
+        share: a[3] / totalLand,
+        // capitale (il capoluogo, prima della deformazione) e superficie in
+        // frazione della sfera (campioni di terraferma / campioni totali)
+        capital: seeds[i],
+        sphereShare: a[3] / M
       }
     })
 

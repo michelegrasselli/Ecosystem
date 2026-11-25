@@ -716,6 +716,139 @@ const MODELS = {
       const len = k === 0 ? 0.95 : 0.4 + 0.45 * (((k * 3) % 4) / 3)
       b.add(shard(0.07, len), { p: [Math.cos(a) * 0.12, 0.25, Math.sin(a) * 0.12], r: [tilt, a, 0], c: C, c2: C2, glow: (kk) => 0.15 + 0.45 * kk, stiff: true })
     }
+  },
+  // ------------------------------------------- mare basso e lagune
+  // la base è al pelo dell'acqua: le parti sotto y = 0 sono sommerse
+  coralfan(b) {
+    // ventagli di corallo rosso-arancio: lamina sottile e nervature, punte accese
+    const C = [0.6, 0.12, 0.1]
+    const C2 = [1.0, 0.52, 0.26]
+    const fans = [[0.3, 1.0], [2.2, 0.8], [4.2, 0.68]]
+    for (const [yaw, sc] of fans) {
+      const base = [Math.sin(yaw) * 0.06, -0.12, Math.cos(yaw) * 0.06]
+      b.add(b.B, { p: [base[0], 0.42 * sc - 0.08, base[2]], r: [0, yaw, 0], s: [0.02, 0.42 * sc, 0.3 * sc], c: [0.42, 0.08, 0.08], c2: [0.85, 0.32, 0.18], radial: true, stiff: true, glow: (k) => 0.15 * k * k })
+      const nb = b.lo ? 3 : 6
+      for (let j = 0; j < nb; j++) {
+        const t = -0.85 + (1.7 * j) / (nb - 1)
+        const tip = stem(b, base, (0.95 - 0.25 * Math.abs(t)) * sc, 0.026, 0.01, yaw, t, [0.7, 0.2, 0.14], { c2: [1.0, 0.6, 0.35], stiff: true })
+        b.add(blobLo, { p: tip, s: 0.03 * sc + 0.01, c: [1.0, 0.75, 0.45], glow: 0.9 })
+      }
+    }
+  },
+  bubblekelp(b) {
+    // steli d'alga oliva con vesciche dorate in cima e galleggianti sul pelo dell'acqua
+    const K = [0.28, 0.32, 0.12]
+    const K2 = [0.5, 0.5, 0.2]
+    for (let k = 0; k < 5; k++) {
+      const a = k * 1.26
+      const len = 0.62 + 0.38 * (((k * 3) % 5) / 4)
+      const tip = stem(b, [Math.cos(a) * 0.1, -0.25, Math.sin(a) * 0.1], len + 0.25, 0.026, 0.012, a, 0.08 + 0.07 * (k % 3), K, { c2: K2 })
+      b.add(b.B, { p: tip, s: [0.075, 0.1, 0.075], c: [0.82, 0.58, 0.16], c2: [1.0, 0.86, 0.42], radial: true, glow: 0.35, flutter: true })
+      b.add(b.B, { p: [tip[0] * 1.3, tip[1] - 0.12, tip[2] * 1.3], r: [0.6, a, 0], s: [0.16, 0.022, 0.06], c: K2, c2: [0.62, 0.6, 0.24], flutter: true })
+      if (!b.lo) b.add(b.B, { p: [tip[0] * 0.8, tip[1] - 0.3, tip[2] * 0.8], s: [0.05, 0.065, 0.05], c: [0.8, 0.56, 0.16], radial: true, glow: 0.25 })
+    }
+    const nf = b.lo ? 5 : 11
+    for (let j = 0; j < nf; j++) {
+      const a = j * 2.399
+      const r = 0.12 + 0.38 * Math.sqrt(j / nf)
+      b.add(blobLo, { p: [Math.cos(a) * r, 0.015, Math.sin(a) * r], s: [0.05 + 0.02 * (j % 3), 0.035, 0.05 + 0.02 * (j % 3)], c: [0.78, 0.56, 0.15], c2: [1.0, 0.82, 0.38], glow: 0.2, flutter: true })
+    }
+  },
+  anemone(b) {
+    // colonna rosa-viola che emerge, bocca chiara e corona di tentacoli turchesi luminosi
+    const C = [0.5, 0.16, 0.42]
+    const C2 = [0.88, 0.42, 0.68]
+    b.add(cyl(0.15, 0.2, 0.62, 10), { p: [0, -0.2, 0], c: C, c2: C2, stiff: true })
+    b.add(dome, { p: [0, 0.415, 0], s: [0.16, 0.04, 0.16], c: [0.95, 0.72, 0.5], glow: 0.6 })
+    const n = b.far ? 8 : b.lo ? 14 : 24
+    for (let k = 0; k < n; k++) {
+      const a = k * 2.399
+      const outer = k % 2
+      const rr = 0.1 + 0.06 * outer
+      const tilt = 0.3 + 0.55 * outer + 0.08 * ((k * 7) % 3)
+      b.add(cone(0.03, 0.4 + 0.12 * ((k * 5) % 3), 5), { p: [Math.cos(a) * rr, 0.4, Math.sin(a) * rr], r: [tilt, Math.PI / 2 - a, 0], c: [0.25, 0.7, 0.78], c2: [0.75, 1.0, 0.95], glow: (kk) => 0.2 + 0.8 * kk, flutter: true })
+    }
+  },
+  pearlmouth(b) {
+    // conchiglia gigante socchiusa sul pelo dell'acqua, madreperla e perla accesa
+    const S1 = [0.72, 0.6, 0.55]
+    const S2 = [0.95, 0.88, 0.8]
+    b.add(dome, { p: [0, 0.2, 0], r: [Math.PI, 0, 0], s: [0.55, 0.24, 0.48], c: S2, c2: S1, keep: true })
+    b.add(dome, { p: [0, 0.22, -0.2], r: [-1.05, 0, 0], s: [0.55, 0.2, 0.46], c: S1, c2: S2, keep: true })
+    // costolature
+    if (!b.lo) {
+      for (let k = 0; k < 7; k++) {
+        const a = -1.2 + k * 0.4
+        b.add(cyl(0.018, 0.018, 0.5, 4), { p: [Math.sin(a) * 0.05, 0.2, -0.15], r: [-1.05 + 0.15, a * 0.55, 0], c: [0.82, 0.62, 0.6] })
+      }
+    }
+    // interno di madreperla e mantello turchese
+    b.add(dome, { p: [0, 0.205, 0.02], s: [0.48, 0.03, 0.4], c: [0.6, 0.72, 0.9], c2: [0.95, 0.8, 1.0], glow: 0.35 })
+    b.add(blobLo, { p: [0, 0.3, 0.02], s: 0.12, c: [1.0, 0.92, 0.98], glow: 1, keep: true })
+  },
+  tidelotus(b) {
+    // grandi foglie galleggianti e fiori di loto bianco-azzurri su steli alti
+    const P = [0.14, 0.36, 0.2]
+    const P2 = [0.3, 0.56, 0.28]
+    const pads = [[0, 0, 0.42], [0.55, 0.2, 0.3], [-0.45, 0.35, 0.32], [0.15, -0.55, 0.26], [-0.35, -0.4, 0.22], [0.6, -0.35, 0.18]]
+    for (const [x, z, r] of b.far ? pads.slice(0, 3) : pads) b.add(dome, { p: [x, 0, z], s: [r, 0.03, r], c: P, c2: P2, keep: true })
+    const flowers = [[0.06, 0.08, 1.0], [0.5, 0.25, 0.62], [-0.38, -0.3, 0.42]]
+    for (const [x, z, h] of b.far ? flowers.slice(0, 1) : flowers) {
+      stem(b, [x, 0, z], h - 0.1, 0.022, 0.016, 0, 0.05, [0.28, 0.48, 0.24], { stiff: true })
+      const s = 0.55 + 0.45 * h
+      const np = b.lo ? 6 : 10
+      for (let k = 0; k < np; k++) {
+        const a = (k / np) * Math.PI * 2 + (k % 2) * 0.3
+        const inner = k % 2
+        b.add(b.B, { p: [x + Math.cos(a) * 0.1 * s, h - 0.06 + 0.03 * inner, z + Math.sin(a) * 0.1 * s], r: [0, -a, 0.75 + 0.35 * inner], s: [0.15 * s, 0.035, 0.065 * s], c: [0.94, 0.94, 1.0], c2: [0.55, 0.72, 1.0], glow: 0.35, flutter: true })
+      }
+      b.add(blobLo, { p: [x, h - 0.03, z], s: 0.05 * s, c: [1.0, 0.86, 0.4], glow: 1 })
+    }
+  },
+  conchspire(b) {
+    // torre a spirale di conchiglia color crema e corallo, punta luminosa
+    const C = [0.78, 0.6, 0.48]
+    const C2 = [0.98, 0.86, 0.74]
+    const n = b.far ? 5 : 9
+    for (let k = 0; k < n; k++) {
+      const t = k / (n - 1)
+      const y = -0.12 + t * 0.78
+      const r = 0.3 * (1 - t) + 0.035
+      const a = k * 1.3
+      b.add(b.B, { p: [Math.cos(a) * 0.03 * (1 - t), y, Math.sin(a) * 0.03 * (1 - t)], s: [r, 0.075 + 0.05 * (1 - t), r], c: mixc(C, [0.86, 0.42, 0.38], t * 0.6), c2: C2, radial: true, stiff: true })
+    }
+    if (!b.lo) {
+      for (let k = 0; k < 30; k++) {
+        const t = k / 30
+        const a = t * Math.PI * 7
+        const r = 0.3 * (1 - t) + 0.045
+        b.add(blobLo, { p: [Math.cos(a) * r, -0.04 + t * 0.76, Math.sin(a) * r], s: 0.035 * (1 - t * 0.6), c: [0.92, 0.46, 0.42], stiff: true })
+      }
+    }
+    b.add(shard(0.05, 0.3), { p: [0, 0.68, 0], c: [0.55, 0.88, 1.0], c2: [0.9, 1.0, 1.0], glow: (k) => 0.3 + 0.7 * k, stiff: true })
+    // bocca della conchiglia, rosata e accesa, al pelo dell'acqua
+    b.add(dome, { p: [0.2, 0.06, 0.12], r: [0, 0.6, -1.2], s: [0.14, 0.05, 0.1], c: [0.95, 0.55, 0.6], glow: 0.5 })
+  },
+  saltroot(b) {
+    // mangrovia: tronco sollevato su radici ad arco incrostate di sale, chioma
+    // lucida e semi pendenti che cadono in acqua
+    const BK = [0.32, 0.28, 0.24]
+    const SALT = [0.86, 0.86, 0.8]
+    for (let k = 0; k < (b.far ? 4 : 8); k++) {
+      const a = (k / 8) * Math.PI * 2 + 0.2
+      stem(b, [0, 0.36, 0], 0.5 + 0.06 * (k % 3), 0.03, 0.022, Math.PI / 2 - a, Math.PI - 0.62 - 0.1 * (k % 2), BK, { c2: SALT, stiff: true })
+    }
+    const top = stem(b, [0, 0.34, 0], 0.32, 0.055, 0.04, 0, 0.06, BK, { stiff: true })
+    const G = [0.1, 0.3, 0.2]
+    const G2 = [0.26, 0.52, 0.3]
+    const pads = [[0, 0.16, 0, 0.32], [0.24, 0.08, 0.1, 0.24], [-0.22, 0.1, 0.12, 0.25], [0.05, 0.08, -0.25, 0.25], [-0.12, 0.24, -0.1, 0.2]]
+    for (const [x, y, z, r] of b.far ? pads.slice(0, 3) : pads) b.add(b.B, { p: [top[0] + x, top[1] + y, top[2] + z], s: [r, r * 0.7, r], c: G, c2: G2, radial: true, flutter: true })
+    if (!b.lo) {
+      for (let k = 0; k < 9; k++) {
+        const a = k * 2.399
+        b.add(cone(0.012, 0.2, 4), { p: [top[0] + Math.cos(a) * 0.3, top[1] - 0.02, top[2] + Math.sin(a) * 0.3], r: [Math.PI, 0, 0], c: [0.4, 0.5, 0.25], c2: [0.75, 0.9, 0.6], glow: (kk) => 0.5 * (1 - kk), flutter: true })
+      }
+    }
   }
 }
 
@@ -776,5 +909,13 @@ export const HUE_VARIATION = {
   rosequartz: 0.35,
   shardwillow: 0.4,
   glimmermoss: 0.5,
-  geodebloom: 0.6
+  geodebloom: 0.6,
+  coralfan: 0.6,
+  bubblekelp: 0.2,
+  anemone: 1.0,
+  pearlmouth: 0.35,
+  tidelotus: 0.7,
+  conchspire: 0.4,
+  saltroot: 0.15,
+  kelpspire: 0.3
 }

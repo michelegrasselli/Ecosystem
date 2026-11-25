@@ -465,7 +465,7 @@ con uno script Node: non c'è pdftoppm e caricare pdf.js da CDN nella pagina non
   shader e texture ravvicinate. La camera scende al massimo a **40 km** (`MIN_ALTITUDE`):
   sotto i ~420 km la vista si inclina verso l'orizzonte (a 40 km quasi radente). Le
   sceneggiature degli episodi impostano la quota direttamente e non sono limitate.
-- **40 specie** (`SPECIES`): Elderoak, Spirepine, Canopy Titan, Fernpalm, Glowcap,
+- **47 specie** (`SPECIES`): Elderoak, Spirepine, Canopy Titan, Fernpalm, Glowcap,
   Lanternpod, Bramblebush, Sunshade, Mistweeper, Prismbloom, Thornpillar, Sunspike,
   Ashwraith, Cinder Coral, Snowpuff, Rimeglass, **Tidecrown** (dal fondo del mare, campana
   viola-rosa e tentacoli luminosi), Kelp Spire, Duskbloom, Veilwood; e dalle immagini
@@ -482,12 +482,19 @@ con uno script Node: non c'è pdftoppm e caricare pdf.js da CDN nella pagina non
   dalla volta nell'immagine), Glimmermoss (cuscini blu punteggiati di granuli luminosi),
   Geode Bloom (geode aperto con cristalli viola). Canopy Titan e Sunshade hanno chiome a
   "cuscini" sovrapposti a quote diverse: le chiome piatte, viste dall'alto, sembravano
-  ninfee.
+  ninfee. Piante d'acqua (richiesta: meno fitte e più varie, con rimandi all'acqua, di
+  altezze e colori diversi): Coralfan (ventagli di corallo rosso-arancio), Bubblekelp
+  (alghe con vesciche dorate galleggianti), Seaglass Anemone (colonna rosa e tentacoli
+  turchesi), Pearlmouth (conchiglia socchiusa con perla accesa), Tide Lotus (foglie
+  galleggianti e loti bianco-azzurri, anche nelle lagune delle paludi), Conch Spire (torre
+  a spirale di conchiglia), Saltroot (mangrovia su radici ad arco, solo nell'acqua bassa).
+  Il mare basso ha ~metà delle piante di prima e nessuna specie supera il 17%.
 - **Per bioma** (`FLORA`): densità nel cuore del bosco `d`, frazione coperta da boschi
   `cover`, densità nelle radure `sparse`, quanto la macchia è "bosco" per lo shader
   `tree`, specie del bosco `mix` e specie delle radure `open` (fiori, cespugli, funghi).
   Sopra la linea delle nevi solo piante di ghiaccio; vicino alla linea specie alpine. Niente
-  piante su fiumi, laghi e lava, né nelle lagune delle paludi.
+  piante su fiumi, laghi e lava; nelle lagune delle paludi solo qualche pianta galleggiante
+  (`pond`: Tide Lotus, canne, mangrovie).
 - **Distribuzione a macchie**: il campo di macchia somma rumori a ~320, ~72, ~20 e ~6 km.
   Sopra la soglia del bioma c'è il bosco: rado al margine, fittissimo nel cuore (chiome che
   si toccano); fuori restano radure quasi spoglie con qualche pianta isolata. I giganti solo
@@ -557,6 +564,41 @@ con uno script Node: non c'è pdftoppm e caricare pdf.js da CDN nella pagina non
   modellati dal vento con il lato in ombra azzurro e brillii dei cristalli che cambiano con
   la vista; basalto spaccato in placche con crepe scure che vicino alla lava covano ancora
   (arancio, più forte durante le eruzioni).
+
+### 3.12 Enciclopedia (`ui/encyclopedia.js`, `ui/encyclopediaData.js`, `ui/plantPortrait.js`, `ui/nationLore.js`)
+
+Richiesta: fermando il mouse qualche istante su un bioma compare (senza cliccare) l'elenco
+delle sue piante; passando su una pianta, più a lato, la sua pagina con una "foto"
+renderizzata in stile fantasy (come le immagini di `contesto/`) e le informazioni (tipo,
+altezza, caratteristiche, storia, tossicità, curiosità). Lo stesso sul nome di una nazione:
+dimensioni, biomi, un po' di storia.
+
+- **Comparsa**: mouse fermo per 1.3 s sul pianeta. Prima si controlla se sotto c'è il
+  nome di una nazione (`nationLabels.hitTest`, sui riquadri dei nomi visibili), altrimenti
+  il bioma del punto puntato (`pickGround` di main.js). Le finestre restano aperte finché
+  il mouse ci sta sopra; si chiudono se il mouse torna sul pianeta a più di 40 px dal punto,
+  a ogni clic, rotella o Esc. Mai durante la regia.
+- **Bioma**: nome, descrizione breve (`BIOME_INFO`), specie ordinate per frequenza
+  (`biomeFlora` in flora.js unisce bosco, radure e lagune; le rare hanno un'etichetta),
+  con tipo e altezza tipica.
+- **Pianta**: testi in `PLANT_INFO` (in inglese come il resto dell'interfaccia): tipo,
+  tossicità su 4 livelli con nota, caratteristiche, storia, curiosità; altezza e habitat
+  calcolati da `SPECIES` e `speciesHabitats`.
+- **Foto** (`plantPortrait`): un secondo canvas WebGL fuori schermo, una volta per specie
+  (~40 ms, poi in cache). Scenario per habitat (foresta, giungla, palude, mare, ghiacci,
+  fuoco, deserto, cristalli, prati): cielo crepuscolare in gradiente con bagliore, colline
+  a strati nella foschia, ciuffi d'erba, lucciole; nel mare il pelo dell'acqua vela la
+  parte sommersa. Accanto crescono specie dello stesso bioma **in proporzione** e due
+  esemplari sullo sfondo. Luce principale calda, controluce colorato, poi una seconda
+  passata con le sole parti luminose, sfocata e sommata (alone/bloom), e vignettatura.
+- **Nazione** (`nationInfo`, calcolata alla prima apertura): superficie (campioni di
+  terraferma della nazione sulla sfera), quota delle terre, popolazione stimata dalla
+  densità per bioma, capitale (il capoluogo, con le coordinate), punto più alto,
+  temperatura media, biomi con barra a colori, vicini (punti vicini al confine), flora
+  tipica, stemma e una storia inventata in 5 paragrafi: fondazione, eventi legati ai biomi
+  dominanti (foreste, nord, pianure, montagne, ghiacci, deserti, paludi, vulcani, cristalli,
+  coste), sovrano attuale con il titolo del rango (imperatore, re, margravio, barone...).
+  Tutto deterministico dal seed e dall'id della nazione.
 
 ### 3.4 Persistenza (R7 + R8)
 
