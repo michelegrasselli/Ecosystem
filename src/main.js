@@ -79,7 +79,7 @@ if (Number.isFinite(view.lat)) {
   controls.lon = controls.tLon = view.lon
 }
 if (Number.isFinite(view.altitude) && view.altitude > 0) {
-  controls.altitude = controls.tAltitude = view.altitude
+  controls.altitude = controls.tAltitude = Math.max(view.altitude, MIN_ALTITUDE / 1000)
 }
 if (Number.isFinite(view.pitch)) controls.pitch = controls.tPitch = view.pitch
 if (Number.isFinite(view.heading)) controls.heading = controls.tHeading = view.heading
@@ -312,7 +312,7 @@ function step(dt, now, opts = {}) {
   lod.update(camera, viewportPx)
   vegetation.update(lod.drawn, camera, viewportPx, lod._now, !!opts.offline)
   // con le piante 3D a schermo lo shader attenua le chiome dipinte
-  terrainMaterial.uniforms.uVegNear.value = 1 - THREE.MathUtils.smoothstep(altitudeKm, 250, 700)
+  terrainMaterial.uniforms.uVegNear.value = 1 - THREE.MathUtils.smoothstep(altitudeKm, 2000, 5600)
 
   // uniform del terreno
   const u = terrainMaterial.uniforms

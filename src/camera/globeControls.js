@@ -300,9 +300,9 @@ export class GlobeControls {
 
     // inclinazione automatica in base alla quota
     if (this.autoPitch) {
-      const close = smoothstep(900, 30, this.altitude)
+      const close = smoothstep(2500, 250, this.altitude)
       // vicino al suolo la vista diventa radente, per guardare il paesaggio
-      const ground = smoothstep(6, 0.06, this.altitude)
+      const ground = smoothstep(420, 40, this.altitude)
       this.tPitch = 90 - 24 * close - 46 * ground
     }
 

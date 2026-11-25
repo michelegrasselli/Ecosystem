@@ -177,11 +177,16 @@ const MODELS = {
       const a = (k / 5) * Math.PI * 2 + 0.3
       stem(b, [Math.cos(a) * 0.03, 0.66, Math.sin(a) * 0.03], 0.32, 0.03, 0.015, -a + Math.PI / 2, 1.05, TR2)
     }
-    // chioma piatta a ombrello, verde muschio, con lucine turchesi sotto
-    const M = [0.3, 0.46, 0.2]
-    const M2 = [0.46, 0.62, 0.28]
-    b.add(b.B, { p: [0, 0.86, 0], s: [0.55, 0.13, 0.55], c: M, c2: M2, radial: true, flutter: true })
-    b.add(b.B, { p: [0.12, 0.93, -0.05], s: [0.36, 0.09, 0.36], c: M2, c2: [0.52, 0.68, 0.3], radial: true, flutter: true })
+    // chioma a ombrello fatta di cuscini di fogliame a quote diverse (scuri
+    // sotto, chiari in cima): da sopra una cupola irregolare, non un disco
+    const M = [0.16, 0.3, 0.13]
+    const M2 = [0.4, 0.56, 0.24]
+    const pads = [[0, 0.9, 0, 0.3, 0.16], [0.3, 0.86, 0.1, 0.26, 0.13], [-0.28, 0.87, 0.14, 0.25, 0.13], [0.06, 0.85, -0.32, 0.26, 0.13], [-0.18, 0.92, -0.2, 0.22, 0.12], [0.2, 0.93, -0.16, 0.2, 0.11], [0.1, 0.88, 0.32, 0.22, 0.12], [-0.38, 0.83, -0.08, 0.18, 0.1]]
+    const np = b.far ? 4 : pads.length
+    for (let k = 0; k < np; k++) {
+      const [x, y, z, r, ry] = pads[k]
+      b.add(b.B, { p: [x, y, z], s: [r, ry, r], c: M, c2: M2, radial: true, flutter: true })
+    }
     b.add(dome, { p: [0, 0.82, 0], r: [Math.PI, 0, 0], s: [0.5, 0.06, 0.5], c: [0.2, 0.3, 0.22], glow: 0.0 })
     for (let k = 0; k < 7; k++) {
       const a = (k / 7) * Math.PI * 2
@@ -244,12 +249,20 @@ const MODELS = {
     }
   },
   sunshade(b) {
-    const top = stem(b, [0, 0, 0], 0.62, 0.05, 0.03, 0.5, 0.14, BARK, { stiff: true })
-    stem(b, [0, 0.45, 0], 0.32, 0.025, 0.015, 2.4, 0.8, BARK)
-    const G = [0.36, 0.44, 0.18]
-    const G2 = [0.5, 0.56, 0.22]
-    b.add(b.B, { p: [top[0], 0.82, top[2]], s: [0.6, 0.1, 0.6], c: G, c2: G2, radial: true, flutter: true })
-    b.add(b.B, { p: [top[0] - 0.25, 0.72, top[2] + 0.1], s: [0.3, 0.07, 0.3], c: G, c2: G2, radial: true, flutter: true })
+    // acacia: tronco inclinato che si apre in rami, chioma a ombrello fatta
+    // di cuscini di fogliame sovrapposti (scuri sotto, chiari in cima)
+    const top = stem(b, [0, 0, 0], 0.56, 0.05, 0.03, 0.5, 0.14, BARK, { stiff: true })
+    stem(b, top, 0.22, 0.03, 0.015, 0.2, 0.9, BARK)
+    stem(b, top, 0.22, 0.03, 0.015, 2.4, 0.85, BARK)
+    stem(b, top, 0.2, 0.025, 0.012, 4.3, 0.8, BARK)
+    const G = [0.2, 0.3, 0.11]
+    const G2 = [0.44, 0.54, 0.2]
+    const pads = [[0, 0.2, 0, 0.3], [0.24, 0.16, 0.1, 0.24], [-0.22, 0.17, 0.14, 0.23], [0.04, 0.15, -0.25, 0.25], [-0.16, 0.22, -0.13, 0.2], [0.15, 0.23, -0.06, 0.18], [0.3, 0.13, -0.2, 0.17], [-0.3, 0.14, -0.05, 0.17]]
+    const n = b.far ? 4 : pads.length
+    for (let k = 0; k < n; k++) {
+      const [x, y, z, r] = pads[k]
+      b.add(b.B, { p: [top[0] + x, top[1] + y, top[2] + z], s: [r, r * 0.34, r], c: G, c2: G2, radial: true, flutter: true })
+    }
   },
   mistweeper(b) {
     b.add(cyl(0.04, 0.07, 0.6), { c: [0.3, 0.27, 0.24], stiff: true })
@@ -615,8 +628,106 @@ const MODELS = {
       b.add(shard(0.08, len), { p: [Math.cos(a) * 0.06, 0, Math.sin(a) * 0.06], r: [tilt, a, 0], c: [0.07, 0.06, 0.09], c2: [0.75, 0.22, 0.08], glow: (kk) => Math.pow(kk, 4) * 0.9, stiff: true })
     }
     b.add(b.B, { p: [0, 0.08, 0], s: [0.13, 0.1, 0.13], c: [1.0, 0.42, 0.08], c2: [1.0, 0.75, 0.3], glow: 1, radial: true })
+  },
+  // ------------------------------------------- valle dei cristalli
+  // (contesto/cristalli.png: prismi azzurri e rosa con venature luminose,
+  // grappoli pendenti, granuli scintillanti sul suolo viola)
+  crystalspire(b) {
+    // prismi esagonali giganti, inclinati, con la punta più chiara
+    const C = [0.08, 0.2, 0.62]
+    const C2 = [0.4, 0.78, 1.0]
+    const spires = [[0, 0, 0, 1.0, 0.13], [0.32, 0.6, 0.12, 0.72, 0.1], [0.4, 2.5, 0.14, 0.6, 0.09], [0.5, 4.1, 0.12, 0.5, 0.08], [0.62, 5.4, 0.16, 0.38, 0.07]]
+    const n = b.far ? 3 : spires.length
+    for (let k = 0; k < n; k++) {
+      const [tilt, yaw, off, len, r] = spires[k]
+      prism(b, [Math.cos(yaw) * off, 0, Math.sin(yaw) * off], len, r, tilt, yaw, C, C2, (kk) => 0.1 + 0.4 * kk * kk)
+    }
+    // venature luminose: lame sottili lungo il prisma centrale
+    if (!b.lo) {
+      for (let k = 0; k < 3; k++) b.add(cyl(0.012, 0.012, 0.7, 4), { p: [Math.cos(k * 2.1) * 0.12, 0.05, Math.sin(k * 2.1) * 0.12], r: [0.04, k * 2.1, 0], c: [0.8, 1.0, 1.0], glow: 1, stiff: true })
+    }
+    // roccia viola alla base
+    b.add(b.B, { p: [0, 0.02, 0], s: [0.24, 0.08, 0.22], c: [0.2, 0.14, 0.32], c2: [0.32, 0.22, 0.48], radial: true, stiff: true })
+  },
+  rosequartz(b) {
+    const C = [0.45, 0.08, 0.4]
+    const C2 = [0.95, 0.5, 0.82]
+    const n = b.far ? 4 : 7
+    for (let k = 0; k < n; k++) {
+      const a = k * 2.399
+      const tilt = k === 0 ? 0.05 : 0.3 + 0.4 * (((k * 7) % 5) / 5)
+      const len = k === 0 ? 1.0 : 0.45 + 0.4 * (((k * 3) % 4) / 3)
+      prism(b, [Math.cos(a) * 0.05, 0, Math.sin(a) * 0.05], len, 0.09 + 0.03 * (k === 0), tilt, a, C, C2, (kk) => 0.1 + 0.4 * kk * kk)
+    }
+  },
+  shardwillow(b) {
+    // tronco di cristallo violaceo, rami luminosi, grappoli di cristalli
+    // azzurri appesi (come il grappolo che pende dalla volta nell'immagine)
+    const T = [0.32, 0.22, 0.55]
+    const T2 = [0.55, 0.45, 0.85]
+    b.add(cyl(0.04, 0.08, 0.62, 6), { c: T, c2: T2, glow: 0.15, stiff: true })
+    const H = [0.1, 0.4, 0.8]
+    const H2 = [0.45, 0.85, 1.0]
+    const nb = b.far ? 4 : 6
+    for (let k = 0; k < nb; k++) {
+      const a = (k / nb) * Math.PI * 2 + 0.4
+      const tip = stem(b, [0, 0.5 + 0.03 * (k % 3), 0], 0.36, 0.03, 0.015, a, 0.95 + 0.15 * (k % 2), T2, { glow: 0.3 })
+      // grappolo pendente: schegge rovesciate
+      const ns = b.lo ? 2 : 4
+      for (let j = 0; j < ns; j++) {
+        const aj = a + j * 1.7
+        const len = 0.22 + 0.1 * ((j * 5) % 3)
+        b.add(shard(0.04, len), { p: [tip[0] + Math.cos(aj) * 0.03, tip[1] + 0.02, tip[2] + Math.sin(aj) * 0.03], r: [Math.PI - 0.15 * j, aj, 0], c: H2, c2: H, glow: (kk) => 0.15 + 0.45 * (1 - kk), flutter: true })
+      }
+    }
+    // punte in cima
+    for (let k = 0; k < (b.far ? 2 : 4); k++) {
+      const a = k * 1.9
+      b.add(shard(0.06, 0.42), { p: [0, 0.6, 0], r: [0.25 + 0.15 * k, a, 0], c: T2, c2: H2, glow: (kk) => 0.1 + 0.4 * kk, stiff: true })
+    }
+  },
+  glimmermoss(b) {
+    // cuscini bassi blu-viola punteggiati di granuli luminosi
+    const M = [0.12, 0.12, 0.34]
+    const M2 = [0.24, 0.22, 0.55]
+    b.add(dome, { s: [0.9, 0.35, 0.9], c: M, c2: M2, keep: true })
+    b.add(dome, { p: [0.55, 0, 0.3], s: [0.5, 0.25, 0.5], c: M, c2: M2, keep: true })
+    b.add(dome, { p: [-0.5, 0, -0.35], s: [0.55, 0.28, 0.55], c: M, c2: M2, keep: true })
+    const ng = b.far ? 6 : b.lo ? 14 : 34
+    for (let k = 0; k < ng; k++) {
+      const a = k * 2.399
+      const r = 0.95 * Math.sqrt((k + 0.5) / ng)
+      const x = Math.cos(a) * r
+      const z = Math.sin(a) * r
+      const y = 0.32 * Math.sqrt(Math.max(0, 1 - r * r)) + 0.03
+      const pink = k % 4 === 0
+      b.add(blobLo, { p: [x, y, z], s: b.far ? 0.09 : 0.045, c: pink ? [1.0, 0.55, 0.95] : [0.45, 0.85, 1.0], glow: 1, keep: true })
+    }
+  },
+  geodebloom(b) {
+    // geode aperto: guscio di roccia scura e cuore di cristalli viola
+    b.add(dome, { s: [0.55, 0.4, 0.55], c: [0.22, 0.2, 0.26], c2: [0.36, 0.33, 0.4], keep: true })
+    const C = [0.42, 0.18, 0.75]
+    const C2 = [0.85, 0.6, 1.0]
+    const n = b.far ? 4 : 9
+    for (let k = 0; k < n; k++) {
+      const a = k * 2.399
+      const tilt = k === 0 ? 0 : 0.25 + 0.5 * (((k * 7) % 5) / 5)
+      const len = k === 0 ? 0.95 : 0.4 + 0.45 * (((k * 3) % 4) / 3)
+      b.add(shard(0.07, len), { p: [Math.cos(a) * 0.12, 0.25, Math.sin(a) * 0.12], r: [tilt, a, 0], c: C, c2: C2, glow: (kk) => 0.15 + 0.45 * kk, stiff: true })
+    }
   }
 }
+
+/** Prisma di cristallo: fusto esagonale e punta, inclinato (tilt) verso yaw. */
+function prism(b, base, len, r, tilt, yaw, c, c2, glow) {
+  const body = len * 0.78
+  b.add(cyl(r, r * 1.05, body, 6), { p: base, r: [tilt, yaw, 0], c, c2: mixc(c, c2, 0.7), glow: (k) => glow(k * 0.78), stiff: true })
+  _e.set(tilt, yaw, 0, 'YXZ')
+  const d = new THREE.Vector3(0, body, 0).applyEuler(_e)
+  b.add(cone(r, len - body, 6), { p: [base[0] + d.x, base[1] + d.y, base[2] + d.z], r: [tilt, yaw, 0], c: mixc(c, c2, 0.7), c2, glow: (k) => glow(0.78 + 0.22 * k), stiff: true })
+}
+const mixc = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]
 
 /**
  * Geometrie di tutte le specie, nell'ordine di SPECIES (planet/flora.js).
@@ -660,5 +771,10 @@ export const HUE_VARIATION = {
   obsidianbloom: 0.25,
   mossfather: 0.15,
   broadleaf: 0.25,
-  bogcypress: 0.15
+  bogcypress: 0.15,
+  crystalspire: 0.5,
+  rosequartz: 0.35,
+  shardwillow: 0.4,
+  glimmermoss: 0.5,
+  geodebloom: 0.6
 }

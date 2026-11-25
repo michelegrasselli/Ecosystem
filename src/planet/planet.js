@@ -531,7 +531,9 @@ export class Planet {
         // rumore di "varietà" regionale: decide dove compaiono biomi più rari
         // (paludi, calanchi, saline) dentro le grandi fasce climatiche
         const variety = fbm(nd, px * 7.5 + 13.7, py * 7.5 - 4.2, pz * 7.5 + 8.8, 2)
-        biome = classifyLandBiome(height, temp, moist, absLat, variety)
+        // valli di cristalli: regioni vaste e rare (rumore a ~2000 km)
+        const crystal = fbm(nd, px * 3.1 - 21.3, py * 3.1 + 7.9, pz * 3.1 - 2.6, 5, 2.3, 0.55)
+        biome = classifyLandBiome(height, temp, moist, absLat, variety, crystal)
         // Transizioni morbide: si riclassifica il punto con il clima
         // leggermente spostato (±2.5 °C, ±0.05 di umidità, ±0.14 di varietà)
         // e si fa la media. Il confine netto tra due biomi diventa una fascia
@@ -544,7 +546,8 @@ export class Planet {
             temp + o[0],
             clamp(moist + o[1], 0, 1),
             absLat,
-            variety + o[2]
+            variety + o[2],
+            crystal + o[2] * 1.3
           )
         }
         out.mixCount = SOFT_OFFSETS.length + 1

@@ -75,7 +75,7 @@ dall'utente: **va guardata a ogni nuova richiesta** e resta sempre nei commit.
 | # | Requisito | Stato |
 |---|-----------|-------|
 | R1 | Vista della Terra in stile Google Earth, con **lo stesso stile di navigazione** (drag per ruotare, scroll per zoomare, tilt, fly-to) | **fatto** |
-| R2 | Zoom **multi-scala**: dallo spazio fino a scala regionale (es. Sahara) | **fatto** (LOD 0→17, fino a 25 m dal suolo) |
+| R2 | Zoom **multi-scala**: dallo spazio fino a scala regionale (es. Sahara) | **fatto** (LOD 0→17; dalla flora alla scala del pianeta la camera si ferma a 40 km dal suolo) |
 | R3 | A scala regionale si devono poter vedere animali e piante **senza appesantire la grafica** | zoom pronto (25 m dal suolo, chiome disegnate nello shader); piante/animali 3D in fase 2 |
 | R4 | Contenuto **ragionevolmente fedele**: ambienti, temperature, conformazione territoriale | **fatto** per il pianeta |
 | R5 | **Per ora**: solo modello del pianeta — continenti, mari, oceani, laghi, fiumi, rilievi. **Niente piante né animali.** | **fatto** |
@@ -377,7 +377,8 @@ Generazione **procedurale deterministica** da un seed:
 - **Biomi**: diagramma di Whittaker (temperatura × umidità) → tundra, taiga, foreste
   temperate, praterie, savana, deserto, foresta pluviale, ghiacciai d'alta quota, più biomi
   "rari" guidati da un rumore di varietà regionale: paludi (Swamp calde e Marshland
-  temperate, vaste e con acquitrini, vedi §3.11), calanchi rossi,
+  temperate, vaste e con acquitrini, vedi §3.11), Valle dei Cristalli (rumore proprio a
+  grande scala), calanchi rossi,
   saline, praterie alpine. Il colore varia con continuità dentro ogni bioma (più verde dove
   è umido, più bruno dove è secco, più spento dove è freddo).
   Il deserto del Sahara deve emergere naturalmente dalla fascia secca subtropicale.
@@ -442,6 +443,10 @@ zoom, effetto 3D e vento da vicino. Seconda richiesta: piante **sempre visibili*
 distinguibili a 250-300 km di quota (proporzioni cambiate di proposito); distribuzione **non
 uniforme** (boschi fittissimi e zone spoglie); altezze più varie, tra fantastiche e reali;
 terreni più realistici da vicino (erba, neve, sabbia, lava); **vaste paludi** con acquitrini.
+Terza richiesta: il mondo deve essere **esplorabile già a 300 km** di quota (non serve
+scendere oltre), con gli alberi che compaiono a quella quota; anche da lontano, senza piante
+3D, devono vedersi **macchie** dove sono i boschi; più paludi; un nuovo bioma vasto, la
+**Valle dei Cristalli** (riferimento `contesto/cristalli.png`), con piante a tema.
 Ispirazione: le immagini in `contesto/` (PDF: funghi giganti luminosi, baccelli turchesi,
 alberi a ombrello con tronchi intrecciati, cristalli, vegetazione cremisi, batuffoli bianchi;
 immagini sciolte: colonie di funghetti turchesi, alberi in fiore rosa dai tronchi
@@ -450,12 +455,17 @@ giganti coperti di muschio con radici, alberi con chioma a fiore, lanterne aranc
 gigli a stella, foglie enormi). Il PDF si legge estraendone le immagini JPEG (`/DCTDecode`)
 con uno script Node: non c'è pdftoppm e caricare pdf.js da CDN nella pagina non è consentito.
 
-- **Scala**: la flora di Elyra è gigantesca. Alberi comuni ~1 km, alti 1.2-1.5 km, giganti
-  (Canopy Titan, Mossfather) 2.3-2.8 km, fiori e cespugli 200-500 m, Tidecrown ~1.7 km sopra
-  l'acqua; ogni specie varia del ±30-45%, nel cuore dei boschi le piante crescono di più e il
-  3.5% sono esemplari secolari 1.55 volte più grandi. Così a 300 km una pianta è qualche
-  pixel e a 40 km si riconosce la specie.
-- **35 specie** (`SPECIES`): Elderoak, Spirepine, Canopy Titan, Fernpalm, Glowcap,
+- **Scala** (`FLORA_SCALE` = 8): invece di ridefinire la quota mostrata, tutta la flora è
+  stata ingrandita 8 volte (potenza di due: i livelli delle tile scalano esattamente di 3).
+  Alberi comuni ~8 km, alti 10-12 km, giganti (Canopy Titan, Mossfather) 18-22 km, fiori e
+  cespugli 1.5-4 km, Tidecrown ~14 km sopra l'acqua; ogni specie varia del ±30-45%, nel
+  cuore dei boschi le piante crescono di più e il 3.5% sono esemplari secolari 1.55 volte
+  più grandi. A 300 km di quota un albero è ~30 px e si riconosce la specie; a 1000-2500 km
+  le piante sono puntini. Con la flora sono scalati griglia, macchia, pozze, chiome dello
+  shader e texture ravvicinate. La camera scende al massimo a **40 km** (`MIN_ALTITUDE`):
+  sotto i ~420 km la vista si inclina verso l'orizzonte (a 40 km quasi radente). Le
+  sceneggiature degli episodi impostano la quota direttamente e non sono limitate.
+- **40 specie** (`SPECIES`): Elderoak, Spirepine, Canopy Titan, Fernpalm, Glowcap,
   Lanternpod, Bramblebush, Sunshade, Mistweeper, Prismbloom, Thornpillar, Sunspike,
   Ashwraith, Cinder Coral, Snowpuff, Rimeglass, **Tidecrown** (dal fondo del mare, campana
   viola-rosa e tentacoli luminosi), Kelp Spire, Duskbloom, Veilwood; e dalle immagini
@@ -466,38 +476,46 @@ con uno script Node: non c'è pdftoppm e caricare pdf.js da CDN nella pagina non
   (lanterne arancio), Starlily (giglio a stella), Broadleaf (foglie enormi), Reedmace
   (canneto con tife), Bog Cypress (cipresso di palude con barbe di muschio e lucciole),
   Frostlantern (sfere di ghiaccio accese), Dunepalm (palma dorata delle oasi), Obsidian
-  Bloom (schegge di vetro nero con cuore di magma).
+  Bloom (schegge di vetro nero con cuore di magma); e della Valle dei Cristalli: Crystal
+  Spire (prismi esagonali azzurri giganti con venature luminose), Rose Quartz (prismi
+  rosa-viola), Shardwillow (albero di cristallo con grappoli pendenti, come quello che pende
+  dalla volta nell'immagine), Glimmermoss (cuscini blu punteggiati di granuli luminosi),
+  Geode Bloom (geode aperto con cristalli viola). Canopy Titan e Sunshade hanno chiome a
+  "cuscini" sovrapposti a quote diverse: le chiome piatte, viste dall'alto, sembravano
+  ninfee.
 - **Per bioma** (`FLORA`): densità nel cuore del bosco `d`, frazione coperta da boschi
   `cover`, densità nelle radure `sparse`, quanto la macchia è "bosco" per lo shader
   `tree`, specie del bosco `mix` e specie delle radure `open` (fiori, cespugli, funghi).
   Sopra la linea delle nevi solo piante di ghiaccio; vicino alla linea specie alpine. Niente
-  piante su fiumi, laghi e lava (nelle paludi l'acqua "latente" non conta).
-- **Distribuzione a macchie**: il campo di macchia somma rumori a ~40, ~9, ~2.5 e ~0.8 km.
+  piante su fiumi, laghi e lava, né nelle lagune delle paludi.
+- **Distribuzione a macchie**: il campo di macchia somma rumori a ~320, ~72, ~20 e ~6 km.
   Sopra la soglia del bioma c'è il bosco: rado al margine, fittissimo nel cuore (chiome che
   si toccano); fuori restano radure quasi spoglie con qualche pianta isolata. I giganti solo
   nel cuore dei boschi. `node tools/veg-density.mjs [livello] [n]` misura piante per km² e
-  quota di tile spoglie/fitte per bioma (foreste: ~3 piante/km² di media, ~10-25% di tile
-  quasi spoglie, ~50% fitte).
+  quota di tile spoglie/fitte per bioma (foreste: ~0.05 piante/km² di media, cioè 1/64
+  della prima versione).
 - **Posizionamento** (nei worker, dentro `computeTileData`): griglia GLOBALE di candidati
-  su ogni faccia del cubo (passo 360 m) con spostamento casuale; valori pseudo-casuali dalle
+  su ogni faccia del cubo (passo 2.88 km) con spostamento casuale; valori pseudo-casuali dalle
   coordinate intere: una tile e le sue figlie vedono le stesse piante. Bioma dal vertice più
   vicino; **quota sullo stesso triangolo che disegna il terreno** (con la bilineare finivano
-  sotto il terreno). Da tile di livello >= 7 (~78 km): quota di piante tenute per livello
-  `KEEP` (7: 10% ... 12+: 100%) sul **rango effettivo** rank^p, con p che cresce con la
+  sotto il terreno). Da tile di livello >= 4 (~625 km): quota di piante tenute per livello
+  `KEEP` (4: 10% ... 9+: 100%) sul **rango effettivo** rank^p, con p che cresce con la
   taglia: nelle tile lontane restano i grandi alberi e spariscono prima i fiori. ~20-30 ms
   per tile nel worker. `node tools/veg-stats.mjs [lat lon livello]` stampa piante e specie.
-- **Copertura per lo shader** (`vegCover`, attributo `aEco`): la stessa macchia, calcolata
-  per vertice, dice al terreno dove sono i boschi (`aEco.x`) e quanto è palude (`aEco.y`).
-  Da lontano (oltre ~600 km, senza piante 3D) le foreste e le radure si vedono dove sono le
-  piante; sotto i boschi 3D il suolo è in ombra. Le chiome procedurali dello shader sono alla
-  scala della flora (celle di 500 m).
+- **Copertura per lo shader** (`vegCover`, attributo `aEco` vec4): la stessa macchia,
+  calcolata per vertice, dice al terreno dove sono i boschi (`aEco.x`), quanto è palude
+  (`aEco.y`), quanto è Valle dei Cristalli (`aEco.z`) e il campo delle lagune (`aEco.w`).
+  A ogni quota i boschi sono più scuri e saturi e le radure dei biomi verdi più chiare e
+  asciutte: anche dallo spazio, senza piante 3D, si vedono le macchie dove sono le piante.
+  Le chiome procedurali dello shader sono alla scala della flora (celle di 4 km) e da
+  1000-5000 km disegnano il bosco a puntini.
 - **Modelli** (`plantModels.js`): geometrie low-poly in stile illustrato alte 1, colori per
   vertice, `aWind` (oscillazione crescente con l'altezza, tremolio delle foglie) e
   `aGlow` (parti luminose). Tre livelli di dettaglio: completo (chiome su icosfera fine con
   "grumi" di fogliame), semplificato (senza dettagli minuti) e lontano (ottaedri, cilindri a
   3 lati senza tappi, niente rami sottili: 20-200 triangoli). Foglie e petali sottili usano
   sempre l'icosaedro semplice.
-- **Disegno** (`vegetation.js`): una mesh istanziata per specie e per dettaglio (105). Il
+- **Disegno** (`vegetation.js`): una mesh istanziata per specie e per dettaglio (120). Il
   dettaglio si sceglie **per tile e per specie** dalla dimensione a schermo della pianta nel
   punto della tile più vicino (completo sopra 44 px, semplificato sopra 16 px), a gradini di
   un terzo d'ottava con isteresi. Ogni tile tiene le sue istanze già impaccate, ordinate per
@@ -511,8 +529,8 @@ con uno script Node: non c'è pdftoppm e caricare pdf.js da CDN nella pagina non
 - **Prestazioni**: le piante si disegnano **prima del terreno** (renderOrder -1) con
   profondità logaritmica per vertice (niente gl_FragDepth): i pixel di terreno coperti dalle
   chiome vengono scartati dal test di profondità invece di essere ombreggiati. Nel bosco a
-  4 km di quota, vista radente con ~50 mila piante: 29 fps contro 30 senza piante (pannello
-  del browser limitato a 30); prima di questo accorgimento 16-20 fps.
+  300 km e nella palude a 40 km (vista radente): 30 fps (pannello del browser limitato a
+  30); prima di questo accorgimento 16-20 fps.
 - **Insidia di three.js**: quando il buffer delle istanze cresce bisogna creare una
   geometria NUOVA: three calcola il numero massimo di istanze una volta sola e con il
   buffer sostituito disegnava solo le prime.
@@ -520,14 +538,22 @@ con uno script Node: non c'è pdftoppm e caricare pdf.js da CDN nella pagina non
 #### Terreno da vicino e paludi (`render/materials.js`)
 
 - **Paludi**: due biomi, **Swamp** (caldo: cipressi, salici, funghi e campane luminose) e
-  **Marshland** (temperato: canneti, felci-piuma, funghetti), su pianure basse e umide;
-  insieme ~7% delle terre. Lo shader apre **acquitrini** dove `aEco.y` > 0: pozze e canali
-  da rumori da ~4 km a ~60 m (una scala di ~2 km è sempre attiva, così il mosaico si vede
-  anche da 300 km), acqua ferma scura con lenticchie d'acqua e ninfee, fango e canneti
-  sulle rive. Le piante delle paludi stanno anche nell'acqua.
-- **Texture a scala media** (5-50 m, compaiono sotto i 30-40 km di quota): erba pettinata
+  **Marshland** (temperato: canneti, felci-piuma, funghetti), su pianure fino a ~650 m;
+  insieme ~14% delle terre. Le **lagune** vengono da un campo di rumore calcolato sulla CPU
+  (`marshPond` in `flora.js`, scale ~30/10/4 km, passato per vertice in `aEco.w`): lo
+  stesso campo apre l'acqua nello shader e tiene le piante fuori dalle lagune, così la
+  palude è un mosaico di acqua ferma e isole boscose visibile da migliaia di km (con le
+  pozze solo nello shader le piante le coprivano). Lo shader aggiunge rive e canali fini,
+  acqua scura con lenticchie d'acqua e ninfee, fango e canneti sulle rive; niente treni di
+  onde sulle acque ferme.
+- **Valle dei Cristalli** (`BIOME.CRYSTAL_VALLEY`): regioni vaste e rare (~8% delle terre)
+  da un rumore a ~2000 km con 5 ottave (contorni frastagliati, non macchie lisce), tra -6 e
+  24 °C, dalle pianure ai piedi delle montagne. Lo shader (`aEco.z`) disegna roccia viola e
+  blu a grandi chiazze, campi più chiari dove ci sono i cristalli, venature azzurre
+  luminose e granuli che scintillano con la vista; niente boschi verdi.
+- **Texture a scala media** (40-400 m, compaiono sotto i ~300 km di quota): erba pettinata
   dal vento (strisce allungate nel verso del vento) con chiazze di fiori selvatici;
-  increspature della sabbia a ~25 m con lato al sole e lato in ombra; cumuli di neve
+  increspature della sabbia a ~200 m con lato al sole e lato in ombra; cumuli di neve
   modellati dal vento con il lato in ombra azzurro e brillii dei cristalli che cambiano con
   la vista; basalto spaccato in placche con crepe scure che vicino alla lava covano ancora
   (arancio, più forte durante le eruzioni).

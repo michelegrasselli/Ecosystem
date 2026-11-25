@@ -30,7 +30,8 @@ export const BIOME = {
   LAVA: 23,
   LAVA_FIELD: 24,
   SCORCHED: 25,
-  SWAMP: 26
+  SWAMP: 26,
+  CRYSTAL_VALLEY: 27
 }
 
 export const BIOME_NAME = {
@@ -60,7 +61,8 @@ export const BIOME_NAME = {
   [BIOME.LAVA]: 'Lava lake',
   [BIOME.LAVA_FIELD]: 'Lava field',
   [BIOME.SCORCHED]: 'Scorched land',
-  [BIOME.SWAMP]: 'Swamp'
+  [BIOME.SWAMP]: 'Swamp',
+  [BIOME.CRYSTAL_VALLEY]: 'Crystal Valley'
 }
 
 // Colori sRGB lineari, in [0,1]
@@ -97,7 +99,9 @@ export const PALETTE = {
   // terra bruciata: suolo carbonizzato e cenere
   [BIOME.SCORCHED]: C(78, 70, 62),
   // palude calda: verde oliva scuro, acqua ferma tra gli alberi
-  [BIOME.SWAMP]: C(62, 86, 60)
+  [BIOME.SWAMP]: C(62, 86, 60),
+  // valle dei cristalli: roccia viola-blu, cristalli azzurri e rosa
+  [BIOME.CRYSTAL_VALLEY]: C(86, 78, 128)
 }
 
 /**
@@ -107,26 +111,30 @@ export const PALETTE = {
  * @param {number} moist umidità 0..1
  * @param {number} absLat latitudine assoluta in gradi
  * @param {number} [variety] rumore regionale in [-1, 1] per i biomi più rari
+ * @param {number} [crystal] rumore a grande scala in [-1, 1] per le valli di cristalli
  * @returns {number} id del bioma
  */
 /** Linea delle nevi: quota in metri all'equatore e calo per grado di latitudine. */
 export const SNOW_LINE_BASE = 4500
 export const SNOW_LINE_LAT = 30
 
-export function classifyLandBiome(height, temp, moist, absLat, variety = 0) {
+export function classifyLandBiome(height, temp, moist, absLat, variety = 0, crystal = 0) {
   // Altitudine: sopra la linea degli alberi prevale la roccia, poi la neve
   // linea delle nevi (stessa formula dello shader: render/materials.js)
   const snowLine = SNOW_LINE_BASE - absLat * SNOW_LINE_LAT
   if (height > snowLine + 260) return BIOME.SNOW
   if (height > snowLine) return BIOME.ROCK
   // prati d'alta quota sotto la fascia rocciosa
+  // valli di cristalli: vaste regioni (centinaia di km) di roccia viola e
+  // cristalli giganti, dalle pianure ai piedi delle montagne
+  if (crystal > 0.25 && temp > -6 && temp < 24 && height > 60 && height < snowLine - 500) return BIOME.CRYSTAL_VALLEY
   if (height > snowLine - 1300 && temp > -6) return BIOME.ALPINE_MEADOW
 
   // biomi "rari" dentro le fasce climatiche, guidati dal rumore di varietà
   // paludi: vaste pianure basse e umide, acquitrini tra la vegetazione (lo
   // shader disegna le pozze). Calde: Swamp con alberi; temperate: Marshland
-  if (temp > 17 && moist > 0.47 && height < 380 && variety > 0.02) return BIOME.SWAMP
-  if (temp > 2 && moist > 0.44 && height < 420 && variety > 0.06) return BIOME.WETLAND
+  if (temp > 15 && moist > 0.4 && height < 650 && variety > -0.1) return BIOME.SWAMP
+  if (temp > 1 && moist > 0.37 && height < 700 && variety > -0.06) return BIOME.WETLAND
   if (temp > 14 && moist < 0.32 && moist > 0.08 && height > 450 && variety > 0.18) {
     return BIOME.BADLANDS
   }

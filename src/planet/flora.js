@@ -5,20 +5,22 @@
 //
 // Scala
 // -----
-// La flora di Elyra è gigantesca: alberi comuni di ~1 km, giganti di 2-3 km,
-// fiori e cespugli di 200-500 m. Così le piante si vedono già da 250-300 km di
-// quota (qualche pixel ciascuna) e diventano via via più definite scendendo.
+// La flora di Elyra è colossale (scala FLORA_SCALE = 8 rispetto alla prima
+// versione): alberi comuni di ~8 km, giganti di 18-22 km, fiori e cespugli di
+// 1.5-4 km. Il mondo si esplora da 300 km di quota, dove le piante sono già
+// definite; da 1000-2000 km sono puntini e da più lontano lo shader del
+// terreno disegna i boschi negli stessi punti.
 //
 // Posizionamento
 // --------------
 // Le piante nascono da una GRIGLIA GLOBALE di candidati su ogni faccia del
-// cubo-sfera (passo ~360 m), con uno spostamento casuale dentro la cella. Ogni
+// cubo-sfera (passo ~2.9 km), con uno spostamento casuale dentro la cella. Ogni
 // candidato ha valori pseudo-casuali fissi (hash delle sue coordinate intere):
 // una tile e le sue figlie vedono quindi le stesse piante, e una pianta non
 // cambia posto quando il LOD si raffina.
 //
 // Distribuzione a macchie (non uniforme): un campo di "macchia" somma rumori
-// a ~40 km, ~9 km, ~2.5 km e ~0.8 km. Dove supera la soglia del bioma c'è il
+// a ~320 km, ~72 km, ~20 km e ~6 km. Dove supera la soglia del bioma c'è il
 // bosco: al margine rado, nel cuore fittissimo (chiome che si toccano, alberi
 // più alti). Fuori dal bosco restano radure quasi spoglie con qualche pianta
 // isolata e un sottobosco diverso (fiori, cespugli, funghi): spazio libero
@@ -32,7 +34,8 @@ import { BIOME, SNOW_LINE_BASE, SNOW_LINE_LAT } from './biomes.js'
 import { SCENE_RADIUS } from './constants.js'
 
 // ------------------------------------------------------------- specie
-// h: altezza tipica (km); var: variazione relativa dell'altezza
+// h: altezza tipica (km, moltiplicata per FLORA_SCALE); var: variazione relativa
+export const FLORA_SCALE = 8
 export const SPECIES = [
   { id: 0, key: 'elderoak', name: 'Elderoak', h: 1.0, var: 0.35 }, // latifoglia a chioma tonda
   { id: 1, key: 'spirepine', name: 'Spirepine', h: 1.25, var: 0.35 }, // conifera a guglia
@@ -68,8 +71,14 @@ export const SPECIES = [
   { id: 31, key: 'bogcypress', name: 'Bog Cypress', h: 1.2, var: 0.3 }, // cipresso di palude con muschio pendente
   { id: 32, key: 'frostlantern', name: 'Frostlantern', h: 0.3, var: 0.4 }, // sfere di ghiaccio luminose su steli
   { id: 33, key: 'dunepalm', name: 'Dunepalm', h: 0.95, var: 0.3 }, // palma dorata delle oasi
-  { id: 34, key: 'obsidianbloom', name: 'Obsidian Bloom', h: 0.5, var: 0.4 } // schegge di vetro nero, cuore di magma
-]
+  { id: 34, key: 'obsidianbloom', name: 'Obsidian Bloom', h: 0.5, var: 0.4 }, // schegge di vetro nero, cuore di magma
+  // valle dei cristalli (contesto/cristalli.png)
+  { id: 35, key: 'crystalspire', name: 'Crystal Spire', h: 1.9, var: 0.35 }, // prismi azzurri giganti con venature luminose
+  { id: 36, key: 'rosequartz', name: 'Rose Quartz', h: 0.9, var: 0.4 }, // ciuffo di prismi rosa-viola
+  { id: 37, key: 'shardwillow', name: 'Shardwillow', h: 1.4, var: 0.3 }, // albero di cristallo con grappoli pendenti
+  { id: 38, key: 'glimmermoss', name: 'Glimmermoss', h: 0.18, var: 0.4 }, // tappeto di granuli luminosi
+  { id: 39, key: 'geodebloom', name: 'Geode Bloom', h: 0.5, var: 0.4 } // geode aperto con cristalli viola
+].map((sp) => ({ ...sp, h: sp.h * FLORA_SCALE }))
 export const SPECIES_COUNT = SPECIES.length
 
 // ------------------------------------------------- piante per bioma
@@ -112,7 +121,7 @@ set(BIOME.SHRUBLAND, 0.6, 0.45, 0.06, 0.4,
 set(BIOME.WETLAND, 0.8, 0.55, 0.14, 0.45,
   { reedmace: 0.35, mistweeper: 0.2, jellybell: 0.1, glowcap: 0.08, featherfern: 0.1, moonshroom: 0.1, bogcypress: 0.07 },
   { reedmace: 0.6, featherfern: 0.15, moonshroom: 0.15, duskbloom: 0.1 })
-set(BIOME.SWAMP, 0.9, 0.7, 0.12, 0.9,
+set(BIOME.SWAMP, 0.85, 0.62, 0.12, 0.9,
   { bogcypress: 0.32, mistweeper: 0.18, jellybell: 0.1, glowcap: 0.1, reedmace: 0.12, featherfern: 0.08, moonshroom: 0.06, broadleaf: 0.04 },
   { reedmace: 0.5, jellybell: 0.15, featherfern: 0.2, moonshroom: 0.15 })
 set(BIOME.DESERT, 0.4, 0.28, 0.025, 0.15,
@@ -144,6 +153,9 @@ set(BIOME.LAVA_FIELD, 0.28, 0.38, 0.02, 0.2,
 set(BIOME.SCORCHED, 0.5, 0.5, 0.04, 0.4,
   { ashwraith: 0.55, emberbriar: 0.25, cindercoral: 0.2 },
   { cindercoral: 0.5, emberbriar: 0.5 })
+set(BIOME.CRYSTAL_VALLEY, 0.5, 0.36, 0.06, 0.6,
+  { crystalspire: 0.3, rosequartz: 0.2, shardwillow: 0.16, prismbloom: 0.1, geodebloom: 0.1, glimmermoss: 0.08, frostlantern: 0.03, featherfern: 0.03 },
+  { glimmermoss: 0.35, geodebloom: 0.25, rosequartz: 0.2, prismbloom: 0.2 })
 set(BIOME.OCEAN_SHELF, 0.16, 0.25, 0.004, 0, { kelpspire: 0.86, tidecrown: 0.14 }, { kelpspire: 1 })
 set(BIOME.OCEAN, 0.05, 0.2, 0, 0, { tidecrown: 1 })
 // sopra la linea delle nevi (la neve la disegna lo shader per quota)
@@ -153,14 +165,14 @@ const NEAR_SNOW = rule(0.42, 0.4, 0.03, 0.3,
   { frostlantern: 0.4, snowpuff: 0.35, prismbloom: 0.25 })
 
 // ------------------------------------------------------- griglia e LOD
-export const VEG_MIN_LEVEL = 7 // tile di ~78 km: le piante 3D si vedono da ~300 km di quota
+export const VEG_MIN_LEVEL = 4 // tile di ~625 km: le piante 3D si vedono da ~2500 km di quota
 const FACE_KM = Math.PI * 0.5 * SCENE_RADIUS // lato di una faccia del cubo (km, all'equatore)
-export const SPACING_KM = 0.36
+export const SPACING_KM = 0.36 * FLORA_SCALE
 const CELL_UV = (SPACING_KM / FACE_KM) * 2
 // quota di piante tenute per livello (le tile grosse sono lontane); il rango
 // effettivo dipende dalla taglia, vedi rankFor
-const KEEP = { 7: 0.1, 8: 0.22, 9: 0.45, 10: 0.72, 11: 0.92 }
-const keepFor = (level) => (level >= 12 ? 1 : KEEP[level] ?? 0)
+const KEEP = { 4: 0.1, 5: 0.22, 6: 0.45, 7: 0.72, 8: 0.92 }
+const keepFor = (level) => (level >= 9 ? 1 : KEEP[level] ?? 0)
 
 /** Quota di piante tenute a un livello (le tile grosse sono lontane). */
 export function vegKeep(level) {
@@ -170,7 +182,7 @@ export function vegKeep(level) {
 // Rango effettivo: rank^p con p che cresce con la taglia. Le piante grandi
 // hanno un rango basso (restano anche nelle tile lontane), le piccole alto.
 const P_MAX = 2.2
-const rankFor = (rank, hKm) => Math.pow(rank, Math.min(P_MAX, Math.max(0.5, hKm / 0.55)))
+const rankFor = (rank, hKm) => Math.pow(rank, Math.min(P_MAX, Math.max(0.5, hKm / (0.55 * FLORA_SCALE))))
 
 // ------------------------------------------------------- hash e rumore
 function hash4(a, b, c, d) {
@@ -203,10 +215,10 @@ const smooth = (a, b, x) => {
 }
 
 // scale della macchia, in celle della griglia globale
-const SC0 = 40 / SPACING_KM
-const SC1 = 9 / SPACING_KM
-const SC2 = 2.5 / SPACING_KM
-const SC3 = 0.8 / SPACING_KM
+const SC0 = (40 * FLORA_SCALE) / SPACING_KM
+const SC1 = (9 * FLORA_SCALE) / SPACING_KM
+const SC2 = (2.5 * FLORA_SCALE) / SPACING_KM
+const SC3 = (0.8 * FLORA_SCALE) / SPACING_KM
 
 /** Campo di macchia (0..1, media ~0.5) in coordinate di cella continue. */
 function macchia(face, x, y, seed) {
@@ -217,6 +229,25 @@ function macchia(face, x, y, seed) {
     vnoise(face, x / SC3, y / SC3, seed + 404) * 0.12
   )
 }
+
+// Pozze e lagune delle paludi (0..1): rumore a ~30, ~10 e ~4 km. Lo shader
+// del terreno lo riceve per vertice (aEco.w) e apre l'acqua dove supera ~0.5,
+// aggiungendo solo i dettagli fini; le piante non crescono nelle lagune.
+const PS0 = 30 / SPACING_KM
+const PS1 = 10 / SPACING_KM
+const PS2 = 4 / SPACING_KM
+function pondField(face, x, y, seed) {
+  return (
+    vnoise(face, x / PS0, y / PS0, seed + 505) * 0.45 +
+    vnoise(face, x / PS1, y / PS1, seed + 606) * 0.35 +
+    vnoise(face, x / PS2, y / PS2, seed + 707) * 0.2
+  )
+}
+/** Campo delle pozze delle paludi in un punto della faccia (u, v in [-1, 1]). */
+export function marshPond(face, u, v, seed) {
+  return pondField(face, (u + 1) / CELL_UV, (v + 1) / CELL_UV, seed)
+}
+const POND_OPEN = 0.53
 
 // Soglia per una frazione di copertura: la somma di rumori ha deviazione
 // standard ~0.1 attorno a 0.5 (relazione lineare: basta per tarare i biomi)
@@ -324,6 +355,8 @@ export function placeVegetation(t) {
       // fiumi e laghi; nelle paludi l'acqua 'latente' (vedi tileData.js) non conta
       const marsh = b === BIOME.WETLAND || b === BIOME.SWAMP
       if (!sea && g.water[near] > (marsh ? 0.5 : 0.3)) continue
+      // lagune delle paludi: acqua aperta, niente piante
+      if (marsh && pondField(face, cx, cy, seed) > POND_OPEN) continue
       let r = FLORA[b]
       cubeFaceDir(face, u, v, dir)
       if (sea) {

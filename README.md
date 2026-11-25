@@ -1,9 +1,8 @@
 # The creation of ELYRA
 
 Simulazione esplorabile di un pianeta chiamato **ELYRA**: si parte dallo spazio e si scende
-fino a 25 m dal suolo, su un pianeta generato proceduralmente (continenti, oceani, mari, laghi,
-fiumi, rilievi, biomi e clima). Per ora il pianeta è **disabitato**: piante e animali
-arriveranno nelle fasi successive.
+fino a 40 km dal suolo (il mondo si esplora già da 300 km), su un pianeta generato proceduralmente (continenti, oceani, mari, laghi,
+fiumi, rilievi, biomi e clima). Le piante ci sono già (vedi Flora); gli animali arriveranno nelle fasi successive.
 
 Lo stile è illustrato ma adulto (tipo Animal Crossing, più serio): palette terrosa, luce a
 bande morbide con ombre fredde, chiome degli alberi tonde, dune e rocce a strati, nessuna
@@ -93,12 +92,15 @@ avvio. Il salvataggio automatico della sola camera avviene anche alla chiusura d
 
 ## Flora
 
-Elyra è coperta da una flora gigantesca: 35 specie, alcune terrestri e molte inventate, alte
-da 200 m a quasi 3 km, così i boschi si vedono già da 300 km di quota. Le piante sono
+Elyra è coperta da una flora colossale: 40 specie, alcune terrestri e molte inventate, alte
+da 1.5 km a oltre 20 km, così da 300 km di quota si esplora tra gli alberi e dallo spazio si
+vedono le macchie dei boschi. Le piante sono
 raccolte a macchie: boschi fittissimi, boschetti, radure quasi spoglie. Foreste di
 latifoglie, conifere, alberi in fiore rosa e giganti coperti di muschio; colonie di funghetti
 turchesi, felci-piuma blu, lanterne arancio e gigli a stella nel sottobosco; vaste paludi di
-acquitrini con cipressi dalle barbe di muschio, canneti e campane luminose come meduse;
+lagune e isole boscose con cipressi dalle barbe di muschio, canneti e campane luminose come
+meduse; le Valli dei Cristalli, vaste regioni di roccia viola con prismi azzurri e rosa
+giganti, alberi di cristallo e granuli luminosi;
 cactus, spine dorate e palme d'oasi nei deserti; alberi carbonizzati, rami in fiamme, coralli
 di brace e schegge d'ossidiana sui suoli vulcanici; cristalli, sfere di ghiaccio accese e
 batuffoli bianchi sui ghiacci; e nel mare basso i Tidecrown, che salgono dal fondo e spuntano

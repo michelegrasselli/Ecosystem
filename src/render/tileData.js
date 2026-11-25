@@ -11,7 +11,7 @@
 import { Planet } from '../planet/planet.js'
 import { BIOME } from '../planet/biomes.js'
 import { SCENE_RADIUS, SCENE_SCALE } from '../planet/constants.js'
-import { placeVegetation, vegCover, VEG_MIN_LEVEL } from '../planet/flora.js'
+import { placeVegetation, vegCover, marshPond, VEG_MIN_LEVEL } from '../planet/flora.js'
 
 /** Direzione unitaria sul cubo per la faccia `face` e coordinate (u,v) in [-1,1]. */
 export function cubeFaceDir(face, u, v, out) {
@@ -123,8 +123,9 @@ export function computeTileData(planet, face, level, ix, iy) {
   const morph = new Float32Array(total)
   // vulcani: lava fusa (x) e terra bruciata (y), per lo shader
   const volcA = new Float32Array(total * 2)
-  // ecologia: copertura dei boschi di piante 3D (x) e palude (y), per lo shader
-  const eco = new Float32Array(total * 2)
+  // ecologia: copertura dei boschi di piante 3D (x), palude (y), valle dei
+  // cristalli (z) e campo delle lagune delle paludi (w), per lo shader
+  const eco = new Float32Array(total * 4)
 
   // --- griglia estesa di una cella per lato ---
   // Le normali sui bordi devono usare lo stesso stencil della tile vicina:
@@ -141,7 +142,7 @@ export function computeTileData(planet, face, level, ix, iy) {
   const extVolc = new Float32Array(ext * ext * 2)
   const extSurf = new Float32Array(ext * ext * 4)
   const extBiome = new Uint8Array(ext * ext)
-  const extEco = new Float32Array(ext * ext * 2)
+  const extEco = new Float32Array(ext * ext * 4)
 
   let hMax = 0
 
@@ -216,7 +217,7 @@ export function computeTileData(planet, face, level, ix, iy) {
       extBiome[ei] = _sample.biome
       if (rawH > 0) {
         const absLat = Math.abs(Math.asin(Math.max(-1, Math.min(1, _dir.y)))) * 57.29578
-        extEco[ei * 2] = vegCover(face, u, v, _sample.biome, planet.seed | 0, rawH, absLat)
+        extEco[ei * 4] = vegCover(face, u, v, _sample.biome, planet.seed | 0, rawH, absLat)
       }
       // pesi di superficie mediati sulla classificazione morbida del pianeta
       // (stessa media del colore): foreste, sabbia e roccia sfumano insieme
@@ -226,9 +227,11 @@ export function computeTileData(planet, face, level, ix, iy) {
       let s3 = 0
       const mc = _sample.mixCount
       let marshW = 0
+      let crystW = 0
       for (let k = 0; k < mc; k++) {
         const mb = _sample.mix[k]
         if (mb === BIOME.WETLAND || mb === BIOME.SWAMP) marshW++
+        if (mb === BIOME.CRYSTAL_VALLEY) crystW++
         const sc = SURFACE[mb]
         s0 += sc[0]
         s1 += sc[1]
@@ -240,7 +243,9 @@ export function computeTileData(planet, face, level, ix, iy) {
       extSurf[e4 + 1] = s1 / mc
       extSurf[e4 + 2] = s2 / mc
       extSurf[e4 + 3] = Math.max(s3 / mc, _sample.ice)
-      extEco[ei * 2 + 1] = rawH > 0 ? marshW / mc : 0
+      extEco[ei * 4 + 1] = rawH > 0 ? marshW / mc : 0
+      extEco[ei * 4 + 2] = rawH > 0 ? crystW / mc : 0
+      extEco[ei * 4 + 3] = marshW > 0 && rawH > 0 ? marshPond(face, u, v, planet.seed | 0) : 0.5
       if (h > hMax) hMax = h
     }
   }
@@ -265,8 +270,7 @@ export function computeTileData(planet, face, level, ix, iy) {
       heights[vi] = extHeight[ei]
       volcA[vi * 2] = extVolc[ei * 2]
       volcA[vi * 2 + 1] = extVolc[ei * 2 + 1]
-      eco[vi * 2] = extEco[ei * 2]
-      eco[vi * 2 + 1] = extEco[ei * 2 + 1]
+      for (let c = 0; c < 4; c++) eco[vi * 4 + c] = extEco[ei * 4 + c]
       surf[vi * 4] = extSurf[ei * 4]
       surf[vi * 4 + 1] = extSurf[ei * 4 + 1]
       surf[vi * 4 + 2] = extSurf[ei * 4 + 2]
@@ -356,8 +360,7 @@ export function computeTileData(planet, face, level, ix, iy) {
     morph[dst] = morph[src]
     volcA[dst * 2] = volcA[src * 2]
     volcA[dst * 2 + 1] = volcA[src * 2 + 1]
-    eco[dst * 2] = eco[src * 2]
-    eco[dst * 2 + 1] = eco[src * 2 + 1]
+    for (let c = 0; c < 4; c++) eco[dst * 4 + c] = eco[src * 4 + c]
     for (let c = 0; c < 4; c++) surf[dst * 4 + c] = surf[src * 4 + c]
     skirt[dst] = skirtDepth
   }

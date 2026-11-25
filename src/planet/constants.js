@@ -18,7 +18,9 @@ export const MAX_LAND_RISE = 1450
 export const MAX_MOUNTAIN_HEIGHT = 7800
 
 /** Limiti di navigazione della camera (metri sopra la superficie). */
-export const MIN_ALTITUDE = 25 // abbastanza vicino da vedere piante e animali
+// Il mondo si esplora da ~300 km di quota (la flora è alla scala del pianeta,
+// vedi planet/flora.js): più giù di 40 km non serve scendere
+export const MIN_ALTITUDE = 40_000
 export const MAX_ALTITUDE = 42_000_000
 
 /** Quota sotto la quale si attiva il terreno LOD (metri). */
