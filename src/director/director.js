@@ -102,9 +102,26 @@ export function createDirector(host) {
    * per ora la lava più accesa durante le eruzioni.
    */
   function sceneFx(t) {
-    const u = host.terrainMaterial?.uniforms?.uLavaBoost
-    if (!u) return
-    u.value = script && script.fx ? evalFx(script.fx, t).lavaBoost || 0 : 0
+    const U = host.terrainMaterial?.uniforms
+    if (!U?.uLavaBoost) return
+    const f = script && script.fx ? evalFx(script.fx, t) : null
+    U.uLavaBoost.value = f ? f.lavaBoost || 0 : 0
+    // fronte di crescita delle piante: centro da fx.grows [{ from, to, at }] o fx.growAt
+    const g = f && script.fx ? (script.fx.grows || []).find((q) => t >= q.from && t <= q.to)?.at || script.fx.growAt : null
+    if (f && g && f.growFront >= 0) {
+      const la = (g[0] * Math.PI) / 180
+      const lo = (g[1] * Math.PI) / 180
+      U.uGrowCenter.value.set(Math.cos(la) * Math.cos(lo), Math.sin(la), -Math.cos(la) * Math.sin(lo))
+      U.uGrowFront.value = f.growFront
+      U.uGrowSoft.value = f.growSoft
+    } else {
+      U.uGrowFront.value = -1
+    }
+  }
+  function resetSceneFx() {
+    const U = host.terrainMaterial?.uniforms
+    if (U?.uLavaBoost) U.uLavaBoost.value = 0
+    if (U?.uGrowFront) U.uGrowFront.value = -1
   }
 
   /**
@@ -274,7 +291,7 @@ export function createDirector(host) {
     abort = true
     stopAudio()
     const wasPreview = mode === 'preview'
-    if (host.terrainMaterial?.uniforms?.uLavaBoost) host.terrainMaterial.uniforms.uLavaBoost.value = 0
+    resetSceneFx()
     mode = null // prima di restoreCanvas: il resize dell'app è bloccato mentre il regista lavora
     if (wasPreview) restoreCanvas()
   }
@@ -361,7 +378,7 @@ export function createDirector(host) {
       return lastRender
     } finally {
       mode = null
-      if (host.terrainMaterial?.uniforms?.uLavaBoost) host.terrainMaterial.uniforms.uLavaBoost.value = 0
+      resetSceneFx()
       renderer.setPixelRatio(prevRatio)
       restoreCanvas()
     }

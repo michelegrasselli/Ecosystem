@@ -207,6 +207,9 @@ export const FX_DEFAULTS = {
   high: [1.04, 0.99, 0.9],
   // lava dello shader del terreno più accesa (eruzioni)
   lavaBoost: 0,
+  // fronte di crescita della flora (km da fx.growAt / fx.grows; -1 = spento)
+  growFront: -1,
+  growSoft: 300,
   // vulcani accesi visti da lontano e pennacchi delle eruzioni (eruption.js)
   volcanoGlow: 0,
   plume: 0,

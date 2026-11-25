@@ -89,6 +89,12 @@ export function createTerrainMaterial(sunDir) {
       uTime: { value: 0 },
       // eruzione (regia): 0 normale, 1 lava al massimo e bagliore largo
       uLavaBoost: { value: 0 },
+      // Regia (Episodio V): fronte di crescita della flora. Negativo = spento
+      // (tutto cresciuto); altrimenti distanza in km da uGrowCenter fin dove
+      // la terra è già verde, con una fascia di uGrowSoft km.
+      uGrowFront: { value: -1 },
+      uGrowSoft: { value: 300 },
+      uGrowCenter: { value: new THREE.Vector3(1, 0, 0) },
       // 1 quando le piante 3D sono a schermo (vicino al suolo): le chiome
       // procedurali diventano sottobosco
       uVegNear: { value: 0 },
@@ -185,6 +191,9 @@ export function createTerrainMaterial(sunDir) {
       uniform float uHazeDensity;
       uniform float uTime;
       uniform float uLavaBoost;
+      uniform float uGrowFront;
+      uniform float uGrowSoft;
+      uniform vec3 uGrowCenter;
       uniform float uVegNear;
       uniform float uShadeExag;
       uniform highp sampler3D uNoiseTex;
@@ -706,6 +715,23 @@ export function createTerrainMaterial(sunDir) {
         // suolo all'ombra delle piante 3D
         base *= 1.0 - smoothstep(0.1, 0.8, eco) * uVegNear * 0.22;
 
+        // Regia: la terra prima delle piante (Episodio V). Oltre il fronte di
+        // crescita il suolo è cenere scura e fertile; sul fronte la luce dei
+        // mari, portata nel suolo, brilla turchese dove la vita sta nascendo.
+        float sproutGlow = 0.0;
+        if (uGrowFront >= 0.0) {
+          vec3 wp = normalize(pl + uOrigin);
+          float gd = length(wp - uGrowCenter) * 6371.0;
+          float grown = smoothstep(uGrowFront, uGrowFront - uGrowSoft, gd);
+          float bare = (1.0 - grown) * (1.0 - isWater) * (1.0 - snow * 0.85);
+          vec3 ashC = mix(vec3(0.16, 0.14, 0.13), vec3(0.3, 0.26, 0.22), smoothstep(0.3, 0.7, n1 * 0.6 + n2 * 0.4));
+          ashC = mix(ashC, vec3(0.1, 0.09, 0.09), smoothstep(0.55, 0.75, n0) * 0.6);
+          base = mix(base, ashC, bare * (1.0 - rock * 0.4));
+          float edgeD = (gd - uGrowFront + uGrowSoft * 0.2) / (uGrowSoft * 0.6);
+          float spark = 0.55 + 0.45 * smoothstep(0.35, 0.8, n2 * 0.5 + n3 * 0.5);
+          sproutGlow = exp(-edgeD * edgeD) * spark * (1.0 - isWater) * (1.0 - snow) * clamp(uGrowFront / 1.5, 0.0, 1.0);
+        }
+
         // ------------------------------------------- texture ravvicinate
         // Scala "da regione" (da ~40 m a ~400 m, alla scala della flora):
         // appaiono scendendo sotto i 300 km di quota, dove si esplora.
@@ -908,6 +934,7 @@ export function createTerrainMaterial(sunDir) {
         vec3 color = base * lightCol * ao;
         color += vec3(1.0, 0.36, 0.06) * crackGlow * (0.6 + uLavaBoost * 0.8);
         color += vec3(0.42, 0.78, 1.0) * crystGlow * 0.55;
+        color += vec3(0.3, 1.0, 0.82) * sproutGlow * 0.85;
 
         // ============================================================ LAVA
         // Lava fusa (laghi nei crateri, colate incandescenti, crepe nei campi

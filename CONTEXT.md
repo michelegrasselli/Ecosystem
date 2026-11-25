@@ -740,6 +740,28 @@ Strumento di produzione dei video della serie (§1.1). Tutto nel browser, niente
   prima del render di ogni fotogramma e azzerato alla fine): lava più accesa e bagliore
   più largo. Il regista riceve da main.js anche `planet`, `terrainMaterial` ed
   `exaggeration()`.
+- **Episodio V — The First Seed** (`episodes/ep05-the-first-seed.json`, 61 s): dopo il
+  fuoco Elyra tace, la cenere copre ogni terra ("Grey, and cold, and still."); a lungo
+  niente si muove; poi, sotto la cenere, una luce ("Not fire. Something older."): la luce
+  dei mari ha trovato la terra, e la terra risponde; semi che aspettavano da mille ere si
+  aprono tutti insieme, le radici bevono la cenere; in una sola stagione Elyra diventa
+  verde. Finale in sospeso: "And in the deepest forest, something began to stir."
+  **Canone**: le prime piante nascono da un unico punto, sulla costa della giungla di
+  Esmerault (8.75°S 66.65°E), e da lì l'onda verde copre il pianeta in una stagione;
+  nelle foreste qualcosa comincia a muoversi (prossimo episodio).
+  Scene: pianeta grigio di cenere dallo spazio → a terra, cenere che cade, silenzio →
+  un punto di luce turchese con due battiti deboli → germogli e fiori che salgono davanti
+  alla camera ("And the land answered": lampo, tremore, onda d'urto) → dall'alto l'anello
+  di luce che corre sulla cenere lasciando la giungla → risalita fino allo spazio con il
+  pianeta tutto verde e titolo.
+  **Fronte di crescita** (nuovo strumento di regia): parametri `fx.growFront` (km dal
+  centro fin dove la terra è già verde; -1 = spento) e `fx.growSoft` (larghezza della
+  fascia), centro in `fx.growAt [lat, lon]` o `fx.grows [{ from, to, at }]`. Il regista
+  li passa prima di ogni fotogramma alle uniform `uGrowFront/uGrowSoft/uGrowCenter` del
+  terreno, condivise con le piante (azzerate alla fine). Terreno: oltre il fronte cenere
+  scura (non su acqua e neve), sul fronte una fascia di luce turchese a puntini. Piante:
+  dietro il fronte crescono con un leggero slancio, prima le piccole e poi i grandi alberi,
+  e mentre crescono brillano di turchese; oltre il fronte non ci sono.
 - **Attenzione**: dopo modifiche a `recorder.js` il server di Vite ha servito a lungo la
   versione vecchia (modulo in cache, watcher che non aveva visto il cambio): se il video
   esce "(no audio)" riavviare `npm run dev`.

@@ -1,0 +1,411 @@
+{
+  "name": "ep05-the-first-seed",
+  "fps": 30,
+  "width": 1080,
+  "height": 1920,
+  "fov": 50,
+  "duration": 61,
+  "labels": false,
+  "fade": {
+    "in": 1.4,
+    "out": 2.6
+  },
+  "shots": [
+    {
+      "at": 0,
+      "lat": -6,
+      "lon": 64,
+      "alt": 17000,
+      "pitch": 90,
+      "heading": 0
+    },
+    {
+      "at": 10.6,
+      "lat": -8.2,
+      "lon": 66.2,
+      "alt": 5200,
+      "pitch": 90,
+      "heading": 8
+    },
+    {
+      "at": 10.6,
+      "lat": -8.76,
+      "lon": 67.66,
+      "alt": 46,
+      "pitch": 13,
+      "heading": 270,
+      "cut": true
+    },
+    {
+      "at": 21,
+      "lat": -8.76,
+      "lon": 67.52,
+      "alt": 42,
+      "pitch": 13,
+      "heading": 271
+    },
+    {
+      "at": 31.4,
+      "lat": -8.77,
+      "lon": 67.3,
+      "alt": 50,
+      "pitch": 16,
+      "heading": 273
+    },
+    {
+      "at": 31.4,
+      "lat": -8.75,
+      "lon": 66.75,
+      "alt": 1300,
+      "pitch": 90,
+      "heading": 0,
+      "cut": true
+    },
+    {
+      "at": 44,
+      "lat": -8.7,
+      "lon": 66.6,
+      "alt": 3400,
+      "pitch": 90,
+      "heading": 6
+    },
+    {
+      "at": 53,
+      "lat": -6,
+      "lon": 64,
+      "alt": 15000,
+      "pitch": 90,
+      "heading": 14
+    },
+    {
+      "at": 61,
+      "lat": -5,
+      "lon": 61,
+      "alt": 17500,
+      "pitch": 90,
+      "heading": 20
+    }
+  ],
+  "titles": [
+    {
+      "from": 0.6,
+      "to": 6,
+      "text": "The First Seed",
+      "sub": "Episode V",
+      "pos": "center",
+      "size": 1
+    },
+    {
+      "from": 54.6,
+      "to": 61,
+      "text": "Elyra",
+      "sub": "Episode V — The First Seed",
+      "pos": "top",
+      "size": 1.35,
+      "reveal": 2.6
+    }
+  ],
+  "music": {
+    "src": "contesto/Vangelis - Conquest of paradise.mp3",
+    "volume": 0.5,
+    "offset": 0,
+    "fadeIn": 2.5,
+    "fadeOut": 4.5,
+    "duck": 0.6
+  },
+  "narration": {
+    "voice": "bm_lewis",
+    "speed": 0.86,
+    "captions": true,
+    "captionSize": 0.6,
+    "lines": [
+      {
+        "at": 1.4,
+        "text": "After the fire, Elyra fell silent."
+      },
+      {
+        "at": 6.2,
+        "text": "Ash covered every land. Grey, and cold, and still."
+      },
+      {
+        "at": 12,
+        "text": "For a long time, nothing moved."
+      },
+      {
+        "at": 16.2,
+        "text": "Then, deep beneath the ash... a light."
+      },
+      {
+        "at": 21.2,
+        "text": "Not fire. Something older."
+      },
+      {
+        "at": 24.8,
+        "text": "The light of the seas had found the land."
+      },
+      {
+        "at": 29.2,
+        "text": "And the land answered."
+      },
+      {
+        "at": 32.4,
+        "text": "Seeds that had waited for a thousand ages split open, all at once."
+      },
+      {
+        "at": 38.6,
+        "text": "Roots drank the ash. Stems climbed toward the sun."
+      },
+      {
+        "at": 44.6,
+        "text": "In a single season, Elyra turned green."
+      },
+      {
+        "at": 49.4,
+        "text": "And in the deepest forest, something began to stir."
+      }
+    ]
+  },
+  "voiceFx": {
+    "pitch": 0.95,
+    "reverb": 0.2,
+    "warmth": 4,
+    "volume": 1
+  },
+  "fx": {
+    "growAt": [
+      -8.75,
+      66.65
+    ],
+    "keys": [
+      {
+        "at": 0,
+        "growFront": 0,
+        "growSoft": 15,
+        "dust": 0.05,
+        "embers": 0,
+        "plankton": 0,
+        "ash": 0.15,
+        "exposure": 0.35,
+        "focus": 0.85,
+        "fog": 0.45,
+        "fogColor": [
+          0.24,
+          0.24,
+          0.3
+        ],
+        "leak": 0.03,
+        "contrast": 0.4,
+        "threshold": 0.75,
+        "tint": [
+          0.86,
+          0.9,
+          1
+        ],
+        "tintAmt": 0.35,
+        "sat": 0.55
+      },
+      {
+        "at": 4.5,
+        "exposure": 0.72,
+        "focus": 0
+      },
+      {
+        "at": 10.5,
+        "ash": 0.15,
+        "exposure": 0.72,
+        "fog": 0.45
+      },
+      {
+        "at": 10.7,
+        "ash": 0.4,
+        "exposure": 0.62,
+        "fog": 0.5,
+        "fogColor": [
+          0.26,
+          0.26,
+          0.3
+        ]
+      },
+      {
+        "at": 18.3,
+        "growFront": 0,
+        "growSoft": 15,
+        "plankton": 0,
+        "ash": 0.4,
+        "exposure": 0.6,
+        "tint": [
+          0.86,
+          0.9,
+          1
+        ],
+        "tintAmt": 0.35,
+        "sat": 0.55
+      },
+      {
+        "at": 19.8,
+        "growFront": 2.5,
+        "growSoft": 15,
+        "plankton": 0.25,
+        "exposure": 0.62,
+        "fogColor": [
+          0.12,
+          0.3,
+          0.32
+        ]
+      },
+      {
+        "at": 22.4,
+        "growFront": 5,
+        "growSoft": 16,
+        "plankton": 0.5,
+        "ash": 0.25,
+        "exposure": 0.66,
+        "tint": [
+          0.88,
+          1,
+          0.98
+        ],
+        "tintAmt": 0.3,
+        "sat": 0.7
+      },
+      {
+        "at": 25.4,
+        "growFront": 18,
+        "growSoft": 18,
+        "plankton": 0.6,
+        "ash": 0.12
+      },
+      {
+        "at": 29.6,
+        "growFront": 34,
+        "growSoft": 22,
+        "plankton": 0.7,
+        "ash": 0.05,
+        "dust": 0.2,
+        "exposure": 0.8,
+        "sat": 0.95,
+        "tint": [
+          1.02,
+          1,
+          0.95
+        ],
+        "tintAmt": 0.15,
+        "fogColor": [
+          0.2,
+          0.32,
+          0.3
+        ]
+      },
+      {
+        "at": 31.3,
+        "growFront": 85,
+        "growSoft": 28,
+        "plankton": 0.55,
+        "ash": 0,
+        "dust": 0.35,
+        "exposure": 0.84,
+        "sat": 1
+      },
+      {
+        "at": 31.5,
+        "growFront": 160,
+        "growSoft": 120,
+        "plankton": 0.25,
+        "dust": 0.3,
+        "exposure": 0.82,
+        "fog": 0.35,
+        "fogColor": [
+          0.2,
+          0.3,
+          0.38
+        ],
+        "sat": 1,
+        "tintAmt": 0.1
+      },
+      {
+        "at": 44,
+        "growFront": 1500,
+        "growSoft": 220
+      },
+      {
+        "at": 53,
+        "growFront": 9000,
+        "growSoft": 600,
+        "dust": 0.3,
+        "plankton": 0.1,
+        "exposure": 0.86,
+        "leak": 0.14,
+        "tint": [
+          1.06,
+          1,
+          0.9
+        ],
+        "tintAmt": 0.12,
+        "sat": 1.05
+      },
+      {
+        "at": 55,
+        "growFront": 14000,
+        "growSoft": 600
+      },
+      {
+        "at": 61,
+        "growFront": 14000,
+        "leak": 0.2
+      }
+    ],
+    "flashes": [
+      {
+        "at": 18.9,
+        "power": 0.22,
+        "rise": 0.15,
+        "decay": 0.6
+      },
+      {
+        "at": 19.5,
+        "power": 0.3,
+        "rise": 0.15,
+        "decay": 0.9
+      },
+      {
+        "at": 30.7,
+        "power": 0.55,
+        "rise": 0.35,
+        "decay": 1.4
+      },
+      {
+        "at": 45.2,
+        "power": 0.35,
+        "rise": 0.5,
+        "decay": 1.6
+      }
+    ],
+    "dips": [
+      {
+        "at": 10.6,
+        "dur": 1.1
+      },
+      {
+        "at": 31.4,
+        "dur": 0.9
+      }
+    ],
+    "shakes": [
+      {
+        "at": 30.7,
+        "power": 0.45,
+        "dur": 1.8
+      }
+    ],
+    "shocks": [
+      {
+        "at": 30.7,
+        "power": 0.35,
+        "radius": 1.2,
+        "dur": 1.8,
+        "x": 0.5,
+        "y": 0.55
+      }
+    ]
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "episode": "ep05-the-first-seed",
+  "voice": "bm_lewis",
+  "speed": 0.86,
+  "pitch": 0.95,
+  "lines": [
+    {
+      "at": 1.4,
+      "file": "01.wav",
+      "duration": 3.85,
+      "played": 4.052631578947369,
+      "text": "After the fire, Elyra fell silent.",
+      "hash": "3d97277f87e2"
+    },
+    {
+      "at": 6.2,
+      "file": "02.wav",
+      "duration": 5.125,
+      "played": 5.394736842105264,
+      "text": "Ash covered every land. Grey, and cold, and still.",
+      "hash": "15b04945d839"
+    },
+    {
+      "at": 12,
+      "file": "03.wav",
+      "duration": 3.375,
+      "played": 3.5526315789473686,
+      "text": "For a long time, nothing moved.",
+      "hash": "3d7e27cec293"
+    },
+    {
+      "at": 16.2,
+      "file": "04.wav",
+      "duration": 3.7,
+      "played": 3.8947368421052637,
+      "text": "Then, deep beneath the ash... a light.",
+      "hash": "b192f4f327e4"
+    },
+    {
+      "at": 21.2,
+      "file": "05.wav",
+      "duration": 3.05,
+      "played": 3.2105263157894735,
+      "text": "Not fire. Something older.",
+      "hash": "c3a3ae00e8d3"
+    },
+    {
+      "at": 24.8,
+      "file": "06.wav",
+      "duration": 3.75,
+      "played": 3.947368421052632,
+      "text": "The light of the seas had found the land.",
+      "hash": "299cc62d2c17"
+    },
+    {
+      "at": 29.2,
+      "file": "07.wav",
+      "duration": 2.65,
+      "played": 2.7894736842105265,
+      "text": "And the land answered.",
+      "hash": "10ae9797e424"
+    },
+    {
+      "at": 32.4,
+      "file": "08.wav",
+      "duration": 5.675,
+      "played": 5.973684210526316,
+      "text": "Seeds that had waited for a thousand ages split open, all at once.",
+      "hash": "daf45cae5357"
+    },
+    {
+      "at": 38.6,
+      "file": "09.wav",
+      "duration": 4.95,
+      "played": 5.210526315789474,
+      "text": "Roots drank the ash. Stems climbed toward the sun.",
+      "hash": "73ff8414ea4e"
+    },
+    {
+      "at": 44.6,
+      "file": "10.wav",
+      "duration": 4.1,
+      "played": 4.315789473684211,
+      "text": "In a single season, Elyra turned green.",
+      "hash": "b669b3d19a61"
+    },
+    {
+      "at": 49.4,
+      "file": "11.wav",
+      "duration": 4.575,
+      "played": 4.815789473684211,
+      "text": "And in the deepest forest, something began to stir.",
+      "hash": "7cb04a2b55b2"
+    }
+  ]
+}

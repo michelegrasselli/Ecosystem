@@ -48,6 +48,10 @@ const VERT = /* glsl */ `
   uniform float uTime;
   uniform float uPxPerRad;
   uniform float uHueVar;
+  uniform float uGrowFront;
+  uniform float uGrowSoft;
+  uniform vec3 uGrowCenter;
+  varying float vSprout;
   varying vec3 vColor;
   varying vec3 vN;
   varying vec3 vUp;
@@ -83,6 +87,18 @@ const VERT = /* glsl */ `
     // crescita delle piante appena comparse
     vis *= smoothstep(0.0, 0.6, uTime - iBorn);
     float size = iAttr.y * vis;
+    // regia (Episodio V): le piante nascono dietro al fronte di crescita,
+    // prima le piccole e poi i grandi alberi, con un leggero slancio; mentre
+    // crescono brillano della luce turchese dei mari
+    vSprout = 0.0;
+    if (uGrowFront >= 0.0) {
+      float gd = length(up - uGrowCenter) * 6371.0;
+      float delay = (fract(iAttr.w * 13.7) * 0.35 + clamp(iAttr.y / 20.0, 0.0, 1.0) * 0.45) * uGrowSoft;
+      float g = clamp((uGrowFront - gd - delay) / (uGrowSoft * 0.6), 0.0, 1.0);
+      float gs = g * g * (3.0 - 2.0 * g);
+      size *= gs * (1.0 + 0.14 * sin(g * 3.14159));
+      vSprout = sin(g * 3.14159) * step(0.001, g);
+    }
 
     // vento: oscillazione lenta delle parti alte + tremolio delle foglie
     float ph = iAttr.w * 6.2831;
@@ -127,6 +143,7 @@ const FRAG = /* glsl */ `
   varying float vGlow;
   varying float vDist;
   varying float vPhase;
+  varying float vSprout;
 
   void main() {
     vec3 n = normalize(vN);
@@ -141,6 +158,7 @@ const FRAG = /* glsl */ `
     // parti luminose: pulsano piano, sfasate da pianta a pianta
     float pulse = 0.75 + 0.25 * sin(uTime * 1.6 + vPhase * 3.0);
     col = mix(col, alb * 1.25 + vec3(0.08), vGlow * pulse);
+    col = mix(col, vec3(0.45, 1.0, 0.88) * 1.2, vSprout * 0.6);
     // stessa foschia del terreno (materials.js)
     float fog = 1.0 - exp(-vDist * uHazeDensity);
     col = mix(col, uHazeColor, fog * 0.55);
@@ -172,7 +190,10 @@ export class Vegetation {
       uPxPerRad: { value: 1000 },
       uSunDir: tu.uSunDir,
       uHazeColor: tu.uHazeColor,
-      uHazeDensity: tu.uHazeDensity
+      uHazeDensity: tu.uHazeDensity,
+      uGrowFront: tu.uGrowFront,
+      uGrowSoft: tu.uGrowSoft,
+      uGrowCenter: tu.uGrowCenter
     }
     const all = []
     for (const [lod, name] of [[0, 'hi'], [1, 'lo'], [2, 'far']]) {

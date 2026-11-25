@@ -50,6 +50,7 @@ Il pulsante 🎬 apre il pannello di regia:
   brillano di notte, ghiaccio più antico della luce, vulcani che si svegliano insieme (59 s)
 - `ep03-the-first-breath` — la prima vita si risveglia nei mari attorno ai vulcani (58 s)
 - `ep04-the-ninety-year-heartbeat` — tutti i vulcani eruttano insieme e la cenere prepara le prime piante (47 s)
+- `ep05-the-first-seed` — sotto la cenere nasce una luce: le prime piante germogliano e un'onda verde copre il pianeta (61 s)
 
 ### Effetti e montaggio
 
