@@ -312,7 +312,7 @@ function step(dt, now, opts = {}) {
   lod.update(camera, viewportPx)
   vegetation.update(lod.drawn, camera, viewportPx, lod._now, !!opts.offline)
   // con le piante 3D a schermo lo shader attenua le chiome dipinte
-  terrainMaterial.uniforms.uVegNear.value = 1 - THREE.MathUtils.smoothstep(altitudeKm, 25, 80)
+  terrainMaterial.uniforms.uVegNear.value = 1 - THREE.MathUtils.smoothstep(altitudeKm, 250, 700)
 
   // uniform del terreno
   const u = terrainMaterial.uniforms

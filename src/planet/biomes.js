@@ -29,7 +29,8 @@ export const BIOME = {
   VOLCANIC: 22,
   LAVA: 23,
   LAVA_FIELD: 24,
-  SCORCHED: 25
+  SCORCHED: 25,
+  SWAMP: 26
 }
 
 export const BIOME_NAME = {
@@ -51,14 +52,15 @@ export const BIOME_NAME = {
   [BIOME.ROCK]: 'High rock',
   [BIOME.SNOW]: 'Permanent snow',
   [BIOME.ICE]: 'Ice sheet',
-  [BIOME.WETLAND]: 'Wetland',
+  [BIOME.WETLAND]: 'Marshland',
   [BIOME.BADLANDS]: 'Badlands',
   [BIOME.SALT_FLAT]: 'Salt flat',
   [BIOME.ALPINE_MEADOW]: 'Alpine meadow',
   [BIOME.VOLCANIC]: 'Volcanic slopes',
   [BIOME.LAVA]: 'Lava lake',
   [BIOME.LAVA_FIELD]: 'Lava field',
-  [BIOME.SCORCHED]: 'Scorched land'
+  [BIOME.SCORCHED]: 'Scorched land',
+  [BIOME.SWAMP]: 'Swamp'
 }
 
 // Colori sRGB lineari, in [0,1]
@@ -93,7 +95,9 @@ export const PALETTE = {
   // colate di basalto: quasi nere, appena calde
   [BIOME.LAVA_FIELD]: C(42, 37, 35),
   // terra bruciata: suolo carbonizzato e cenere
-  [BIOME.SCORCHED]: C(78, 70, 62)
+  [BIOME.SCORCHED]: C(78, 70, 62),
+  // palude calda: verde oliva scuro, acqua ferma tra gli alberi
+  [BIOME.SWAMP]: C(62, 86, 60)
 }
 
 /**
@@ -119,7 +123,10 @@ export function classifyLandBiome(height, temp, moist, absLat, variety = 0) {
   if (height > snowLine - 1300 && temp > -6) return BIOME.ALPINE_MEADOW
 
   // biomi "rari" dentro le fasce climatiche, guidati dal rumore di varietà
-  if (temp > 2 && moist > 0.52 && height < 260 && variety > 0.22) return BIOME.WETLAND
+  // paludi: vaste pianure basse e umide, acquitrini tra la vegetazione (lo
+  // shader disegna le pozze). Calde: Swamp con alberi; temperate: Marshland
+  if (temp > 17 && moist > 0.47 && height < 380 && variety > 0.02) return BIOME.SWAMP
+  if (temp > 2 && moist > 0.44 && height < 420 && variety > 0.06) return BIOME.WETLAND
   if (temp > 14 && moist < 0.32 && moist > 0.08 && height > 450 && variety > 0.18) {
     return BIOME.BADLANDS
   }

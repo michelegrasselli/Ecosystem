@@ -23,11 +23,12 @@ const _n = new THREE.Vector3()
 const _p = new THREE.Vector3()
 
 class PlantBuilder {
-  /** @param {boolean} lo versione semplificata (piante lontane) */
-  constructor(lo = false) {
-    this.lo = lo
-    // chiome: icosaedro suddiviso da vicino, semplice da lontano
-    this.B = lo ? blobLo : blob
+  /** @param {number} lod 0 completo, 1 semplificato, 2 lontano (pochi triangoli) */
+  constructor(lod = 0) {
+    this.lo = lod >= 1
+    this.far = lod >= 2
+    // chiome: icosaedro suddiviso da vicino, semplice o ottaedro da lontano
+    this.B = lod >= 2 ? octa : lod >= 1 ? blob : blobHi
     this.pos = []
     this.nor = []
     this.col = []
@@ -42,6 +43,18 @@ class PlantBuilder {
    *   c2: colore in cima alla parte, glow, flutter, radial (normali sferiche) }
    */
   add(geo, o) {
+    // da lontano i dettagli minuti non luminosi non si vedono: via
+    if (this.far && !o.glow && !o.keep) {
+      const s0 = typeof o.s === 'number' ? o.s : o.s ? Math.max(o.s[0], o.s[2]) : 1
+      if (s0 < 0.09) return
+    }
+    // foglie e petali (parti sottili): basta l'icosaedro semplice
+    if ((geo === blobHi || geo === blob) && o.s && typeof o.s !== 'number' && Math.min(o.s[0], o.s[1], o.s[2]) < 0.06) geo = icoLo
+    // parti tonde piccole: icosfera media
+    if (geo === blobHi) {
+      const sm = typeof o.s === 'number' ? o.s : o.s ? Math.max(o.s[0], o.s[1], o.s[2]) : 1
+      if (sm < 0.2) geo = blob
+    }
     const g = geo.index ? geo.toNonIndexed() : geo
     const sc = typeof o.s === 'number' ? [o.s, o.s, o.s] : o.s || [1, 1, 1]
     // ordine YXZ: prima l'inclinazione (X/Z), poi la rotazione attorno all'asse verticale
@@ -91,13 +104,29 @@ class PlantBuilder {
 
 // primitive riutilizzate (le copie le fa toNonIndexed)
 const blob = new THREE.IcosahedronGeometry(1, 1) // chiome tonde (80 triangoli)
-const blobLo = new THREE.IcosahedronGeometry(1, 0) // parti piccole (20 triangoli)
+// da vicino: icosfera più fine con "grumi" di fogliame (320 triangoli)
+const blobHi = (() => {
+  const g = new THREE.IcosahedronGeometry(1, 2)
+  const P = g.attributes.position
+  for (let i = 0; i < P.count; i++) {
+    const x = P.getX(i)
+    const y = P.getY(i)
+    const z = P.getZ(i)
+    const k = 1 + 0.07 * Math.sin(x * 5.1 + y * 2.3) * Math.sin(z * 4.7 - x * 1.9) + 0.05 * Math.sin(y * 7.3 + z * 3.1)
+    P.setXYZ(i, x * k, y * k, z * k)
+  }
+  return g
+})()
+const icoLo = new THREE.IcosahedronGeometry(1, 0) // parti piccole (20 triangoli)
+const octa = new THREE.OctahedronGeometry(1, 0) // piante lontane (8 triangoli)
+let blobLo = icoLo
 // nei modelli semplificati (lontani) cilindri e coni hanno meno lati
 let SEG_CAP = 99
-const cyl = (rt, rb, h, seg = 6) => new THREE.CylinderGeometry(rt, rb, h, Math.min(seg, SEG_CAP), 1, false).translate(0, h / 2, 0)
+const cyl = (rt, rb, h, seg = 6) => new THREE.CylinderGeometry(rt, rb, h, Math.min(seg, SEG_CAP), 1, SEG_CAP < 4).translate(0, h / 2, 0)
 const cone = (r, h, seg = 7) => new THREE.ConeGeometry(r, h, Math.min(seg, SEG_CAP + 1), 1, false).translate(0, h / 2, 0)
 const domeHi = new THREE.SphereGeometry(1, 9, 4, 0, Math.PI * 2, 0, Math.PI / 2) // calotta
 const domeLo = new THREE.SphereGeometry(1, 6, 2, 0, Math.PI * 2, 0, Math.PI / 2)
+const domeFar = new THREE.SphereGeometry(1, 4, 1, 0, Math.PI * 2, 0, Math.PI / 2)
 let dome = domeHi
 const shard = (r, h) => new THREE.ConeGeometry(r, h, 4, 1, false).translate(0, h / 2, 0)
 
@@ -106,7 +135,8 @@ const BARK_DARK = [0.2, 0.15, 0.11]
 
 /** Ramo/stelo inclinato: cilindro dalla base (x,y,z) lungo la direzione (ax, az) con inclinazione tilt. */
 function stem(b, base, len, r0, r1, yaw, tilt, col, extra = {}) {
-  b.add(cyl(r1, r0, 1, 5), { p: base, r: [tilt, yaw, 0], s: [1, len, 1], c: col, c2: extra.c2, glow: extra.glow, stiff: extra.stiff })
+  // da lontano i rami sottili non si vedono
+  if (!(b.far && r0 < 0.03 && !extra.glow)) b.add(cyl(r1, r0, 1, 5), { p: base, r: [tilt, yaw, 0], s: [1, len, 1], c: col, c2: extra.c2, glow: extra.glow, stiff: extra.stiff })
   // punta del ramo (per appenderci foglie o baccelli)
   _e.set(tilt, yaw, 0, 'YXZ')
   const d = new THREE.Vector3(0, len, 0).applyEuler(_e)
@@ -348,19 +378,258 @@ const MODELS = {
       const a = k * 1.3
       b.add(blobLo, { p: [Math.cos(a) * 0.17, 0.72 + 0.1 * Math.sin(k * 2), Math.sin(a) * 0.17], s: 0.02, c: [0.9, 0.8, 1.0], glow: 1, flutter: true })
     }
+  },
+  // ------------------------------------------------------------------
+  // specie nuove, ispirate alle immagini di contesto/
+  moonshroom(b) {
+    // colonia di funghetti sottili con cappelli turchesi luminosi
+    const n = b.far ? 4 : b.lo ? 6 : 10
+    for (let k = 0; k < n; k++) {
+      const a = k * 2.399
+      const r = k === 0 ? 0 : 0.12 + 0.3 * (((k * 37) % 11) / 11)
+      const h = 0.4 + 0.6 * (((k * 53) % 13) / 13)
+      const x = Math.cos(a) * r
+      const z = Math.sin(a) * r
+      b.add(cyl(0.012, 0.022, h, 5), { p: [x, 0, z], r: [0.08 * Math.sin(a), 0, 0.08 * Math.cos(a)], c: [0.62, 0.82, 0.85], c2: [0.85, 0.97, 1.0], glow: 0.35, stiff: true })
+      const cr = 0.08 + 0.07 * (((k * 29) % 7) / 7)
+      b.add(dome, { p: [x, h, z], s: [cr, cr * 0.65, cr], c: [0.3, 0.85, 0.95], c2: [0.75, 1.0, 1.0], glow: 0.9, keep: true })
+    }
+  },
+  blushwood(b) {
+    // tronco dorato attorcigliato e nuvole di fiori rosa e lilla
+    const T = [0.5, 0.34, 0.2]
+    const T2 = [0.66, 0.48, 0.28]
+    b.add(cyl(0.04, 0.08, 0.5, 6), { r: [0.08, 0, 0.05], c: T, c2: T2, stiff: true })
+    b.add(cyl(0.03, 0.06, 0.46, 6), { p: [0.03, 0, -0.02], r: [-0.12, 1.4, 0.1], c: T, c2: T2, stiff: true })
+    const tips = [stem(b, [0, 0.42, 0], 0.26, 0.035, 0.018, 0.3, 0.8, T2), stem(b, [0, 0.45, 0], 0.24, 0.03, 0.016, 2.5, 0.85, T2), stem(b, [0, 0.4, 0], 0.22, 0.03, 0.015, 4.4, 0.8, T2)]
+    const P = [0.86, 0.45, 0.6]
+    const P2 = [1.0, 0.72, 0.82]
+    b.add(b.B, { p: [0, 0.74, 0], s: [0.3, 0.22, 0.3], c: P, c2: P2, radial: true, flutter: true, glow: 0.08 })
+    for (let k = 0; k < 3; k++) b.add(b.B, { p: [tips[k][0], tips[k][1] + 0.04, tips[k][2]], s: [0.22, 0.16, 0.22], c: k === 1 ? [0.62, 0.45, 0.82] : P, c2: k === 1 ? [0.8, 0.66, 0.95] : P2, radial: true, flutter: true, glow: 0.08 })
+    // fiori sparsi attorno alla chioma
+    for (let k = 0; k < (b.lo ? 0 : 8); k++) {
+      const a = k * 2.1
+      b.add(blobLo, { p: [Math.cos(a) * 0.34, 0.6 + 0.2 * Math.sin(k * 1.7), Math.sin(a) * 0.34], s: 0.035, c: [1.0, 0.85, 0.9], flutter: true })
+    }
+  },
+  emberbriar(b) {
+    // rami sottili e contorti avvolti da fiamme, con sfere azzurre
+    const D = [0.16, 0.1, 0.08]
+    const D2 = [0.42, 0.24, 0.12]
+    const main = stem(b, [0, 0, 0], 0.4, 0.04, 0.025, 0, 0.1, D, { c2: D2, stiff: true })
+    const twigs = [[0.4, 0.7, 0.4], [2.0, 0.6, 0.45], [3.6, 0.75, 0.38], [5.0, 0.5, 0.42]]
+    for (const [yaw, tilt, len] of twigs) {
+      const t1 = stem(b, [main[0], main[1] - 0.06, main[2]], len, 0.02, 0.008, yaw, tilt, D2, { stiff: true })
+      // fiamma: cono luminoso arancio-giallo
+      b.add(cone(0.07, 0.24, 6), { p: [t1[0], t1[1] - 0.06, t1[2]], c: [1.0, 0.42, 0.06], c2: [1.0, 0.86, 0.4], glow: 1, flutter: true })
+    }
+    b.add(cone(0.12, 0.34, 7), { p: [main[0], main[1] - 0.1, main[2]], c: [1.0, 0.36, 0.05], c2: [1.0, 0.8, 0.35], glow: 1, flutter: true })
+    b.add(blobLo, { p: [0.22, 0.48, 0.12], s: 0.045, c: [0.35, 0.9, 1.0], glow: 1, flutter: true })
+    b.add(blobLo, { p: [-0.2, 0.36, -0.15], s: 0.035, c: [0.35, 0.9, 1.0], glow: 1, flutter: true })
+  },
+  featherfern(b) {
+    // fronde a piuma blu e viola, luminose verso la punta
+    const n = b.far ? 4 : 7
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2 + 0.3
+      const tilt = k === 0 ? 0.05 : 0.45 + 0.25 * (k % 2)
+      b.add(b.B, { p: [Math.cos(a) * 0.1, 0.42, Math.sin(a) * 0.1], r: [tilt, a, 0], s: [0.08, 0.45, 0.025], c: [0.12, 0.26, 0.7], c2: [0.45, 0.72, 1.0], glow: (kk) => 0.1 + 0.5 * kk, flutter: true, keep: true })
+    }
+  },
+  jellybell(b) {
+    // steli ad arco con campane rosa che pendono, fili luminosi come meduse
+    const bells = b.far ? [[0, 1, 0]] : [[0, 1, 0], [2.2, 0.7, 0.6], [4.1, 0.55, 0.5]]
+    for (const [yaw, h, tilt] of bells) {
+      const t1 = stem(b, [0, 0, 0], h * 0.75, 0.025, 0.016, yaw, tilt * 0.4, [0.3, 0.3, 0.36], { stiff: true })
+      const t2 = stem(b, t1, h * 0.22, 0.016, 0.01, yaw, tilt * 0.4 + 1.2, [0.4, 0.38, 0.46])
+      const top = [t2[0], t2[1] - 0.02, t2[2]]
+      const r = 0.13 * h + 0.04
+      b.add(dome, { p: top, s: [r, r * 0.8, r], c: [0.9, 0.42, 0.68], c2: [1.0, 0.72, 0.85], glow: 0.75, flutter: true, keep: true })
+      for (let k = 0; k < (b.lo ? 0 : 6); k++) {
+        const a = (k / 6) * Math.PI * 2
+        b.add(cyl(0.004, 0.008, 0.18 * h, 3), { p: [top[0] + Math.cos(a) * r * 0.75, top[1] - 0.18 * h, top[2] + Math.sin(a) * r * 0.75], c: [1.0, 0.6, 0.85], glow: 1, flutter: true })
+      }
+      b.add(blobLo, { p: [top[0], top[1] + 0.005, top[2]], s: r * 0.45, c: [1.0, 0.85, 0.7], glow: 1 })
+    }
+  },
+  mossfather(b) {
+    // gigante antico: tronco enorme coperto di muschio, radici che si aprono,
+    // funghi turchesi sulla corteccia e muschio che pende dalla chioma
+    const MB = [0.26, 0.27, 0.15]
+    const MB2 = [0.38, 0.44, 0.2]
+    b.add(cyl(0.08, 0.14, 0.66, 8), { c: MB, c2: MB2, stiff: true })
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2 + 0.2
+      b.add(cone(0.06, 0.34, 5), { p: [Math.cos(a) * 0.12, 0, Math.sin(a) * 0.12], r: [1.15, -a + Math.PI / 2, 0], c: MB, c2: [0.32, 0.38, 0.18], stiff: true })
+    }
+    for (let k = 0; k < 4; k++) {
+      const a = (k / 4) * Math.PI * 2 + 0.6
+      stem(b, [0, 0.56, 0], 0.3, 0.05, 0.025, -a + Math.PI / 2, 0.95, MB2, { stiff: true })
+    }
+    const G = [0.14, 0.27, 0.13]
+    const G2 = [0.27, 0.44, 0.19]
+    const crown = [[0, 0.84, 0, 0.42, 0.24], [0.3, 0.74, 0.12, 0.3, 0.2], [-0.28, 0.76, -0.14, 0.32, 0.2], [0.06, 0.74, -0.3, 0.3, 0.18], [-0.08, 0.72, 0.3, 0.28, 0.18]]
+    for (const [x, y, z, r, ry] of crown) b.add(b.B, { p: [x, y, z], s: [r, ry, r], c: G, c2: G2, radial: true, flutter: true })
+    // funghi a mensola luminosi sul tronco
+    for (let k = 0; k < (b.far ? 2 : 5); k++) {
+      const a = k * 1.9
+      b.add(dome, { p: [Math.cos(a) * 0.1, 0.18 + k * 0.08, Math.sin(a) * 0.1], s: [0.05, 0.02, 0.05], c: [0.3, 0.85, 0.9], glow: 1 })
+    }
+    // muschio pendente
+    for (let k = 0; k < (b.lo ? 3 : 8); k++) {
+      const a = k * 0.8
+      b.add(cone(0.025, 0.2, 4), { p: [Math.cos(a) * 0.36, 0.72, Math.sin(a) * 0.36], r: [Math.PI, 0, 0], c: [0.36, 0.44, 0.24], c2: [0.3, 0.36, 0.2], flutter: true })
+    }
+  },
+  petalcrown(b) {
+    // albero-fiore: tronco attorcigliato, chioma fatta di enormi petali
+    const T = [0.36, 0.26, 0.24]
+    const T2 = [0.5, 0.36, 0.3]
+    b.add(cyl(0.035, 0.07, 0.62, 6), { r: [0.06, 0, -0.05], c: T, c2: T2, stiff: true })
+    for (let k = 0; k < 4; k++) stem(b, [0, 0.2 + k * 0.1, 0], 0.12, 0.012, 0.005, k * 1.7, 1.1, T2, { stiff: true })
+    const n = b.far ? 5 : 9
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2
+      b.add(b.B, { p: [Math.cos(a) * 0.22, 0.7, Math.sin(a) * 0.22], r: [0, -a, 0.42], s: [0.27, 0.035, 0.12], c: [0.88, 0.36, 0.4], c2: [1.0, 0.72, 0.5], glow: 0.15, flutter: true, keep: true })
+    }
+    // anello interno più scuro e cuore luminoso
+    for (let k = 0; k < (b.lo ? 0 : 6); k++) {
+      const a = (k / 6) * Math.PI * 2 + 0.3
+      b.add(b.B, { p: [Math.cos(a) * 0.1, 0.7, Math.sin(a) * 0.1], r: [0, -a, 0.9], s: [0.14, 0.03, 0.07], c: [0.55, 0.15, 0.35], c2: [0.85, 0.3, 0.5], glow: 0.2, flutter: true })
+    }
+    b.add(b.B, { p: [0, 0.74, 0], s: [0.08, 0.06, 0.08], c: [1.0, 0.85, 0.45], glow: 1, radial: true })
+  },
+  candlewick(b) {
+    // steli sottili con lanterne arancio accese, foglie larghe alla base
+    const n = b.far ? 2 : 4
+    for (let k = 0; k < n; k++) {
+      const a = k * 2.3
+      const len = 0.65 + (0.3 * ((k * 3) % 4)) / 3
+      const tip = stem(b, [Math.cos(a) * 0.05, 0, Math.sin(a) * 0.05], len, 0.016, 0.01, a, 0.12 + 0.1 * k, [0.3, 0.36, 0.2])
+      b.add(cone(0.07, 0.14, 6), { p: [tip[0], tip[1] - 0.05, tip[2]], c: [1.0, 0.5, 0.1], c2: [1.0, 0.88, 0.45], glow: 1, keep: true })
+      b.add(dome, { p: [tip[0], tip[1] + 0.07, tip[2]], s: [0.05, 0.03, 0.05], c: [0.5, 0.3, 0.15] })
+    }
+    for (let k = 0; k < 3; k++) {
+      const a = k * 2.1 + 0.5
+      b.add(b.B, { p: [Math.cos(a) * 0.14, 0.1, Math.sin(a) * 0.14], r: [0, -a, 0.6], s: [0.2, 0.025, 0.08], c: [0.2, 0.42, 0.18], c2: [0.4, 0.6, 0.25], flutter: true })
+    }
+  },
+  starlily(b) {
+    // foglie lunghe, stelo e grande fiore a stella con cuore dorato
+    for (let k = 0; k < 4; k++) {
+      const a = k * 1.6
+      b.add(b.B, { p: [Math.cos(a) * 0.14, 0.14, Math.sin(a) * 0.14], r: [0, -a, 0.7], s: [0.24, 0.03, 0.06], c: [0.18, 0.4, 0.2], c2: [0.32, 0.58, 0.26], flutter: true })
+    }
+    b.add(cyl(0.015, 0.025, 0.75, 5), { c: [0.22, 0.42, 0.2], stiff: true })
+    const n = b.far ? 4 : 6
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2
+      b.add(b.B, { p: [Math.cos(a) * 0.17, 0.8, Math.sin(a) * 0.17], r: [0, -a, 0.28], s: [0.2, 0.025, 0.06], c: [0.62, 0.42, 0.9], c2: [0.96, 0.92, 1.0], glow: 0.25, flutter: true, keep: true })
+    }
+    b.add(blobLo, { p: [0, 0.82, 0], s: 0.06, c: [1.0, 0.82, 0.3], glow: 1 })
+  },
+  broadleaf(b) {
+    // foglie enormi, larghe e lucide, che si aprono da un fusto corto
+    b.add(cyl(0.035, 0.06, 0.3, 6), { c: [0.32, 0.42, 0.2], stiff: true })
+    const n = b.far ? 4 : 7
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2 + k * 0.4
+      const tilt = 0.25 + (0.5 * ((k * 5) % 3)) / 2
+      b.add(b.B, { p: [Math.cos(a) * 0.3, 0.42 + (0.25 * ((k * 7) % 4)) / 3, Math.sin(a) * 0.3], r: [0, -a, tilt], s: [0.38, 0.025, 0.13], c: [0.16, 0.44, 0.18], c2: [0.36, 0.66, 0.24], flutter: true, keep: true })
+    }
+  },
+  reedmace(b) {
+    // canneto: steli fitti, foglie a lama e spighe brune di tifa
+    const n = b.far ? 4 : b.lo ? 7 : 12
+    for (let k = 0; k < n; k++) {
+      const a = k * 2.399
+      const r = 0.05 + 0.32 * (((k * 41) % 13) / 13)
+      const h = 0.6 + 0.4 * (((k * 17) % 7) / 7)
+      const x = Math.cos(a) * r
+      const z = Math.sin(a) * r
+      const tilt = 0.05 + 0.1 * (k % 3)
+      const tip = stem(b, [x, 0, z], h, 0.012, 0.008, a, tilt, [0.36, 0.48, 0.22], { c2: [0.5, 0.6, 0.3] })
+      if (k % 2 === 0) b.add(cyl(0.025, 0.025, 0.14, 5), { p: [tip[0], tip[1] - 0.16, tip[2]], r: [tilt, a, 0], c: [0.36, 0.22, 0.12], keep: true })
+      else b.add(shard(0.02, h * 0.9), { p: [x, 0, z], r: [tilt + 0.2, a + 1, 0], c: [0.3, 0.46, 0.2], c2: [0.55, 0.62, 0.3], flutter: true, keep: true })
+    }
+  },
+  bogcypress(b) {
+    // cipresso di palude: base svasata, "ginocchia" che spuntano dall'acqua,
+    // chioma a strati e barbe di muschio grigio-verde
+    const T = [0.32, 0.26, 0.22]
+    b.add(cone(0.13, 0.3, 8), { c: [0.26, 0.22, 0.2], stiff: true })
+    b.add(cyl(0.035, 0.06, 0.78, 6), { c: T, c2: [0.42, 0.36, 0.3], stiff: true })
+    for (let k = 0; k < (b.far ? 0 : 4); k++) {
+      const a = k * 1.7 + 0.4
+      b.add(cone(0.025, 0.08, 5), { p: [Math.cos(a) * 0.24, 0, Math.sin(a) * 0.24], c: T, stiff: true })
+    }
+    const G = [0.24, 0.32, 0.15]
+    const G2 = [0.36, 0.46, 0.2]
+    b.add(b.B, { p: [0, 0.62, 0], s: [0.36, 0.1, 0.36], c: G, c2: G2, radial: true, flutter: true })
+    b.add(b.B, { p: [0.04, 0.78, -0.02], s: [0.28, 0.09, 0.28], c: G, c2: G2, radial: true, flutter: true })
+    b.add(b.B, { p: [0, 0.92, 0.02], s: [0.17, 0.08, 0.17], c: G2, c2: [0.44, 0.54, 0.24], radial: true, flutter: true })
+    for (let k = 0; k < (b.lo ? 3 : 8); k++) {
+      const a = k * 0.79
+      b.add(cone(0.03, 0.24, 4), { p: [Math.cos(a) * 0.3, 0.6, Math.sin(a) * 0.3], r: [Math.PI, 0, 0], c: [0.6, 0.64, 0.5], c2: [0.46, 0.52, 0.38], flutter: true })
+    }
+    // lucciole
+    for (let k = 0; k < (b.lo ? 0 : 4); k++) {
+      const a = k * 1.4
+      b.add(blobLo, { p: [Math.cos(a) * 0.42, 0.35 + 0.1 * k, Math.sin(a) * 0.42], s: 0.015, c: [1.0, 0.92, 0.45], glow: 1, flutter: true })
+    }
+  },
+  frostlantern(b) {
+    // steli ricurvi con sfere di ghiaccio azzurre accese dall'interno
+    const n = b.far ? 3 : 5
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2
+      const t1 = stem(b, [0, 0, 0], 0.5 + 0.12 * (k % 3), 0.018, 0.01, a, 0.3 + 0.15 * (k % 2), [0.45, 0.55, 0.66])
+      const t2 = stem(b, t1, 0.2, 0.01, 0.006, a, 1.4, [0.6, 0.7, 0.8])
+      b.add(b.B, { p: [t2[0], t2[1] - 0.06, t2[2]], s: 0.085, c: [0.5, 0.85, 1.0], c2: [0.85, 0.97, 1.0], glow: 0.9, radial: true, keep: true })
+    }
+    b.add(b.B, { p: [0, 0.05, 0], s: [0.22, 0.07, 0.22], c: [0.7, 0.82, 0.9], radial: true })
+  },
+  dunepalm(b) {
+    // palma delle oasi: fusto curvo, fronde dorate e frutti d'ambra
+    const T = [0.5, 0.4, 0.26]
+    const T2 = [0.62, 0.5, 0.32]
+    const m = stem(b, [0, 0, 0], 0.5, 0.045, 0.035, 0.6, 0.18, T, { c2: T2, stiff: true })
+    const top = stem(b, m, 0.4, 0.035, 0.028, 0.6, 0.32, T2, { stiff: true })
+    const n = b.far ? 5 : 9
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2
+      b.add(b.B, { p: [top[0] + Math.cos(a) * 0.2, top[1] - 0.05, top[2] + Math.sin(a) * 0.2], r: [0, -a, -0.5], s: [0.27, 0.022, 0.06], c: [0.5, 0.5, 0.18], c2: [0.86, 0.74, 0.3], flutter: true, keep: true })
+    }
+    for (let k = 0; k < (b.lo ? 0 : 4); k++) {
+      const a = k * 1.6
+      b.add(blobLo, { p: [top[0] + Math.cos(a) * 0.05, top[1] - 0.06, top[2] + Math.sin(a) * 0.05], s: 0.035, c: [1.0, 0.6, 0.15], glow: 0.7 })
+    }
+  },
+  obsidianbloom(b) {
+    // schegge di vetro vulcanico nero, punte e cuore di magma
+    const n = b.far ? 4 : 7
+    for (let k = 0; k < n; k++) {
+      const a = k * 2.399
+      const tilt = 0.2 + 0.45 * (((k * 7) % 5) / 5)
+      const len = 0.55 + 0.45 * (((k * 3) % 4) / 3)
+      b.add(shard(0.08, len), { p: [Math.cos(a) * 0.06, 0, Math.sin(a) * 0.06], r: [tilt, a, 0], c: [0.07, 0.06, 0.09], c2: [0.75, 0.22, 0.08], glow: (kk) => Math.pow(kk, 4) * 0.9, stiff: true })
+    }
+    b.add(b.B, { p: [0, 0.08, 0], s: [0.13, 0.1, 0.13], c: [1.0, 0.42, 0.08], c2: [1.0, 0.75, 0.3], glow: 1, radial: true })
   }
 }
 
 /**
  * Geometrie di tutte le specie, nell'ordine di SPECIES (planet/flora.js).
  * @param {Array<{key:string}>} species
- * @param {boolean} lo versione semplificata per le piante lontane
+ * @param {number} lod 0 completo, 1 semplificato, 2 lontano
  */
-export function buildPlantGeometries(species, lo = false) {
-  SEG_CAP = lo ? 3 : 99
-  dome = lo ? domeLo : domeHi
+export function buildPlantGeometries(species, lod = 0) {
+  lod = +lod
+  SEG_CAP = lod >= 1 ? 3 : 99
+  dome = lod >= 2 ? domeFar : lod >= 1 ? domeLo : domeHi
+  blobLo = lod >= 2 ? octa : icoLo
   return species.map((s) => {
-    const b = new PlantBuilder(lo)
+    const b = new PlantBuilder(lod)
     const fn = MODELS[s.key]
     if (!fn) throw new Error('missing plant model: ' + s.key)
     fn(b)
@@ -379,5 +648,17 @@ export const HUE_VARIATION = {
   bramble: 0.25,
   elderoak: 0.22,
   canopyTitan: 0.15,
-  cindercoral: 0.25
+  cindercoral: 0.25,
+  moonshroom: 0.6,
+  blushwood: 0.5,
+  petalcrown: 1.3,
+  jellybell: 1.0,
+  starlily: 1.5,
+  candlewick: 0.35,
+  featherfern: 0.6,
+  frostlantern: 0.4,
+  obsidianbloom: 0.25,
+  mossfather: 0.15,
+  broadleaf: 0.25,
+  bogcypress: 0.15
 }

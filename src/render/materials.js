@@ -123,6 +123,7 @@ export function createTerrainMaterial(sunDir) {
       uniform float uMorph;
       attribute float aMorph;
       attribute vec2 aVolc;
+      attribute vec2 aEco;
 
       attribute vec3 aColor;
       attribute float aWater;
@@ -138,9 +139,11 @@ export function createTerrainMaterial(sunDir) {
       varying vec4 vSurf;
       varying float vElev;
       varying vec2 vVolc;
+      varying vec2 vEco;
 
       void main() {
         vColor = aColor;
+        vEco = aEco;
         vWater = aWater;
         vHeight = aHeight;
         vSurf = aSurf;
@@ -207,6 +210,7 @@ export function createTerrainMaterial(sunDir) {
       varying vec4 vSurf;
       varying float vElev;
       varying vec2 vVolc;
+      varying vec2 vEco;
 
       // ------------------------------------------------------------ rumore
 
@@ -450,6 +454,18 @@ export function createTerrainMaterial(sunDir) {
                     + (n4 - 0.5) * 0.4 * w03;
 
         float waterF = vWater + edgeN * 0.35;
+        // Paludi (vEco.y): acquitrini. Pozze e canali da un rumore a più scale
+        // (da ~1 km a ~60 m) che affiorano tra la vegetazione; da lontano,
+        // senza scale risolte, restano una tinta più scura e umida.
+        float marsh = vEco.y;
+        float pondN = 0.5;
+        if (marsh > 0.01) {
+          // scala di ~2 km sempre attiva: da lontano le pozze restano visibili
+          float nP = lnoise(pl, 0.5);
+          float fine = mix(nP, n2 * 0.5 + n3 * 0.5, w1);
+          pondN = n1 * 0.25 + nP * 0.3 + fine * 0.3 + mix(0.5, n4, w03) * 0.15;
+          waterF = mix(waterF, max(waterF, pondN * 2.3 - 0.66), marsh);
+        }
         // Soglie più larghe di prima: i biomi sfumano su una fascia ampia
         // invece di cambiare di colpo (il colore per vertice è già una media
         // morbida della classificazione, vedi planet.js).
@@ -470,6 +486,11 @@ export function createTerrainMaterial(sunDir) {
         isWater = max(isWater, 1.0 - smoothstep(-shoreBand, shoreBand, vHeight));
         // densità di alberi (savana e macchia: radi; foreste: chioma chiusa)
         float trees = clamp(vSurf.x + edgeN * 0.5, 0.0, 1.0);
+        // Boschi delle piante 3D (vEco.x, stessa macchia di planet/flora.js):
+        // radure dove la flora è rada, boschetti anche fuori dai biomi
+        // forestali. Così da lontano le macchie si vedono dove sono le piante.
+        float eco = vEco.x;
+        trees = max(trees * mix(0.28, 1.0, smoothstep(0.04, 0.45, eco)), eco * 0.9);
         // Stesse soglie di prima, ma allargate di ~1 pixel a schermo: i confini
         // tra biomi (spiaggia, foresta, roccia, neve) seguivano la griglia della
         // mesh e mostravano scalini netti di una cella; così sfumano.
@@ -643,7 +664,10 @@ export function createTerrainMaterial(sunDir) {
         }
 
         // foreste: radure e gruppi a media distanza, chiome tonde da vicino
-        float wCrown = w01 * (1.0 - uVegNear * 0.8);
+        // chiome procedurali alla scala della flora (celle di 500 m): da
+        // lontano disegnano il bosco; dove ci sono le piante 3D restano un
+        // sottobosco attenuato
+        float wCrown = scaleW(1.9, foot) * (1.0 - uVegNear * 0.55);
         if (trees > 0.04 && sand < 0.9) {
           vec3 leaf = mix(vec3(0.27, 0.36, 0.22), vColor, forest);
           vec3 leafDark = leaf * vec3(0.62, 0.70, 0.74);
@@ -656,8 +680,8 @@ export function createTerrainMaterial(sunDir) {
           }
           if (wCrown > 0.0) {
             float dens = mix(trees * 0.9, 1.0, forest);
-            float aa = clamp(foot * 64.0 * 1.4, 0.04, 0.6);
-            vec4 cp = canopy(pl - R * vElev, 64.0, R, dens, aa, sunTanG);
+            float aa = clamp(foot * 2.0 * 1.4, 0.04, 0.6);
+            vec4 cp = canopy(pl - R * vElev, 2.0, R, dens, aa, sunTanG);
             vec3 tint = mix(vec3(0.94, 1.0, 0.92), vec3(1.06, 1.02, 0.88), cp.z);
             vec3 crown = leaf * tint * mix(0.62, 1.10, smoothstep(-0.25, 0.8, cp.y));
             // fogliame: grana di foglie sulle chiome viste da vicino
@@ -667,6 +691,27 @@ export function createTerrainMaterial(sunDir) {
             fcol = mix(fcol, mix(under, crown, cp.x), wCrown);
           }
           base = mix(base, fcol, max(forest, step(0.001, trees)));
+        }
+        // suolo all'ombra delle piante 3D
+        base *= 1.0 - smoothstep(0.1, 0.8, eco) * uVegNear * 0.22;
+
+        // ------------------------------------------- texture ravvicinate
+        // Scala "da regione" (da ~5 a ~50 m): appaiono scendendo sotto i
+        // 30-40 km di quota, quando le piante diventano grandi a schermo.
+        float wMid = scaleW(0.06, foot);
+        float wMid2 = scaleW(0.02, foot);
+        // erba pettinata dal vento: strisce allungate nel verso del vento,
+        // chiazze di fiori selvatici
+        if (wMid > 0.0 && grassMask > 0.01) {
+          vec3 q = pl - uRippleDir * dot(pl, uRippleDir) * 0.82;
+          float st = lnoise(q, 22.0) * 0.6 + lnoise(q, 64.0) * 0.4;
+          float gk = wMid * grassMask;
+          base *= mix(1.0, mix(0.84, 1.12, smoothstep(0.3, 0.7, st)), gk);
+          base = mix(base, base * vec3(1.1, 1.06, 0.78), smoothstep(0.62, 0.76, st) * 0.35 * gk);
+          float fz = lnoise(pl, 36.0);
+          float fl2 = smoothstep(0.7, 0.8, fz) * wMid2 * grassMask * (1.0 - marsh);
+          vec3 flc2 = n4 > 0.5 ? vec3(0.95, 0.85, 0.35) : vec3(0.72, 0.52, 0.88);
+          base = mix(base, flc2, fl2 * 0.45);
         }
 
         // sabbia: dune, increspature del vento e granuli
@@ -685,6 +730,13 @@ export function createTerrainMaterial(sunDir) {
             sc = mix(sc, sc * vec3(1.05, 1.03, 0.97), smoothstep(0.86, 0.98, d0) * wd * 0.6);
           }
           if (w003 > 0.0) sc *= 1.0 + (smoothstep(0.4, 0.6, n5) - 0.5) * 0.06 * w003;
+          if (wMid2 > 0.0) {
+            // increspature del vento a ~25 m: lato al sole chiaro, lato in ombra scuro
+            float ph = dot(pl, uRippleDir) * 251.3 + (n4 - 0.5) * 8.0 + (n3 - 0.5) * 6.0;
+            float rr = sin(ph);
+            float face = cos(ph) * sign(dot(uRippleDir, sunTanG) + 1e-3);
+            sc *= 1.0 + (rr * 0.04 + face * 0.06) * wMid2;
+          }
           if (wN2 > 0.0) {
             // creste delle increspature leggermente più chiare
             sc *= 1.0 + ripple * 0.035 * wRip;
@@ -698,6 +750,7 @@ export function createTerrainMaterial(sunDir) {
         }
 
         // roccia: strati orizzontali, fessure, licheni e grana
+        float crackGlow = 0.0;
         if (rock > 0.01) {
           float strata = sin(hKm * 52.0 + n3 * 3.0);
           vec3 rockA = vec3(0.47, 0.44, 0.40);
@@ -706,6 +759,16 @@ export function createTerrainMaterial(sunDir) {
           // le rocce molto scure (basalto, colate) tengono il loro colore
           float vLum = dot(vColor, vec3(0.2126, 0.7152, 0.0722));
           rc = mix(rc, vColor, 0.25 + 0.65 * (1.0 - smoothstep(0.08, 0.25, vLum)));
+          // basalto (campi di lava, fianchi dei vulcani): crosta spaccata in
+          // placche, crepe scure; vicino alla lava le crepe covano ancora
+          float basalt = 1.0 - smoothstep(0.1, 0.22, vLum);
+          if (wMid > 0.0 && basalt > 0.01) {
+            float cn = lnoise(pl, 26.0) * 0.7 + lnoise(pl, 70.0) * 0.3;
+            float crk = 1.0 - smoothstep(0.0, 0.045, abs(cn - 0.5));
+            rc *= 1.0 - crk * 0.45 * wMid * basalt;
+            rc *= 1.0 + (smoothstep(0.3, 0.7, lnoise(pl, 9.0)) - 0.5) * 0.25 * wMid * basalt;
+            crackGlow = crk * basalt * wMid * smoothstep(0.0, 0.25, lavaK + burnK * 0.15);
+          }
           if (w03 > 0.0) {
             float crack = smoothstep(0.035, 0.0, abs(n4 - 0.5));
             rc *= 1.0 - crack * 0.14 * w03;
@@ -724,6 +787,23 @@ export function createTerrainMaterial(sunDir) {
           vec3 sn = vec3(0.92, 0.94, 0.97);
           if (w1 > 0.0) sn *= 1.0 - (n2 - 0.5) * 0.06 * w1;
           if (wN1 > 0.0) sn *= 1.0 + sastr * 0.015 * wSas;
+          float wSd = scaleW(0.12, foot);
+          if (wSd > 0.0) {
+            // cumuli e lingue di neve modellati dal vento: lato in ombra azzurro
+            vec3 q = pl - uRippleDir * dot(pl, uRippleDir) * 0.6;
+            float e = 0.012;
+            float d0 = lnoise(q, 9.0);
+            float d1 = lnoise(q + sunTanG * e, 9.0);
+            float tone = smoothstep(-0.6, 0.6, (d1 - d0) / e * 0.08);
+            sn *= mix(1.0, mix(0.92, 1.03, tone), wSd);
+            sn = mix(sn, sn * vec3(0.88, 0.94, 1.05), (1.0 - tone) * 0.3 * wSd);
+          }
+          float wSp = scaleW(0.03, foot);
+          if (wSp > 0.0) {
+            // brillii dei cristalli a scala media: cambiano con la vista
+            float sp2 = lnoise(pl + V * 0.06, 90.0);
+            glint = max(glint, smoothstep(0.9, 0.97, sp2) * wSp * snow * 0.7);
+          }
           if (wN2 > 0.0) {
             // cristalli: il rumore cambia con la direzione di vista, quindi i
             // brillii si accendono e spengono muovendo la camera
@@ -731,6 +811,14 @@ export function createTerrainMaterial(sunDir) {
             glint = smoothstep(0.86, 0.95, sp) * wN2 * snow;
           }
           base = mix(base, sn, snow);
+        }
+
+        // paludi: suolo fangoso e scuro, canneti sulle rive delle pozze
+        if (marsh > 0.01) {
+          vec3 mud = base * vec3(0.72, 0.8, 0.7);
+          base = mix(base, mud, marsh * 0.45);
+          float shore = smoothstep(0.32, 0.44, waterF) * (1.0 - smoothstep(0.46, 0.52, waterF));
+          base = mix(base, vec3(0.3, 0.36, 0.2), shore * marsh * 0.55 * w1);
         }
 
         // terra bruciata attorno ai vulcani: suolo carbonizzato quasi nero a
@@ -787,6 +875,7 @@ export function createTerrainMaterial(sunDir) {
         float ao = 1.0 - slope * 0.22;
 
         vec3 color = base * lightCol * ao;
+        color += vec3(1.0, 0.36, 0.06) * crackGlow * (0.6 + uLavaBoost * 0.8);
 
         // ============================================================ LAVA
         // Lava fusa (laghi nei crateri, colate incandescenti, crepe nei campi
@@ -880,6 +969,14 @@ export function createTerrainMaterial(sunDir) {
             wc *= 1.0 + bathy * 0.28 * deepEnough;
           }
           wc = mix(wc, vColor * 1.05, inland * 0.6);
+          if (marsh > 0.01) {
+            // acqua ferma e scura, lenticchie d'acqua e ninfee
+            wc = mix(wc, vec3(0.17, 0.29, 0.28), smoothstep(0.0, 0.6, marsh) * 0.6);
+            float weed = smoothstep(0.58, 0.7, n4) * w03 + smoothstep(0.6, 0.7, pondN) * (1.0 - w03) * 0.4;
+            wc = mix(wc, vec3(0.3, 0.44, 0.16), weed * marsh * 0.7);
+            float pad = smoothstep(0.8, 0.86, n5) * w003;
+            wc = mix(wc, vec3(0.34, 0.56, 0.22), pad * marsh * 0.85);
+          }
 
           // colore che segue le onde: creste più chiare, ventri più scuri
           wc *= 1.0 + clamp(hw * 900.0, -0.5, 0.5) * 0.18;

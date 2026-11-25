@@ -33,7 +33,7 @@ function tileAt(lat, lon, level) {
 const cases = process.argv.length > 4
   ? [[+process.argv[2], +process.argv[3], +process.argv[4]]]
   : [
-      [6.05, -2.4, 12], [6.05, -2.4, 14], // valle verde
+      [6.05, -2.4, 7], [6.05, -2.4, 9], [6.05, -2.4, 12], // valle verde
       [-10, -110, 12], // foresta pluviale
       [20, 15, 12], // deserto
       [63.2, -140.3, 12], // ghiacci

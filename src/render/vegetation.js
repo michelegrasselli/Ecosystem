@@ -21,13 +21,20 @@ import { SPECIES, vegKeep } from '../planet/flora.js'
 import { buildPlantGeometries, HUE_VARIATION } from './plantModels.js'
 
 const STRIDE = 11 // posHi(3) posLo(3) hKm size rot var born
-// tile da questo livello in su (vicine alla camera): modelli completi; le
-// altre usano i modelli semplificati (~4-5 volte meno triangoli)
-const HI_LEVEL = 14
+// Dettaglio per tile e per specie, dalla dimensione a schermo della pianta
+// nel punto della tile più vicino alla camera: completo sopra HI_PX pixel,
+// semplificato sopra LO_PX, "lontano" (decine di triangoli) sotto. I giganti
+// passano al dettaglio pieno prima dei fiori.
+const HI_PX = 44
+const LO_PX = 16
+// piante lontane piccole (pochi pixel): se ne disegna solo una parte
+const thinFor = (px) => (px >= 9 ? 1 : 0.3 + 0.7 * Math.max(0, (px - 1.5) / 7.5))
+const tierFor = (px) => (px >= HI_PX ? 0 : px >= LO_PX ? 1 : 2)
+const _c = new THREE.Vector3()
 
 const VERT = /* glsl */ `
   #include <common>
-  #include <logdepthbuf_pars_vertex>
+  uniform float logDepthBufFC;
   attribute vec3 aCol;
   attribute vec2 aWind;
   attribute float aGlow;
@@ -72,7 +79,7 @@ const VERT = /* glsl */ `
     float dist = length(base);
     // dimensione a schermo: sotto ~2 px la pianta sparisce
     float px = iAttr.y * uPxPerRad / max(dist, 1e-4);
-    float vis = smoothstep(1.6, 3.2, px);
+    float vis = smoothstep(1.1, 2.4, px);
     // crescita delle piante appena comparse
     vis *= smoothstep(0.0, 0.6, uTime - iBorn);
     float size = iAttr.y * vis;
@@ -100,13 +107,16 @@ const VERT = /* glsl */ `
     vDist = length(rel);
     vec4 mv = vec4(mat3(viewMatrix) * rel, 1.0);
     gl_Position = projectionMatrix * mv;
-    #include <logdepthbuf_vertex>
+    // profondità logaritmica per vertice, come il terreno (materials.js): senza
+    // gl_FragDepth la GPU scarta in anticipo i pixel nascosti
+    #ifdef USE_LOGARITHMIC_DEPTH_BUFFER
+      gl_Position.z = (log2(max(1e-6, 1.0 + gl_Position.w)) * logDepthBufFC - 1.0) * gl_Position.w;
+    #endif
   }
 `
 
 const FRAG = /* glsl */ `
   #include <common>
-  #include <logdepthbuf_pars_fragment>
   uniform vec3 uSunDir;
   uniform vec3 uHazeColor;
   uniform float uHazeDensity;
@@ -119,7 +129,6 @@ const FRAG = /* glsl */ `
   varying float vPhase;
 
   void main() {
-    #include <logdepthbuf_fragment>
     vec3 n = normalize(vN);
     float ndl = dot(n, uSunDir);
     // luce "illustrata": passaggio morbido luce/ombra, cielo dall'alto
@@ -165,10 +174,13 @@ export class Vegetation {
       uHazeColor: tu.uHazeColor,
       uHazeDensity: tu.uHazeDensity
     }
-    const geosHi = buildPlantGeometries(SPECIES, false)
-    const geosLo = buildPlantGeometries(SPECIES, true)
-    const all = [...SPECIES.map((sp, i) => [sp, geosHi[i], 'hi']), ...SPECIES.map((sp, i) => [sp, geosLo[i], 'lo'])]
-    // una mesh per specie e per livello di dettaglio: [0, N) completi, [N, 2N) semplificati
+    const all = []
+    for (const [lod, name] of [[0, 'hi'], [1, 'lo'], [2, 'far']]) {
+      const geos = buildPlantGeometries(SPECIES, lod)
+      SPECIES.forEach((sp, i) => all.push([sp, geos[i], name]))
+    }
+    // una mesh per specie e per livello di dettaglio: [0, N) completi,
+    // [N, 2N) semplificati, [2N, 3N) lontani
     this.kinds = all.map(([sp, base, lod]) => {
       const geo = new THREE.InstancedBufferGeometry()
       for (const name of ['position', 'normal', 'aCol', 'aWind', 'aGlow']) geo.setAttribute(name, base.getAttribute(name))
@@ -181,12 +193,17 @@ export class Vegetation {
       const mesh = new THREE.Mesh(geo, mat)
       mesh.frustumCulled = false
       mesh.matrixAutoUpdate = false
+      // prima del terreno: le chiome coprono molto schermo e il terreno sotto
+      // viene scartato dal test di profondità invece di essere ombreggiato
+      mesh.renderOrder = -1
       mesh.visible = false
       mesh.name = 'plants:' + sp.key + ':' + lod
       this.group.add(mesh)
       return { sp, geo, mesh, capacity: 0, data: null, buffer: null, count: 0 }
     })
     this._tiles = new Set()
+    this._tier = new Map()
+    this._next = new Map()
     this._lastBuild = -1e9
     this._dirty = false
     this.stats = { tiles: 0, plants: 0 }
@@ -216,52 +233,103 @@ export class Vegetation {
     g.setAttribute('iBorn', new THREE.InterleavedBufferAttribute(buf, 1, 10))
   }
 
+  /**
+   * Istanze di una tile già nel formato del buffer, ordinate per specie e,
+   * dentro la specie, per rango (calcolate una volta sola: la ricomposizione
+   * diventa una serie di copie, e diradare le piante lontane significa
+   * prenderne solo i primi N, sempre gli stessi).
+   */
+  _pack(node, nowSec) {
+    const ud = node.mesh.userData
+    if (ud.vegPack) return ud.vegPack
+    const v = ud.veg
+    const NS = SPECIES.length
+    // nascita della tile: le piante che esistevano già nella tile padre
+    // (rango sotto la sua quota) non "rinascono"
+    const born = nowSec
+    const parentKeep = vegKeep(node.level - 1)
+    const starts = new Int32Array(NS + 1)
+    for (let i = 0; i < v.count; i++) starts[v.species[i] + 1]++
+    for (let k = 0; k < NS; k++) starts[k + 1] += starts[k]
+    const fill = starts.slice(0, NS)
+    const order = new Uint32Array(v.count)
+    for (let i = 0; i < v.count; i++) order[i] = i
+    order.sort((a, b) => v.species[a] - v.species[b] || v.attr[a * 5 + 4] - v.attr[b * 5 + 4])
+    const d = new Float32Array(v.count * STRIDE)
+    for (let q = 0; q < v.count; q++) {
+      const i = order[q]
+      const o = fill[v.species[i]]++ * STRIDE
+      const x = v.pos[i * 3]
+      const y = v.pos[i * 3 + 1]
+      const z = v.pos[i * 3 + 2]
+      const hx = splitHi(x)
+      const hy = splitHi(y)
+      const hz = splitHi(z)
+      d[o] = hx
+      d[o + 1] = hy
+      d[o + 2] = hz
+      d[o + 3] = x - hx
+      d[o + 4] = y - hy
+      d[o + 5] = z - hz
+      d[o + 6] = v.attr[i * 5]
+      d[o + 7] = v.attr[i * 5 + 1]
+      d[o + 8] = v.attr[i * 5 + 2]
+      d[o + 9] = v.attr[i * 5 + 3]
+      d[o + 10] = v.attr[i * 5 + 4] < parentKeep ? -1e6 : born
+    }
+    ud.vegPack = { starts, data: d }
+    return ud.vegPack
+  }
+
+  /** Piante della specie k da disegnare nella tile j (le prime per rango). */
+  _take(pk, j, k) {
+    const n = pk.starts[k + 1] - pk.starts[k]
+    const f = this._thin[j][k]
+    return f >= 1 ? n : Math.ceil(n * f)
+  }
+
   /** Ricompone i buffer delle istanze dalle tile disegnate. */
   _rebuild(nodes, nowSec) {
-    const counts = new Array(this.kinds.length).fill(0)
     const NS = SPECIES.length
-    for (const node of nodes) {
-      const v = node.mesh.userData.veg
-      const off = node.level >= HI_LEVEL ? 0 : NS
-      for (let i = 0; i < v.count; i++) counts[v.species[i] + off]++
-    }
+    const counts = new Array(this.kinds.length).fill(0)
+    const packs = nodes.map((n) => this._pack(n, nowSec))
+    // indice della mesh per tile e specie, e quante piante prendere
+    this._thin = nodes.map((n) => {
+      const pxKm = Math.pow(2, this._tier.get(n) / 3)
+      const t = new Float32Array(NS)
+      for (let k = 0; k < NS; k++) t[k] = thinFor(pxKm * SPECIES[k].h)
+      return t
+    })
+    const offs = nodes.map((n) => {
+      const pxKm = Math.pow(2, this._tier.get(n) / 3)
+      const o = new Int32Array(NS)
+      // -1: specie troppo piccola a schermo in questa tile (sotto il pixel
+      // anche con la taglia massima): non si disegna proprio
+      for (let k = 0; k < NS; k++) {
+        const px = pxKm * SPECIES[k].h
+        o[k] = px * 2.4 < 1.1 ? -1 : tierFor(px) * NS + k
+      }
+      return o
+    })
+    packs.forEach((pk, j) => {
+      for (let k = 0; k < NS; k++) if (offs[j][k] >= 0) counts[offs[j][k]] += this._take(pk, j, k)
+    })
     for (let k = 0; k < this.kinds.length; k++) {
       this._ensure(this.kinds[k], counts[k])
       this.kinds[k].count = 0
     }
     let total = 0
-    for (const node of nodes) {
-      const ud = node.mesh.userData
-      const v = ud.veg
-      // nascita della tile: le piante che esistevano già nella tile padre
-      // (rango sotto la sua quota) non "rinascono"
-      if (ud.vegBorn === undefined) ud.vegBorn = nowSec
-      const parentKeep = vegKeep(node.level - 1)
-      const off = node.level >= HI_LEVEL ? 0 : NS
-      for (let i = 0; i < v.count; i++) {
-        const kind = this.kinds[v.species[i] + off]
-        const o = kind.count * STRIDE
-        const d = kind.data
-        const x = v.pos[i * 3]
-        const y = v.pos[i * 3 + 1]
-        const z = v.pos[i * 3 + 2]
-        const hx = splitHi(x)
-        const hy = splitHi(y)
-        const hz = splitHi(z)
-        d[o] = hx
-        d[o + 1] = hy
-        d[o + 2] = hz
-        d[o + 3] = x - hx
-        d[o + 4] = y - hy
-        d[o + 5] = z - hz
-        d[o + 6] = v.attr[i * 5]
-        d[o + 7] = v.attr[i * 5 + 1]
-        d[o + 8] = v.attr[i * 5 + 2]
-        d[o + 9] = v.attr[i * 5 + 3]
-        d[o + 10] = v.attr[i * 5 + 4] < parentKeep ? -1e6 : ud.vegBorn
-        kind.count++
+    for (let j = 0; j < packs.length; j++) {
+      const pk = packs[j]
+      for (let k = 0; k < NS; k++) {
+        const a = pk.starts[k]
+        const b = a + this._take(pk, j, k)
+        if (b === a || offs[j][k] < 0) continue
+        const kind = this.kinds[offs[j][k]]
+        kind.data.set(pk.data.subarray(a * STRIDE, b * STRIDE), kind.count * STRIDE)
+        kind.count += b - a
       }
-      total += v.count
+      for (let k = 0; k < NS; k++) if (offs[j][k] >= 0) total += this._take(pk, j, k)
     }
     for (const kind of this.kinds) {
       kind.geo.instanceCount = kind.count
@@ -292,16 +360,30 @@ export class Vegetation {
     const hz = splitHi(cp.z)
     this.uniforms.uCamHi.value.set(hx, hy, hz)
     this.uniforms.uCamLo.value.set(cp.x - hx, cp.y - hy, cp.z - hz)
-    this.uniforms.uPxPerRad.value = viewportPx / (2 * Math.tan((camera.fov * Math.PI) / 360))
+    const pxPerRad = viewportPx / (2 * Math.tan((camera.fov * Math.PI) / 360))
+    this.uniforms.uPxPerRad.value = pxPerRad
 
-    // tile disegnate con piante
+    // tile disegnate con piante, e dettaglio di ciascuna
     const nodes = []
     let changed = false
     for (const n of drawn) {
       if (!n.mesh || !n.mesh.userData.veg) continue
       nodes.push(n)
+      const d = Math.max(_c.copy(n.surfaceCenter).distanceTo(cp) - n.radius, 0.05)
+      // pixel per km, in gradini di un terzo d'ottava (con un po' di
+      // isteresi): il dettaglio cambia solo quando la tile si avvicina davvero
+      const lp = Math.log2(pxPerRad / d) * 3
+      const old = this._tier.get(n)
+      let tier = Math.round(lp)
+      if (old !== undefined && Math.abs(lp - old) < 0.75) tier = old
+      if (old !== tier) changed = true
+      this._next.set(n, tier)
       if (!this._tiles.has(n)) changed = true
     }
+    const swap = this._tier
+    this._tier = this._next
+    this._next = swap
+    this._next.clear()
     if (!changed && nodes.length !== this._tiles.size) changed = true
     if (changed) this._dirty = true
     if (!this._dirty) return

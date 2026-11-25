@@ -27,6 +27,7 @@ export function createTileMesh(d, material) {
   geo.setAttribute('aSkirt', new THREE.BufferAttribute(skirt, 1))
   geo.setAttribute('aMorph', new THREE.BufferAttribute(morph, 1))
   geo.setAttribute('aVolc', new THREE.BufferAttribute(d.volc, 2))
+  geo.setAttribute('aEco', new THREE.BufferAttribute(d.eco, 2))
   geo.setIndex(new THREE.BufferAttribute(indices, 1))
   geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), SCENE_RADIUS * 2)
 

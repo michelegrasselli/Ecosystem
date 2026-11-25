@@ -93,14 +93,18 @@ avvio. Il salvataggio automatico della sola camera avviene anche alla chiusura d
 
 ## Flora
 
-Elyra è coperta di vegetazione: 20 specie, alcune terrestri e molte inventate, raccolte in
-boschi, boschetti e radure secondo il bioma. Foreste di latifoglie, conifere e giganti a
-ombrello; funghi-albero luminosi e salici dalle fronde accese nelle paludi; baccelli
-turchesi e fiori magenta nelle praterie; cactus e spine dorate nei deserti; alberi
-carbonizzati e coralli di brace sui suoli vulcanici; cristalli e batuffoli bianchi sui
-ghiacci; e nel mare basso i Tidecrown, che salgono dal fondo e spuntano dall'acqua con una
-campana viola e tentacoli luminosi. Da vicino le piante sono in 3D e si muovono nel vento;
-da lontano i boschi restano visibili come chiome disegnate sul terreno.
+Elyra è coperta da una flora gigantesca: 35 specie, alcune terrestri e molte inventate, alte
+da 200 m a quasi 3 km, così i boschi si vedono già da 300 km di quota. Le piante sono
+raccolte a macchie: boschi fittissimi, boschetti, radure quasi spoglie. Foreste di
+latifoglie, conifere, alberi in fiore rosa e giganti coperti di muschio; colonie di funghetti
+turchesi, felci-piuma blu, lanterne arancio e gigli a stella nel sottobosco; vaste paludi di
+acquitrini con cipressi dalle barbe di muschio, canneti e campane luminose come meduse;
+cactus, spine dorate e palme d'oasi nei deserti; alberi carbonizzati, rami in fiamme, coralli
+di brace e schegge d'ossidiana sui suoli vulcanici; cristalli, sfere di ghiaccio accese e
+batuffoli bianchi sui ghiacci; e nel mare basso i Tidecrown, che salgono dal fondo e spuntano
+dall'acqua con una campana viola e tentacoli luminosi. Da vicino le piante sono in 3D e si
+muovono nel vento, e il terreno mostra erba pettinata dal vento, increspature della sabbia,
+cumuli di neve e basalto spaccato.
 
 ## Nazioni
 

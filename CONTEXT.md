@@ -376,7 +376,8 @@ Generazione **procedurale deterministica** da un seed:
   + distanza dal mare.
 - **Biomi**: diagramma di Whittaker (temperatura × umidità) → tundra, taiga, foreste
   temperate, praterie, savana, deserto, foresta pluviale, ghiacciai d'alta quota, più biomi
-  "rari" guidati da un rumore di varietà regionale: paludi (con pozze), calanchi rossi,
+  "rari" guidati da un rumore di varietà regionale: paludi (Swamp calde e Marshland
+  temperate, vaste e con acquitrini, vedi §3.11), calanchi rossi,
   saline, praterie alpine. Il colore varia con continuità dentro ogni bioma (più verde dove
   è umido, più bruno dove è secco, più spento dove è freddo).
   Il deserto del Sahara deve emergere naturalmente dalla fascia secca subtropicale.
@@ -434,63 +435,102 @@ Generazione **procedurale deterministica** da un seed:
 
 ### 3.11 Flora: la vegetazione 3D (`planet/flora.js`, `render/plantModels.js`, `render/vegetation.js`)
 
-Richiesta: ogni bioma con molte piante (anche inventate, mistiche, aliene), boschi rigogliosi
-nei biomi verdi, piante bruciate/fantastiche nei suoli vulcanici e nei ghiacci, una pianta
-che sale dal fondo del mare, spazio libero lasciato per altro, resa definita a ogni zoom,
-effetto 3D e vento da vicino. Ispirazione: le immagini del PDF in `contesto/` (funghi
-giganti luminosi, baccelli turchesi maculati su steli, alberi a ombrello con tronchi
-intrecciati, cristalli, vegetazione cremisi sul suolo vulcanico, batuffoli bianchi ai
-margini dei ghiacci). Il PDF si legge estraendone le immagini JPEG (`/DCTDecode`) con uno
-script Node: non c'è pdftoppm e caricare pdf.js da CDN nella pagina non è consentito.
+Prima richiesta: ogni bioma con molte piante (anche inventate, mistiche, aliene), boschi
+rigogliosi nei biomi verdi, piante bruciate/fantastiche nei suoli vulcanici e nei ghiacci, una
+pianta che sale dal fondo del mare, spazio libero lasciato per altro, resa definita a ogni
+zoom, effetto 3D e vento da vicino. Seconda richiesta: piante **sempre visibili**, già
+distinguibili a 250-300 km di quota (proporzioni cambiate di proposito); distribuzione **non
+uniforme** (boschi fittissimi e zone spoglie); altezze più varie, tra fantastiche e reali;
+terreni più realistici da vicino (erba, neve, sabbia, lava); **vaste paludi** con acquitrini.
+Ispirazione: le immagini in `contesto/` (PDF: funghi giganti luminosi, baccelli turchesi,
+alberi a ombrello con tronchi intrecciati, cristalli, vegetazione cremisi, batuffoli bianchi;
+immagini sciolte: colonie di funghetti turchesi, alberi in fiore rosa dai tronchi
+attorcigliati, rami in fiamme con sfere azzurre, felci-piuma blu, funghi-medusa pendenti,
+giganti coperti di muschio con radici, alberi con chioma a fiore, lanterne arancio su steli,
+gigli a stella, foglie enormi). Il PDF si legge estraendone le immagini JPEG (`/DCTDecode`)
+con uno script Node: non c'è pdftoppm e caricare pdf.js da CDN nella pagina non è consentito.
 
-- **20 specie** (`SPECIES`): Elderoak (latifoglia), Spirepine (conifera), Canopy Titan
-  (gigante a ombrello, tronco intrecciato, lucine turchesi sotto la chioma), Fernpalm,
-  Glowcap (fungo-albero luminoso arancio/viola), Lanternpod (baccelli turchesi maculati),
-  Bramblebush (cespuglio con bacche), Sunshade (ombrello piatto della savana), Mistweeper
-  (salice delle paludi con fronde dalle punte luminose), Prismbloom (cristalli viola),
-  Thornpillar (cactus a colonna), Sunspike (spine dorate), Ashwraith (albero carbonizzato
-  con braci nel tronco), Cinder Coral (corallo cremisi con punte di brace), Snowpuff
-  (batuffoli bianchi), Rimeglass (albero di cristallo di ghiaccio), **Tidecrown** (sale dal
-  fondo del mare: campana viola-rosa come una medusa gigante e tentacoli luminosi che
-  ricadono sull'acqua), Kelp Spire, Duskbloom (fiore-calice magenta), Veilwood (albero
-  sottile con chioma violacea).
-- **Per bioma** (`FLORA`): densità, copertura della macchia (il resto è radura) e mix di
-  specie. Foreste fitte (pluviale, temperata, boreale), boschetti nelle praterie, savana
-  rada, deserto di cactus e spine dorate, paludi di salici e funghi luminosi, ghiacci di
-  cristalli e batuffoli, suoli vulcanici di alberi bruciati e coralli di brace, mare basso
-  di guglie d'alga e Tidecrown (fino a 1800 m di profondità). Sopra la linea delle nevi
-  solo piante di ghiaccio; vicino alla linea specie alpine. Niente piante su fiumi, laghi
-  e lava (nelle paludi l'acqua "latente" 0.41 non conta).
-- **Dimensioni** (un po' più grandi del vero, per leggersi da qualche km): alberi 50-110
-  m, giganti ~200 m, Tidecrown ~160 m sopra l'acqua, cespugli e fiori 20-45 m.
+- **Scala**: la flora di Elyra è gigantesca. Alberi comuni ~1 km, alti 1.2-1.5 km, giganti
+  (Canopy Titan, Mossfather) 2.3-2.8 km, fiori e cespugli 200-500 m, Tidecrown ~1.7 km sopra
+  l'acqua; ogni specie varia del ±30-45%, nel cuore dei boschi le piante crescono di più e il
+  3.5% sono esemplari secolari 1.55 volte più grandi. Così a 300 km una pianta è qualche
+  pixel e a 40 km si riconosce la specie.
+- **35 specie** (`SPECIES`): Elderoak, Spirepine, Canopy Titan, Fernpalm, Glowcap,
+  Lanternpod, Bramblebush, Sunshade, Mistweeper, Prismbloom, Thornpillar, Sunspike,
+  Ashwraith, Cinder Coral, Snowpuff, Rimeglass, **Tidecrown** (dal fondo del mare, campana
+  viola-rosa e tentacoli luminosi), Kelp Spire, Duskbloom, Veilwood; e dalle immagini
+  sciolte: Moonshroom (colonia di funghetti turchesi), Blushwood (fiori rosa, tronco
+  attorcigliato), Emberbriar (rami in fiamme e sfere azzurre, suoli vulcanici), Featherfern
+  (piume blu luminose), Jellybell (campane rosa pendenti con fili luminosi), Mossfather
+  (gigante muschioso con radici e funghi a mensola), Petalcrown (chioma a fiore), Candlewick
+  (lanterne arancio), Starlily (giglio a stella), Broadleaf (foglie enormi), Reedmace
+  (canneto con tife), Bog Cypress (cipresso di palude con barbe di muschio e lucciole),
+  Frostlantern (sfere di ghiaccio accese), Dunepalm (palma dorata delle oasi), Obsidian
+  Bloom (schegge di vetro nero con cuore di magma).
+- **Per bioma** (`FLORA`): densità nel cuore del bosco `d`, frazione coperta da boschi
+  `cover`, densità nelle radure `sparse`, quanto la macchia è "bosco" per lo shader
+  `tree`, specie del bosco `mix` e specie delle radure `open` (fiori, cespugli, funghi).
+  Sopra la linea delle nevi solo piante di ghiaccio; vicino alla linea specie alpine. Niente
+  piante su fiumi, laghi e lava (nelle paludi l'acqua "latente" non conta).
+- **Distribuzione a macchie**: il campo di macchia somma rumori a ~40, ~9, ~2.5 e ~0.8 km.
+  Sopra la soglia del bioma c'è il bosco: rado al margine, fittissimo nel cuore (chiome che
+  si toccano); fuori restano radure quasi spoglie con qualche pianta isolata. I giganti solo
+  nel cuore dei boschi. `node tools/veg-density.mjs [livello] [n]` misura piante per km² e
+  quota di tile spoglie/fitte per bioma (foreste: ~3 piante/km² di media, ~10-25% di tile
+  quasi spoglie, ~50% fitte).
 - **Posizionamento** (nei worker, dentro `computeTileData`): griglia GLOBALE di candidati
-  su ogni faccia del cubo (passo 45 m) con spostamento casuale; valori pseudo-casuali dalle
-  coordinate intere: una tile e le sue figlie vedono le stesse piante. Macchia = rumore a
-  ~2 km e ~0.5 km. Bioma dal vertice più vicino della tile; **quota sullo stesso triangolo
-  che disegna il terreno** (con la bilineare finivano sotto il terreno). Solo per tile di
-  livello >= 10 (~9.8 km); quota di piante tenute per livello `KEEP` (10: 8% ... 15+: 100%):
-  le tile grosse sono lontane. Costo: ~5 ms in più per tile nel worker.
-  `node tools/veg-stats.mjs [lat lon livello]` stampa piante e specie di alcune tile.
+  su ogni faccia del cubo (passo 360 m) con spostamento casuale; valori pseudo-casuali dalle
+  coordinate intere: una tile e le sue figlie vedono le stesse piante. Bioma dal vertice più
+  vicino; **quota sullo stesso triangolo che disegna il terreno** (con la bilineare finivano
+  sotto il terreno). Da tile di livello >= 7 (~78 km): quota di piante tenute per livello
+  `KEEP` (7: 10% ... 12+: 100%) sul **rango effettivo** rank^p, con p che cresce con la
+  taglia: nelle tile lontane restano i grandi alberi e spariscono prima i fiori. ~20-30 ms
+  per tile nel worker. `node tools/veg-stats.mjs [lat lon livello]` stampa piante e specie.
+- **Copertura per lo shader** (`vegCover`, attributo `aEco`): la stessa macchia, calcolata
+  per vertice, dice al terreno dove sono i boschi (`aEco.x`) e quanto è palude (`aEco.y`).
+  Da lontano (oltre ~600 km, senza piante 3D) le foreste e le radure si vedono dove sono le
+  piante; sotto i boschi 3D il suolo è in ombra. Le chiome procedurali dello shader sono alla
+  scala della flora (celle di 500 m).
 - **Modelli** (`plantModels.js`): geometrie low-poly in stile illustrato alte 1, colori per
   vertice, `aWind` (oscillazione crescente con l'altezza, tremolio delle foglie) e
-  `aGlow` (parti luminose). Due livelli di dettaglio: completo per le tile di livello >= 14
-  (vicine), semplificato per le altre (icosaedri semplici, meno lati, niente dettagli
-  minuti: 3-5 volte meno triangoli).
-- **Disegno** (`vegetation.js`): una mesh istanziata per specie e per dettaglio con le
-  istanze di tutte le tile disegnate; buffer ricomposti quando cambia l'insieme delle tile
-  (al più ogni 150 ms, a ogni fotogramma nella ripresa del regista). Posizioni divise in
-  parte alta e bassa float32 (niente tremolio a 25 m dal suolo); base sul terreno esagerato
-  (`uExag` condivisa), affondata del 6%. Vento, foglie che tremano, parti luminose che
-  pulsano, tinta variata per istanza (rotazione in YIQ, forte per i Glowcap), stessa foschia
-  del terreno. Sotto ~2-3 pixel la pianta sparisce in dissolvenza; le piante nuove crescono
-  in 0.6 s, quelle già presenti nella tile padre no.
+  `aGlow` (parti luminose). Tre livelli di dettaglio: completo (chiome su icosfera fine con
+  "grumi" di fogliame), semplificato (senza dettagli minuti) e lontano (ottaedri, cilindri a
+  3 lati senza tappi, niente rami sottili: 20-200 triangoli). Foglie e petali sottili usano
+  sempre l'icosaedro semplice.
+- **Disegno** (`vegetation.js`): una mesh istanziata per specie e per dettaglio (105). Il
+  dettaglio si sceglie **per tile e per specie** dalla dimensione a schermo della pianta nel
+  punto della tile più vicino (completo sopra 44 px, semplificato sopra 16 px), a gradini di
+  un terzo d'ottava con isteresi. Ogni tile tiene le sue istanze già impaccate, ordinate per
+  specie e rango: ricomporre i buffer è una serie di copie; le specie sotto il pixel non si
+  disegnano e quelle lontane piccole si diradano (prese sempre le prime per rango).
+  Posizioni divise in parte alta e bassa float32; base sul terreno esagerato (`uExag`),
+  affondata del 6%. Vento, foglie che tremano, parti luminose che pulsano, tinta variata
+  per istanza (rotazione in YIQ), stessa foschia del terreno. Sotto ~1-2 px la pianta
+  sparisce in dissolvenza; le nuove crescono in 0.6 s, quelle già presenti nella tile padre
+  no.
+- **Prestazioni**: le piante si disegnano **prima del terreno** (renderOrder -1) con
+  profondità logaritmica per vertice (niente gl_FragDepth): i pixel di terreno coperti dalle
+  chiome vengono scartati dal test di profondità invece di essere ombreggiati. Nel bosco a
+  4 km di quota, vista radente con ~50 mila piante: 29 fps contro 30 senza piante (pannello
+  del browser limitato a 30); prima di questo accorgimento 16-20 fps.
 - **Insidia di three.js**: quando il buffer delle istanze cresce bisogna creare una
   geometria NUOVA: three calcola il numero massimo di istanze una volta sola e con il
-  buffer sostituito disegnava solo le prime (si vedevano solo le specie rare).
-- **Da lontano** (oltre ~25 km di quota) le foreste le disegna lo shader del terreno
-  (chiome procedurali); da vicino `uVegNear` le attenua a sottobosco sotto gli alberi 3D.
-- Prestazioni misurate: ~60-70 mila piante a schermo nella foresta a 120 m di quota, 27
-  fps contro 30 senza piante (pannello del browser limitato a 30).
+  buffer sostituito disegnava solo le prime.
+
+#### Terreno da vicino e paludi (`render/materials.js`)
+
+- **Paludi**: due biomi, **Swamp** (caldo: cipressi, salici, funghi e campane luminose) e
+  **Marshland** (temperato: canneti, felci-piuma, funghetti), su pianure basse e umide;
+  insieme ~7% delle terre. Lo shader apre **acquitrini** dove `aEco.y` > 0: pozze e canali
+  da rumori da ~4 km a ~60 m (una scala di ~2 km è sempre attiva, così il mosaico si vede
+  anche da 300 km), acqua ferma scura con lenticchie d'acqua e ninfee, fango e canneti
+  sulle rive. Le piante delle paludi stanno anche nell'acqua.
+- **Texture a scala media** (5-50 m, compaiono sotto i 30-40 km di quota): erba pettinata
+  dal vento (strisce allungate nel verso del vento) con chiazze di fiori selvatici;
+  increspature della sabbia a ~25 m con lato al sole e lato in ombra; cumuli di neve
+  modellati dal vento con il lato in ombra azzurro e brillii dei cristalli che cambiano con
+  la vista; basalto spaccato in placche con crepe scure che vicino alla lava covano ancora
+  (arancio, più forte durante le eruzioni).
 
 ### 3.4 Persistenza (R7 + R8)
 
