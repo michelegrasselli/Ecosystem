@@ -18,6 +18,7 @@
 
 import * as THREE from 'three'
 import { MAX_NATIONS, NATION_GLSL } from '../planet/nations.js'
+import { RELIEF_LIFT } from '../planet/biomes.js'
 
 /** Direzione (costante, 3D) del vento che disegna le increspature. */
 export const RIPPLE_DIR = new THREE.Vector3(0.62, 0.21, -0.75).normalize()
@@ -284,6 +285,12 @@ export function createTerrainMaterial(sunDir) {
         return lnoise(pl, f) * 0.65 + lnoise(pl, f * 2.0) * 0.35;
       }
 
+      // = liftRelief in planet/biomes.js
+      float liftRelief(float h) {
+        float t = clamp((h - 900.0) / 5600.0, 0.0, 1.0);
+        return h * (1.0 + ${RELIEF_LIFT.toFixed(3)} * t * t * (3.0 - 2.0 * t));
+      }
+
       // Peso di una scala di dettaglio di lunghezza d'onda lambda (km): vale 1
       // finché un pixel copre meno di ~1/8 di periodo, 0 oltre ~1/3.
       float scaleW(float lambda, float foot) {
@@ -514,9 +521,12 @@ export function createTerrainMaterial(sunDir) {
         // fasce d'alta quota dalla quota del fragment (stessa linea delle nevi
         // di classifyLandBiome): seguono valli e crinali come isoipse
         float snowLine = 4500.0 - absLat * 30.0; // = SNOW_LINE_BASE/LAT in biomes.js
-        float hJit = vHeight + edgeN * 420.0;
-        float alpineRock = smoothstep(snowLine - 750.0, snowLine - 200.0, hJit);
-        float alpineSnow = smoothstep(snowLine + 20.0, snowLine + 260.0, hJit);
+        // le quote sono sollevate (liftRelief in biomes.js): soglie sollevate
+        // allo stesso modo, e il frastaglio cresce con la pendenza della funzione
+        float snowL = liftRelief(snowLine);
+        float hJit = vHeight + edgeN * 420.0 * snowL / snowLine;
+        float alpineRock = smoothstep(liftRelief(snowLine - 750.0), liftRelief(snowLine - 200.0), hJit);
+        float alpineSnow = smoothstep(liftRelief(snowLine + 20.0), liftRelief(snowLine + 260.0), hJit);
         rock = max(rock, alpineRock * (1.0 - alpineSnow));
         snow = max(snow, alpineSnow);
 

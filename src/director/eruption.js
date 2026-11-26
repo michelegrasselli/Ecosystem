@@ -132,7 +132,7 @@ export function createEruption(planet) {
         const v = it.v
         const k = smooth(it.th, it.th + 0.25, p.volcanoGlow)
         if (k < 0.005) continue
-        const top = R + (v.H / 1000) * exag
+        const top = R + ((v.top ?? v.H) / 1000) * exag
         // visibile solo sull'emisfero rivolto alla camera
         if (v.x * cam.x + v.y * cam.y + v.z * cam.z < R * 1.0005) continue
         const q = project(camera, W, H, v.x * top, v.y * top, v.z * top)
@@ -154,7 +154,7 @@ export function createEruption(planet) {
       const at = p.plumeAt || [0, 0]
       const v = nearestVolcano(at[0], at[1])
       if (v) {
-        const top = R + (v.H / 1000) * exag
+        const top = R + ((v.top ?? v.H) / 1000) * exag
         const base = project(camera, W, H, v.x * top, v.y * top, v.z * top)
         // altezza del pennacchio: ~45 km "esagerati" sopra il cratere
         const hk = top + 45 * Math.max(exag, 1) * 0.6

@@ -382,6 +382,111 @@ export const PLANT_INFO = {
     traits: 'A tree raised above the water on arched stilt roots crusted with white salt, with a glossy crown and seedlings hanging like glowing spindles.',
     lore: 'Saltroot forests hold the coasts together: their roots trap sand and mud and break the storm waves before they reach the land.',
     curio: 'Its seedlings sprout while still on the tree, then fall like darts and plant themselves in the mud below.'
+  },
+  // ------------------------------------------- sottobosco ed erba
+  meadowgrass: {
+    kind: 'Grass',
+    tone: '#6a9a3c',
+    toxic: [0, 'Harmless. Its sweet stems can be chewed like a reed.'],
+    traits: 'Soft green tufts that knit together into a continuous sward wherever the trees leave room. Each blade bends with the wind and springs back, so whole plains ripple like water.',
+    lore: 'Meadowgrass was among the first plants to follow the green wave of the First Seed. It covered the bare ash between the young groves in a single season and held the soil together through the first rains.',
+    curio: 'On windless mornings the blades turn their tips toward the rising sun all at once, and the meadow shifts colour in a slow bright band.'
+  },
+  goldplume: {
+    kind: 'Tall grass',
+    tone: '#c8a24a',
+    toxic: [0, 'Harmless, but the dry plumes catch fire easily.'],
+    traits: 'Tall golden stems topped with pale feathery plumes. It forms endless rustling seas across the savannas and dry steppes.',
+    lore: 'Goldplume learned to live with drought: its roots reach deeper than the plant is tall, and when the dry season burns the plains it regrows from the ground in a matter of days.',
+    curio: 'When the wind combs a goldplume plain, the plumes release a fine pollen that hangs in the air like gold dust at sunset.'
+  },
+  glowclover: {
+    kind: 'Ground cover',
+    tone: '#4ea84a',
+    toxic: [0, 'Harmless. The leaves taste faintly of mint.'],
+    traits: 'A low carpet of round triple leaves dotted with tiny flowers that glow mint-green and lilac after dark.',
+    lore: 'Glowclover spreads beneath the forest canopy, where little light reaches the floor. It stores the light of the day in its flowers and gives it back at night, so the forest floor is never fully dark.',
+    curio: 'A four-leaved Glowclover glows twice as bright as the others; there is roughly one in every ten thousand.'
+  },
+  heather: {
+    kind: 'Dwarf shrub',
+    tone: '#a2609a',
+    toxic: [0, 'Harmless. Its flowers are rich in nectar.'],
+    traits: 'Dense, springy cushions of tiny needle leaves covered in pink and violet bells. It colours whole hillsides on the cold, windy heaths.',
+    lore: 'Heather is one of the hardiest shrubs of Elyra. It climbs the cold hills where the trees give up and turns them purple at the end of every summer.',
+    curio: 'A heather cushion can live for more than a century, growing outward in a ring while its old centre slowly dies.'
+  },
+  velvetmoss: {
+    kind: 'Moss',
+    tone: '#5c9a2e',
+    toxic: [0, 'Harmless.'],
+    traits: 'Bright green cushions as soft as velvet, sprinkled with thin stalks bearing tiny brown spore capsules. It covers stones, roots and fallen trunks.',
+    lore: 'Velvet Moss was already growing in the damp shadows before the first trees. It drinks fog and rain like a sponge and releases the water slowly, keeping the forests moist even in the dry months.',
+    curio: 'A single cushion can hold twenty times its own weight in water.'
+  },
+  frostlichen: {
+    kind: 'Lichen',
+    tone: '#a8c4cc',
+    toxic: [1, 'Bitter and slightly irritant if eaten raw.'],
+    traits: 'Flat grey-blue rosettes crusted onto rock and frozen soil, with frilled edges that sparkle with frost.',
+    lore: 'Frostlichen grows where nothing else can: on bare rock above the snow line and at the edges of the ice sheets. It eats the stone itself, very slowly, turning it into the first thin soil.',
+    curio: 'It grows less than a millimetre a year: a rosette a few centimetres wide may be older than the oldest forests.'
+  },
+  marshsedge: {
+    kind: 'Sedge',
+    tone: '#4a6a32',
+    toxic: [0, 'Harmless, but the leaf edges are sharp enough to cut.'],
+    traits: 'Arching tufts of long dark-green blades with small brown seed spikes, filling every bank and shallow of the marshes and swamps.',
+    lore: 'Marsh Sedge grows on the soft ground between the lagoons. Its dense roots bind the mud, and over the centuries the sedge beds slowly turn open water into firm land.',
+    curio: 'Its stems are triangular in cross-section, unlike any grass, so they stand firm in the deepest mud.'
+  },
+  dunegrass: {
+    kind: 'Beach grass',
+    tone: '#8aa47a',
+    toxic: [0, 'Harmless.'],
+    traits: 'Sparse tufts of stiff blue-green blades that lean with the prevailing wind on dunes and sandy shores.',
+    lore: 'Dune Grass grows faster when it is buried: every storm that covers it with sand makes it climb higher. In this way it builds the dunes that protect the coasts from the sea.',
+    curio: 'In a drought its blades curl into tubes to keep their moisture inside.'
+  },
+  cinderwort: {
+    kind: 'Fire herb',
+    tone: '#d8582a',
+    toxic: [2, 'The glowing tips are hot enough to blister the skin.'],
+    traits: 'Low rosettes of grey-violet leaves on black ash, each leaf ending in a tip that glows like an ember.',
+    lore: 'Cinderwort is always the first plant to return after an eruption. It sprouted on the warm ash of the Ninety-Year Heartbeat before anything else, and the heat of the ground keeps its tips alight.',
+    curio: 'On cold nights a cinderwort field looks like a bed of coals that never goes out.'
+  },
+  shimmergrass: {
+    kind: 'Crystal grass',
+    tone: '#7a9ae8',
+    toxic: [0, 'Harmless, but the blades are brittle and sharp.'],
+    traits: 'Translucent blades of living glass, blue and violet, that catch the light and glow at their tips.',
+    lore: 'Shimmergrass carpets the floors of the Crystal Valleys between the great spires. Its blades grow from the same mineral sap as the crystals, a few grains at a time.',
+    curio: 'When the wind blows through a field of Shimmergrass it rings softly, like a thousand tiny bells.'
+  },
+  fiddlefern: {
+    kind: 'Fern',
+    tone: '#5a9a34',
+    toxic: [1, 'The young coils are bitter and upset the stomach if eaten raw.'],
+    traits: 'A low fern with arching fronds and new leaves still rolled up into spirals, like the scroll of a violin.',
+    lore: 'Fiddleferns fill the warm, dim floors of the rainforests and swamps. They are among the oldest plants of Elyra, as old as the Fernpalms that tower over them.',
+    curio: 'The coiled shoots glow faintly as they unroll, a soft green spark in the dark understory.'
+  },
+  stonebutton: {
+    kind: 'Succulent',
+    tone: '#b29a84',
+    toxic: [0, 'Harmless. Full of bitter water.'],
+    traits: 'Pairs of smooth, rounded leaves the colour of pebbles, split by a narrow slit from which a single white or yellow star-flower opens after the rare rains.',
+    lore: 'Stonebuttons hide among the stones of the deserts, badlands and salt flats. Almost all of the plant lies underground; only the flat tips show, letting light in like little windows.',
+    curio: 'They are so like pebbles that the only way to find them is to wait for the rain and watch for the flowers.'
+  },
+  starmeadow: {
+    kind: 'Wildflowers',
+    tone: '#e8d870',
+    toxic: [0, 'Harmless.'],
+    traits: 'Thin stems with tiny star-shaped flowers, white, yellow, pale blue and pink, scattered through the grass of meadows and high pastures.',
+    lore: 'Starmeadow is not one plant but a whole family of small flowers that always grow together. They spread across the clearings in the first spring after the First Seed and have bloomed there every year since.',
+    curio: 'Each colour opens at a different hour: white at dawn, yellow at noon, blue in the afternoon, pink at dusk.'
   }
 }
 

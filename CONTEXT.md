@@ -189,6 +189,20 @@ dall'utente: **va guardata a ogni nuova richiesta** e resta sempre nei commit.
 - Il generatore ha creste secondarie deformate sulle montagne (valli di ~2.5 km), colline
   di 6 km / 2 km e dossi di 400 m / 80 m. I laghi stanno al livello del bacino
   (`baseLevel - 200`), non scavati fino al livello del mare.
+- **Più dislivello** (richiesta: montagne e vulcani devono svettare sulla flora colossale, il
+  resto non deve essere piatto):
+  - passo 5a, **colline** di 30-160 km alte fino a ~1 km su tutta la terraferma, sempre sopra
+    la pianura; fasce di colline fitte alternate a pianure più dolci, più basse dove il
+    clima è umido (paludi e pianure alluvionali restano piatte);
+  - **sollevamento** `liftRelief(h)` (biomes.js, copiato in GLSL in materials.js): a fine
+    `sample()`, sopra ~900 m la quota cresce sempre più in fretta (3 km -> 4.4 km, 6 km ->
+    15 km, 10 km -> 25 km; vetta massima ~24 km). Clima e biomi sono decisi sulla quota
+    "vera": la linea delle nevi (shader e flora) si confronta con `liftRelief(snowLine)`.
+    È monotona: laghi e fiumi restano piatti e il segno (terra/mare) non cambia;
+  - entrambi spenti con `newLands = false`: vulcani e capitali degli episodi restano gli stessi;
+  - **crateri**: fondo piatto sotto l'orlo (prima il cono saliva fino al centro e il lago di
+    lava faceva da cupola; col sollevamento si vedeva). `volcano.top` è la quota vera del
+    fondo, usata dagli effetti delle eruzioni (eruption.js) al posto di `H`.
 
 ### 3.9 Dettaglio nello shader (`render/materials.js`)
 
@@ -480,7 +494,15 @@ con uno script Node: non c'è pdftoppm e caricare pdf.js da CDN nella pagina non
   shader e texture ravvicinate. La camera scende al massimo a **40 km** (`MIN_ALTITUDE`):
   sotto i ~420 km la vista si inclina verso l'orizzonte (a 40 km quasi radente). Le
   sceneggiature degli episodi impostano la quota direttamente e non sono limitate.
-- **47 specie** (`SPECIES`): Elderoak, Spirepine, Canopy Titan, Fernpalm, Glowcap,
+- **Sottobosco** (13 specie basse, id 47-59): Meadowgrass, Goldplume Grass, Glowclover,
+  Heather, Velvet Moss, Frostlichen, Marsh Sedge, Dune Grass, Cinderwort, Shimmergrass,
+  Fiddlefern, Stonebutton (sassi viventi), Starmeadow (fiori di prato). Ogni bioma ha uno
+  strato `ground` (`gd` = densità, mix di specie): in ogni cella, oltre alla pianta
+  normale, fino a `GROUND_SLOTS` = 3 posti con hash diversi (il posto 0 usa gli hash di
+  prima: alberi e fiori non cambiano). Pieno nelle radure, più rado sotto le chiome fitte,
+  niente in acqua e nelle lagune. I modelli sono più larghi che alti (`WIDE` in
+  plantModels.js allarga x/z), così poche piante coprono il suolo.
+- **60 specie** in tutto; le prime 47 (`SPECIES`): Elderoak, Spirepine, Canopy Titan, Fernpalm, Glowcap,
   Lanternpod, Bramblebush, Sunshade, Mistweeper, Prismbloom, Thornpillar, Sunspike,
   Ashwraith, Cinder Coral, Snowpuff, Rimeglass, **Tidecrown** (dal fondo del mare, campana
   viola-rosa e tentacoli luminosi), Kelp Spire, Duskbloom, Veilwood; e dalle immagini

@@ -115,6 +115,19 @@ export const PALETTE = {
  * @returns {number} id del bioma
  */
 /** Linea delle nevi: quota in metri all'equatore e calo per grado di latitudine. */
+/**
+ * Sollevamento del rilievo (planet.sample lo applica alla quota finale, sopra
+ * il livello del mare): le pianure restano come sono, sopra ~900 m le quote
+ * crescono sempre più (6 km -> ~15 km, 10 km -> 25 km), così montagne e
+ * vulcani svettano sulla flora colossale. Monotona: le soglie di quota (linea
+ * delle nevi) si spostano con la stessa funzione. Uguale in materials.js.
+ */
+export const RELIEF_LIFT = 1.5
+export function liftRelief(h) {
+  const t = Math.min(Math.max((h - 900) / 5600, 0), 1)
+  return h * (1 + RELIEF_LIFT * t * t * (3 - 2 * t))
+}
+
 export const SNOW_LINE_BASE = 4500
 export const SNOW_LINE_LAT = 30
 

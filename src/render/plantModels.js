@@ -853,6 +853,192 @@ const MODELS = {
 }
 
 /** Prisma di cristallo: fusto esagonale e punta, inclinato (tilt) verso yaw. */
+// ------------------------------------------------ sottobosco ed erba
+// Piante basse e LARGHE (fino a ~2 volte l'altezza di raggio): poche per
+// cella bastano a coprire le radure. Da lontano resta la base a cupola.
+const fan = (n, f) => {
+  for (let k = 0; k < n; k++) {
+    const a = k * 2.399 + 0.3
+    const r = Math.sqrt((k + 0.5) / n)
+    f(k, a, r, ((k * 37) % 11) / 11)
+  }
+}
+Object.assign(MODELS, {
+  meadowgrass(b) {
+    // ciuffi d'erba verde: una zolla bassa e lame sottili che si piegano al vento
+    b.add(dome, { s: [1.5, 0.22, 1.5], c: [0.2, 0.34, 0.12], c2: [0.3, 0.46, 0.17], keep: true })
+    fan(b.far ? 6 : b.lo ? 14 : 30, (k, a, r, q) => {
+      const len = 0.55 + 0.45 * q
+      b.add(shard(0.05, len), { p: [Math.cos(a) * r * 1.45, 0.05, Math.sin(a) * r * 1.45], r: [0.15 + 0.45 * r, a, 0], c: [0.24, 0.42, 0.14], c2: [0.55, 0.72, 0.3], flutter: true, keep: true })
+    })
+  },
+  goldplume(b) {
+    // erba alta della savana: steli dorati con pennacchi chiari
+    b.add(dome, { s: [1.1, 0.2, 1.1], c: [0.42, 0.34, 0.15], c2: [0.58, 0.48, 0.22], keep: true })
+    fan(b.far ? 5 : b.lo ? 11 : 22, (k, a, r, q) => {
+      const x = Math.cos(a) * r * 1.1
+      const z = Math.sin(a) * r * 1.1
+      const tilt = 0.1 + 0.35 * r
+      b.add(shard(0.04, 0.55 + 0.25 * q), { p: [x, 0.04, z], r: [tilt + 0.25, a + 0.8, 0], c: [0.5, 0.42, 0.18], c2: [0.8, 0.68, 0.34], flutter: true, keep: true })
+      if (k % 2 === 0) {
+        const tip = stem(b, [x, 0.04, z], 0.75 + 0.25 * q, 0.012, 0.008, a, tilt, [0.55, 0.46, 0.22], { c2: [0.8, 0.7, 0.4] })
+        b.add(blobLo, { p: tip, r: [tilt, a, 0], s: [0.05, 0.16, 0.05], c: [0.88, 0.8, 0.55], c2: [0.98, 0.92, 0.72], keep: true })
+      }
+    })
+  },
+  glowclover(b) {
+    // tappeto di trifoglio: foglie tonde a tre e minuscoli fiori che brillano
+    b.add(dome, { s: [2.1, 0.35, 2.1], c: [0.14, 0.3, 0.12], c2: [0.24, 0.46, 0.18], keep: true })
+    fan(b.far ? 0 : b.lo ? 12 : 22, (k, a, r) => {
+      const x = Math.cos(a) * r * 1.9
+      const z = Math.sin(a) * r * 1.9
+      const y = 0.34 * Math.sqrt(Math.max(0, 1 - r * r * 0.9)) + 0.04
+      for (let j = 0; j < (b.lo ? 1 : 2); j++) {
+        const aj = a + j * 2.094
+        b.add(blobLo, { p: [x + Math.cos(aj) * 0.12, y, z + Math.sin(aj) * 0.12], s: [0.14, 0.035, 0.14], c: [0.22, 0.5, 0.2], c2: [0.36, 0.66, 0.26], keep: true })
+      }
+    })
+    fan(b.far ? 4 : b.lo ? 8 : 16, (k, a, r) => {
+      const x = Math.cos(a + 1) * r * 1.8
+      const z = Math.sin(a + 1) * r * 1.8
+      const y = 0.34 * Math.sqrt(Math.max(0, 1 - r * r * 0.9)) + 0.08
+      b.add(blobLo, { p: [x, y, z], s: b.far ? 0.12 : 0.06, c: k % 3 ? [0.6, 1.0, 0.85] : [0.95, 0.85, 1.0], glow: 1, keep: true })
+    })
+  },
+  heather(b) {
+    // cuscini di erica: masse tonde viola-rosa punteggiate di fiorellini
+    const C = [0.36, 0.2, 0.34]
+    const C2 = [0.66, 0.38, 0.62]
+    const humps = [[0, 0, 0.85], [0.95, 0.3, 0.6], [-0.85, -0.45, 0.65], [0.2, -1.05, 0.55], [-0.4, 0.95, 0.5]]
+    for (const [x, z, s] of humps.slice(0, b.far ? 3 : 5)) b.add(b.far ? octa : blob, { p: [x, 0, z], s: [s, s * 0.75, s], c: C, c2: C2, keep: true })
+    if (!b.far) {
+      fan(b.lo ? 10 : 26, (k, a, r) => {
+        const x = Math.cos(a) * r * 1.2
+        const z = Math.sin(a) * r * 1.2
+        b.add(blobLo, { p: [x, 0.62 * Math.sqrt(Math.max(0, 1 - r * r * 0.7)), z], s: 0.07, c: k % 2 ? [0.85, 0.5, 0.82] : [0.95, 0.72, 0.92], keep: true })
+      })
+    }
+  },
+  velvetmoss(b) {
+    // cuscini di muschio vellutato, verde acceso, con capsule sottili
+    const M = [0.2, 0.36, 0.12]
+    const M2 = [0.42, 0.62, 0.2]
+    const humps = [[0, 0, 1.1], [1.15, 0.45, 0.75], [-1.1, -0.5, 0.8], [0.35, -1.25, 0.7], [-0.55, 1.2, 0.65], [1.3, -0.9, 0.5]]
+    for (const [x, z, s] of humps.slice(0, b.far ? 3 : 6)) b.add(dome, { p: [x, 0, z], s: [s, s * 0.7, s], c: M, c2: M2, keep: true })
+    if (!b.lo) {
+      fan(10, (k, a, r) => {
+        const x = Math.cos(a) * r * 1.1
+        const z = Math.sin(a) * r * 1.1
+        const tip = stem(b, [x, 0.55, z], 0.35, 0.012, 0.01, a, 0.2, [0.5, 0.42, 0.2])
+        b.add(blobLo, { p: tip, s: [0.04, 0.07, 0.04], c: [0.62, 0.4, 0.22] })
+      })
+    }
+  },
+  frostlichen(b) {
+    // rosette piatte di lichene grigio-azzurro, con orli che brillano di brina
+    const C = [0.5, 0.58, 0.6]
+    const C2 = [0.78, 0.88, 0.9]
+    fan(b.far ? 3 : b.lo ? 6 : 10, (k, a, r, q) => {
+      const s = 0.45 + 0.4 * q
+      b.add(dome, { p: [Math.cos(a) * r * 1.8, 0, Math.sin(a) * r * 1.8], s: [s, 0.6 + 0.4 * q, s], c: C, c2: C2, keep: true })
+    })
+    fan(b.far ? 3 : b.lo ? 6 : 14, (k, a, r) => {
+      b.add(blobLo, { p: [Math.cos(a + 0.5) * r * 1.8, 0.5, Math.sin(a + 0.5) * r * 1.8], s: b.far ? 0.12 : 0.07, c: [0.7, 0.95, 1.0], glow: 0.8, keep: true })
+    })
+  },
+  marshsedge(b) {
+    // carice di palude: lame lunghe e arcuate verde scuro, spighette brune
+    b.add(dome, { s: [0.9, 0.15, 0.9], c: [0.14, 0.24, 0.12], keep: true })
+    fan(b.far ? 6 : b.lo ? 12 : 26, (k, a, r, q) => {
+      const x = Math.cos(a) * r * 0.8
+      const z = Math.sin(a) * r * 0.8
+      b.add(shard(0.045, 0.7 + 0.3 * q), { p: [x, 0.02, z], r: [0.3 + 0.6 * r, a, 0], c: [0.16, 0.3, 0.14], c2: [0.4, 0.52, 0.24], flutter: true, keep: true })
+      if (!b.lo && k % 4 === 0) {
+        const tip = stem(b, [x, 0.02, z], 0.85, 0.01, 0.008, a, 0.15 + 0.2 * r, [0.3, 0.38, 0.18])
+        b.add(blobLo, { p: tip, s: [0.03, 0.09, 0.03], c: [0.42, 0.3, 0.16] })
+      }
+    })
+  },
+  dunegrass(b) {
+    // ciuffi radi delle sabbie: lame rigide verde-azzurre, piegate dal vento
+    fan(b.far ? 5 : b.lo ? 9 : 18, (k, a, r, q) => {
+      const x = Math.cos(a) * r * 0.75
+      const z = Math.sin(a) * r * 0.75
+      b.add(shard(0.035, 0.6 + 0.4 * q), { p: [x, 0, z], r: [0.25 + 0.35 * q, 0.7 + 0.25 * Math.sin(k), 0], c: [0.36, 0.46, 0.36], c2: [0.7, 0.74, 0.55], flutter: true, keep: true })
+    })
+    b.add(dome, { s: [0.55, 0.1, 0.55], c: [0.6, 0.55, 0.4], keep: true })
+  },
+  cinderwort(b) {
+    // rosette di foglie grigio-viola sulla cenere, punte accese come braci
+    b.add(dome, { s: [1.0, 0.25, 1.0], c: [0.14, 0.11, 0.12], c2: [0.22, 0.17, 0.18], keep: true })
+    const groups = b.far ? [[0, 0]] : [[0.45, 0.2], [-0.5, -0.35]]
+    for (const [gx, gz] of groups) {
+      fan(b.lo ? 5 : 8, (k, a, r) => {
+        const L = 0.5 + 0.2 * r
+        const tilt = 1.1 - 0.3 * r
+        const tip = stem(b, [gx, 0.05, gz], L, 0.06, 0.03, a, tilt, [0.24, 0.17, 0.2], { c2: [0.4, 0.26, 0.28], stiff: true })
+        b.add(blobLo, { p: tip, s: 0.07, c: [1.0, 0.42, 0.12], glow: 1, keep: true })
+      })
+    }
+  },
+  shimmergrass(b) {
+    // erba di vetro: lame traslucide azzurro-viola che si accendono in punta
+    b.add(dome, { s: [1.3, 0.15, 1.3], c: [0.16, 0.13, 0.3], keep: true })
+    fan(b.far ? 6 : b.lo ? 12 : 26, (k, a, r, q) => {
+      const x = Math.cos(a) * r * 1.25
+      const z = Math.sin(a) * r * 1.25
+      const pink = k % 5 === 0
+      b.add(shard(0.05, 0.6 + 0.4 * q), { p: [x, 0.03, z], r: [0.1 + 0.4 * r, a, 0], c: pink ? [0.5, 0.25, 0.6] : [0.22, 0.35, 0.7], c2: pink ? [1.0, 0.7, 0.95] : [0.6, 0.9, 1.0], glow: (kk) => 0.05 + 0.6 * kk * kk, stiff: true, keep: true })
+    })
+  },
+  fiddlefern(b) {
+    // felce bassa: fronde ad arco e pastorali ancora arrotolati
+    b.add(dome, { s: [0.6, 0.15, 0.6], c: [0.14, 0.26, 0.1], keep: true })
+    fan(b.far ? 4 : b.lo ? 7 : 11, (k, a, r, q) => {
+      const len = 1.0 + 0.4 * q
+      b.add(b.B, { p: [Math.cos(a) * len * 0.55, 0.42, Math.sin(a) * len * 0.55], r: [0, -a, -0.3], s: [len * 0.6, 0.05, 0.16], c: [0.2, 0.42, 0.14], c2: [0.42, 0.66, 0.22], flutter: true, keep: true })
+    })
+    if (!b.far) {
+      for (let k = 0; k < 3; k++) {
+        const a = k * 2.1 + 0.4
+        const tip = stem(b, [Math.cos(a) * 0.1, 0, Math.sin(a) * 0.1], 0.75, 0.03, 0.025, a, 0.15, [0.3, 0.5, 0.18])
+        b.add(blobLo, { p: tip, s: [0.1, 0.12, 0.1], c: [0.45, 0.65, 0.25], glow: 0.25 })
+      }
+    }
+  },
+  stonebutton(b) {
+    // "sassi viventi": coppie di cupole lisce color pietra, divise da una
+    // fessura, e qualche fiore a stella che spunta dal mezzo
+    const tones = [[0.62, 0.52, 0.44], [0.55, 0.5, 0.52], [0.7, 0.6, 0.5]]
+    fan(b.far ? 3 : b.lo ? 5 : 7, (k, a, r, q) => {
+      const x = Math.cos(a) * r * 1.4
+      const z = Math.sin(a) * r * 1.4
+      const s = 0.35 + 0.2 * q
+      const c = tones[k % 3]
+      for (const side of [-1, 1]) {
+        b.add(dome, { p: [x + Math.cos(a) * s * 0.55 * side, 0, z + Math.sin(a) * s * 0.55 * side], s: [s * 0.55, 0.85, s * 0.55], c, c2: mixc(c, [0.9, 0.85, 0.8], 0.4), stiff: true, keep: true })
+      }
+      if (!b.lo && k % 3 === 0) b.add(blobLo, { p: [x, 0.85, z], s: [0.18, 0.05, 0.18], c: k % 2 ? [1.0, 0.86, 0.3] : [1.0, 0.96, 0.9], keep: true })
+    })
+  },
+  starmeadow(b) {
+    // fiori di prato minuti: steli sottili, corolle bianche, gialle e celesti
+    b.add(dome, { s: [1.4, 0.3, 1.4], c: [0.22, 0.36, 0.14], c2: [0.32, 0.5, 0.2], keep: true })
+    const cols = [[1.0, 0.98, 0.92], [1.0, 0.85, 0.3], [0.6, 0.75, 1.0], [1.0, 0.65, 0.8]]
+    fan(b.far ? 8 : b.lo ? 14 : 22, (k, a, r, q) => {
+      const x = Math.cos(a) * r * 1.3
+      const z = Math.sin(a) * r * 1.3
+      const h = 0.55 + 0.45 * q
+      if (b.far) {
+        b.add(blobLo, { p: [x, 0.3 + h * 0.4, z], s: 0.12, c: cols[k % 4], keep: true })
+        return
+      }
+      const tip = stem(b, [x, 0.1, z], h, 0.012, 0.01, a, 0.1 + 0.2 * r, [0.3, 0.5, 0.2])
+      b.add(blobLo, { p: tip, s: [0.1, 0.04, 0.1], c: cols[k % 4], glow: k % 7 === 0 ? 0.5 : 0, keep: true })
+    })
+  }
+})
+
 function prism(b, base, len, r, tilt, yaw, c, c2, glow) {
   const body = len * 0.78
   b.add(cyl(r, r * 1.05, body, 6), { p: base, r: [tilt, yaw, 0], c, c2: mixc(c, c2, 0.7), glow: (k) => glow(k * 0.78), stiff: true })
@@ -861,6 +1047,8 @@ function prism(b, base, len, r, tilt, yaw, c, c2, glow) {
   b.add(cone(r, len - body, 6), { p: [base[0] + d.x, base[1] + d.y, base[2] + d.z], r: [tilt, yaw, 0], c: mixc(c, c2, 0.7), c2, glow: (k) => glow(0.78 + 0.22 * k), stiff: true })
 }
 const mixc = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]
+
+const WIDE = { meadowgrass: 1.7, goldplume: 1.5, glowclover: 1.6, heather: 1.5, velvetmoss: 1.6, frostlichen: 1.6, marshsedge: 1.6, dunegrass: 1.5, cinderwort: 1.6, shimmergrass: 1.6, fiddlefern: 1.4, stonebutton: 1.5, starmeadow: 1.7 }
 
 /**
  * Geometrie di tutte le specie, nell'ordine di SPECIES (planet/flora.js).
@@ -877,7 +1065,14 @@ export function buildPlantGeometries(species, lod = 0) {
     const fn = MODELS[s.key]
     if (!fn) throw new Error('missing plant model: ' + s.key)
     fn(b)
-    return b.build()
+    const g = b.build()
+    // sottobosco: più largo che alto, così poche piante coprono le radure
+    const w = WIDE[s.key]
+    if (w) {
+      const P = g.attributes.position
+      for (let i = 0; i < P.count; i++) P.setXYZ(i, P.getX(i) * w, P.getY(i), P.getZ(i) * w)
+    }
+    return g
   })
 }
 
@@ -917,5 +1112,18 @@ export const HUE_VARIATION = {
   tidelotus: 0.7,
   conchspire: 0.4,
   saltroot: 0.15,
-  kelpspire: 0.3
+  kelpspire: 0.3,
+  meadowgrass: 0.2,
+  goldplume: 0.15,
+  glowclover: 0.3,
+  heather: 0.45,
+  velvetmoss: 0.15,
+  frostlichen: 0.3,
+  marshsedge: 0.15,
+  dunegrass: 0.2,
+  cinderwort: 0.3,
+  shimmergrass: 0.7,
+  fiddlefern: 0.2,
+  stonebutton: 0.5,
+  starmeadow: 0.5
 }

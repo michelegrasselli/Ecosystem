@@ -10,7 +10,7 @@ import {
   MAX_LAND_RISE,
   MAX_MOUNTAIN_HEIGHT
 } from './constants.js'
-import { BIOME, classifyLandBiome, classifySeaBiome, rgbFor, SNOW_LINE_BASE, SNOW_LINE_LAT } from './biomes.js'
+import { BIOME, classifyLandBiome, classifySeaBiome, liftRelief, rgbFor, SNOW_LINE_BASE, SNOW_LINE_LAT } from './biomes.js'
 import { nearestFeature, createFeatureSample } from './features.js'
 
 /**
@@ -42,6 +42,10 @@ export class Planet {
     this.newLands = false
     this.volcanoes = pickVolcanoes(this)
     this.newLands = options.newLands ?? true
+    // quota vera del fondo del cratere (rilievo sollevato): serve agli effetti
+    // delle eruzioni, che partono da lì
+    const smp = createSample()
+    for (const v of this.volcanoes) v.top = Math.max(0, this.sample(v.x, v.y, v.z, 1, smp).height)
   }
 
   /** Crea un oggetto riutilizzabile per il campionamento. */
@@ -198,6 +202,24 @@ export class Planet {
           nd.noise(px * 235 + 4.7, py * 235 - 2.3, pz * 235 + 9.1) * 0.72 +
           nd.noise(px * 690 - 8.2, py * 690 + 5.5, pz * 690 - 1.4) * 0.28
         height += hills * 170 * inland
+      }
+
+      // ---------- 5a. Colline ----------
+      // Paesaggio mosso anche lontano dalle catene: dossi e colline di 30-160
+      // km alti fino a ~1 km, sempre sopra la pianura (niente pozze sotto il
+      // mare). Fasce di colline fitte si alternano a pianure più dolci; le
+      // terre umide (paludi, pianure alluvionali) restano più basse.
+      // Spente nella geografia degli episodi I-V (newLands = false), così
+      // vulcani e capitali scelti allora restano gli stessi.
+      if (this.newLands && q > 0.22) {
+        const prov = 0.3 + 0.7 * smoothstep(-0.3, 0.3, fbm(n, px * 4.3 + 17.7, py * 4.3 - 23.1, pz * 4.3 + 8.8, 2))
+        const wetN = fbm(n, px * 2.25 - 55.5, py * 2.25 + 17.1, pz * 2.25 - 33.3, 3)
+        const dry = 1 - 0.65 * smoothstep(0.05, 0.35, wetN)
+        const h1 = nd.noise(px * 40 - 3.9, py * 40 + 12.2, pz * 40 - 6.4) * 0.5 + 0.5
+        const h2 = nd.noise(px * 118 + 9.3, py * 118 - 4.8, pz * 118 + 2.6) * 0.5 + 0.5
+        const h3 = nd.noise(px * 330 - 1.7, py * 330 + 8.4, pz * 330 - 5.5) * 0.5 + 0.5
+        const hill = h1 * h1 * 0.55 + h2 * h2 * 0.32 + h3 * h3 * 0.13
+        height += hill * 1050 * prov * dry * inland
       }
 
       // ---------- 5b. Dettaglio locale ----------
@@ -366,7 +388,11 @@ export class Planet {
         if (sp < VOLC_CRATER * 1.5) {
           const c = sp / VOLC_CRATER
           height += H * 0.035 * Math.exp(-Math.pow((c - 1) / 0.22, 2))
-          height -= H * 0.13 * (1 - smoothstep(0.62, 1.0, c))
+          // fondo piatto SOTTO l'orlo (prima il profilo del cono restava in
+          // salita fino al centro e il lago di lava faceva da cupola)
+          const base0 = isSea ? 0 : baseLevel
+          const rimH = base0 + (peak - base0) * Math.pow(1 - VOLC_CRATER, isSea ? 1.45 : 2.3)
+          height = lerp(height, rimH - H * 0.09, 1 - smoothstep(0.62, 1.0, c))
           if (bv.lava) {
             const lake = 1 - smoothstep(0.62, 0.78, c)
             if (lake > 0) molten = Math.max(molten, lake)
@@ -709,7 +735,10 @@ export class Planet {
       b = lerp(b, 0.07, k)
     }
 
-    out.height = height
+    // montagne e vulcani svettano: sopra ~900 m la quota cresce sempre più
+    // in fretta (fino a ~2.5 volte sulle cime). Clima e biomi sono già
+    // decisi sulla quota "vera": la neve si sposta con liftRelief.
+    out.height = height > 0 && this.newLands ? liftRelief(height) : height
     out.water = water
     out.ice = ice
     out.lava = molten

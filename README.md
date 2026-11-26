@@ -93,8 +93,8 @@ avvio. Il salvataggio automatico della sola camera avviene anche alla chiusura d
 
 ## Flora
 
-Elyra è coperta da una flora colossale: 47 specie, alcune terrestri e molte inventate, alte
-da 1.5 km a oltre 20 km, così da 300 km di quota si esplora tra gli alberi e dallo spazio si
+Elyra è coperta da una flora colossale: 60 specie, alcune terrestri e molte inventate, alte
+da 0.35 km a oltre 20 km, così da 300 km di quota si esplora tra gli alberi e dallo spazio si
 vedono le macchie dei boschi. Le piante sono
 raccolte a macchie: boschi fittissimi, boschetti, radure quasi spoglie. Foreste di
 latifoglie, conifere, alberi in fiore rosa e giganti coperti di muschio; colonie di funghetti
@@ -107,7 +107,10 @@ di brace e schegge d'ossidiana sui suoli vulcanici; cristalli, sfere di ghiaccio
 batuffoli bianchi sui ghiacci; e nel mare basso ventagli di corallo, alghe dalle vesciche
 dorate, anemoni dai tentacoli turchesi, conchiglie giganti con la perla accesa, loti, torri
 a spirale di conchiglia, mangrovie e i Tidecrown, che salgono dal fondo e spuntano
-dall'acqua con una campana viola e tentacoli luminosi.
+dall'acqua con una campana viola e tentacoli luminosi. Sotto e fra i boschi un sottobosco
+basso riempie le radure: erba, erba dorata della savana, trifoglio luminoso, erica, muschio,
+licheni di brina, carici di palude, erba delle dune, rosette di brace sulla cenere, erba di
+vetro nelle Valli dei Cristalli, felci, sassi viventi nei deserti e fiori di prato.
 
 **Enciclopedia**: fermando il mouse per un attimo su un punto del pianeta compare l'elenco
 delle piante del bioma; passando su una pianta si apre la sua pagina, con una "foto"
@@ -126,6 +129,13 @@ terreno anche durante zoom e spostamenti. I confini sono una linea scura
 tratteggiata su un alone chiaro, leggibile da vicino e anche dallo spazio. L'HUD descrive il punto
 sotto il mouse: coordinate, quota del terreno, nazione, bioma e temperatura (più la quota
 della camera).
+
+## Rilievo
+
+Montagne e vulcani svettano sulla flora: sopra ~900 m la quota viene "sollevata" sempre di
+più (vette fino a ~24 km, fuori scala come le piante), mentre clima e biomi restano quelli
+della quota vera. Fuori dalle catene la terraferma è mossa da colline di 30-160 km alte
+fino a ~1 km; paludi e pianure umide restano piatte.
 
 ## Vulcani e isole
 

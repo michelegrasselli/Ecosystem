@@ -30,7 +30,7 @@
 // LOD: le tile grosse (lontane) tengono solo una parte delle piante, in base
 // al rango: prima spariscono le piccole, i grandi alberi restano a lungo.
 
-import { BIOME, SNOW_LINE_BASE, SNOW_LINE_LAT } from './biomes.js'
+import { BIOME, liftRelief, SNOW_LINE_BASE, SNOW_LINE_LAT } from './biomes.js'
 import { SCENE_RADIUS } from './constants.js'
 
 // ------------------------------------------------------------- specie
@@ -85,7 +85,22 @@ export const SPECIES = [
   { id: 43, key: 'pearlmouth', name: 'Pearlmouth', h: 0.24, var: 0.35 }, // conchiglia gigante socchiusa con perla luminosa
   { id: 44, key: 'tidelotus', name: 'Tide Lotus', h: 0.3, var: 0.4 }, // foglie galleggianti e fiori di loto bianco-azzurri
   { id: 45, key: 'conchspire', name: 'Conch Spire', h: 1.1, var: 0.3 }, // torre a spirale di conchiglia con punta luminosa
-  { id: 46, key: 'saltroot', name: 'Saltroot', h: 0.9, var: 0.3 } // mangrovia su radici ad arco, incrostate di sale
+  { id: 46, key: 'saltroot', name: 'Saltroot', h: 0.9, var: 0.3 }, // mangrovia su radici ad arco, incrostate di sale
+  // sottobosco ed erba: piante basse e larghe che riempiono radure e spazi
+  // vuoti (strato "ground" di ogni bioma, vedi placeVegetation)
+  { id: 47, key: 'meadowgrass', name: 'Meadowgrass', h: 0.14, var: 0.35 }, // ciuffi d'erba verde
+  { id: 48, key: 'goldplume', name: 'Goldplume Grass', h: 0.24, var: 0.35 }, // erba alta dorata con pennacchi
+  { id: 49, key: 'glowclover', name: 'Glowclover', h: 0.07, var: 0.35 }, // tappeto di trifoglio con puntini luminosi
+  { id: 50, key: 'heather', name: 'Heather', h: 0.12, var: 0.35 }, // cuscini di erica viola-rosa
+  { id: 51, key: 'velvetmoss', name: 'Velvet Moss', h: 0.06, var: 0.35 }, // cuscini di muschio
+  { id: 52, key: 'frostlichen', name: 'Frostlichen', h: 0.044, var: 0.35 }, // rosette di lichene chiaro
+  { id: 53, key: 'marshsedge', name: 'Marsh Sedge', h: 0.2, var: 0.35 }, // carice arcuata delle paludi
+  { id: 54, key: 'dunegrass', name: 'Dune Grass', h: 0.16, var: 0.35 }, // ciuffi radi verde-azzurri delle sabbie
+  { id: 55, key: 'cinderwort', name: 'Cinderwort', h: 0.1, var: 0.35 }, // rosette scure con punte di brace
+  { id: 56, key: 'shimmergrass', name: 'Shimmergrass', h: 0.14, var: 0.35 }, // erba di vetro azzurro-viola
+  { id: 57, key: 'fiddlefern', name: 'Fiddlefern', h: 0.24, var: 0.35 }, // felce bassa con pastorali arrotolati
+  { id: 58, key: 'stonebutton', name: 'Stonebutton', h: 0.044, var: 0.3 }, // "sassi viventi" (tipo Lithops)
+  { id: 59, key: 'starmeadow', name: 'Starmeadow', h: 0.1, var: 0.35 } // fiori di prato minuti
 ].map((sp) => ({ ...sp, h: sp.h * FLORA_SCALE }))
 export const SPECIES_COUNT = SPECIES.length
 
@@ -176,6 +191,39 @@ const ABOVE_SNOW = FLORA[BIOME.SNOW]
 const NEAR_SNOW = rule(0.42, 0.4, 0.03, 0.3,
   { prismbloom: 0.25, snowpuff: 0.25, spirepine: 0.3, frostlantern: 0.2 },
   { frostlantern: 0.4, snowpuff: 0.35, prismbloom: 0.25 })
+
+// Strato basso (erba, muschi, licheni, fiori minuti): fino a GROUND_SLOTS
+// piante per cella, nei vuoti fra i boschi e, più rade, sotto le chiome.
+// gd: probabilità per posto nelle radure.
+const ground = (rl, gd, mix) => {
+  rl.gd = gd
+  rl.ground = W(mix)
+}
+const G = (b, gd, mix) => ground(FLORA[b], gd, mix)
+G(BIOME.RAINFOREST, 0.7, { fiddlefern: 0.45, glowclover: 0.3, velvetmoss: 0.25 })
+G(BIOME.TEMPERATE_FOREST, 0.75, { meadowgrass: 0.3, glowclover: 0.25, velvetmoss: 0.2, starmeadow: 0.15, fiddlefern: 0.1 })
+G(BIOME.BOREAL_FOREST, 0.7, { velvetmoss: 0.4, heather: 0.3, meadowgrass: 0.15, frostlichen: 0.15 })
+G(BIOME.GRASSLAND, 0.9, { meadowgrass: 0.55, starmeadow: 0.25, glowclover: 0.2 })
+G(BIOME.SAVANNA, 0.85, { goldplume: 0.7, meadowgrass: 0.15, dunegrass: 0.15 })
+G(BIOME.SHRUBLAND, 0.75, { heather: 0.45, goldplume: 0.3, meadowgrass: 0.25 })
+G(BIOME.WETLAND, 0.85, { marshsedge: 0.55, glowclover: 0.25, velvetmoss: 0.2 })
+G(BIOME.SWAMP, 0.8, { marshsedge: 0.5, fiddlefern: 0.25, velvetmoss: 0.25 })
+G(BIOME.DESERT, 0.3, { stonebutton: 0.55, dunegrass: 0.45 })
+G(BIOME.SEMI_DESERT, 0.55, { goldplume: 0.4, dunegrass: 0.35, stonebutton: 0.25 })
+G(BIOME.BADLANDS, 0.35, { stonebutton: 0.5, dunegrass: 0.3, cinderwort: 0.2 })
+G(BIOME.SALT_FLAT, 0.18, { stonebutton: 0.7, dunegrass: 0.3 })
+G(BIOME.BEACH, 0.45, { dunegrass: 0.8, meadowgrass: 0.2 })
+G(BIOME.ALPINE_MEADOW, 0.85, { starmeadow: 0.4, meadowgrass: 0.25, heather: 0.2, frostlichen: 0.15 })
+G(BIOME.TUNDRA, 0.8, { frostlichen: 0.35, velvetmoss: 0.3, heather: 0.25, meadowgrass: 0.1 })
+G(BIOME.ICE, 0.12, { frostlichen: 1 })
+G(BIOME.SNOW, 0.16, { frostlichen: 1 })
+G(BIOME.ROCK, 0.35, { frostlichen: 0.6, stonebutton: 0.4 })
+G(BIOME.VOLCANIC, 0.4, { cinderwort: 0.75, stonebutton: 0.25 })
+G(BIOME.LAVA_FIELD, 0.3, { cinderwort: 0.8, stonebutton: 0.2 })
+G(BIOME.SCORCHED, 0.55, { cinderwort: 0.55, meadowgrass: 0.25, goldplume: 0.2 })
+G(BIOME.CRYSTAL_VALLEY, 0.7, { shimmergrass: 0.7, frostlichen: 0.15, velvetmoss: 0.15 })
+ground(NEAR_SNOW, 0.6, { frostlichen: 0.4, heather: 0.3, starmeadow: 0.3 })
+const GROUND_SLOTS = 3
 
 // ------------------------------------------------------- griglia e LOD
 export const VEG_MIN_LEVEL = 4 // tile di ~625 km: le piante 3D si vedono da ~2500 km di quota
@@ -281,8 +329,8 @@ export function vegCover(face, u, v, biome, seed, hM, absLat) {
   let r = FLORA[biome]
   if (hM !== undefined && hM > 0) {
     const snowLine = SNOW_LINE_BASE - absLat * SNOW_LINE_LAT
-    if (hM > snowLine + 150) r = ABOVE_SNOW
-    else if (hM > snowLine - 450 && r && r.d > 0.3) r = NEAR_SNOW
+    if (hM > liftRelief(snowLine + 150)) r = ABOVE_SNOW
+    else if (hM > liftRelief(snowLine - 450) && r && r.d > 0.3) r = NEAR_SNOW
   }
   if (!r || r.tree <= 0) return 0
   const m = macchia(face, (u + 1) / CELL_UV, (v + 1) / CELL_UV, seed)
@@ -325,10 +373,15 @@ export function placeVegetation(t) {
 
   for (let cj = cj0; cj <= cj1; cj++) {
     for (let ci = ci0; ci <= ci1; ci++) {
-      const rank = hash4(face, ci, cj, seed)
+     // posto 0: la pianta della cella (alberi, cespugli, fiori); posti 1..N:
+     // lo strato basso (erba, muschi), con sali diversi negli hash
+     for (let slot = 0; slot <= GROUND_SLOTS; slot++) {
+      const salt = slot * 1013
+      const low = slot > 0
+      const rank = hash4(face, ci, cj, seed + salt)
       if (rank >= rankCut) continue
-      const jx = hash4(face, ci, cj, seed + 11)
-      const jy = hash4(face, ci, cj, seed + 23)
+      const jx = hash4(face, ci, cj, seed + 11 + salt)
+      const jy = hash4(face, ci, cj, seed + 23 + salt)
       const cx = ci + 0.1 + 0.8 * jx
       const cy = cj + 0.1 + 0.8 * jy
       const u = cx * CELL_UV - 1
@@ -371,7 +424,8 @@ export function placeVegetation(t) {
       // lagune delle paludi: acqua aperta, solo qualche pianta galleggiante
       const inPond = marsh && pondField(face, cx, cy, seed) > POND_OPEN
       let r = FLORA[b]
-      if (inPond && !(r && r.pond && hash4(face, ci, cj, seed + 37) < 0.09)) continue
+      if (inPond && (low || !(r && r.pond && hash4(face, ci, cj, seed + 37) < 0.09))) continue
+      if (low && (sea || b === BIOME.RIVER || b === BIOME.LAKE)) continue
       cubeFaceDir(face, u, v, dir)
       if (sea) {
         if (h > -15 || h < -1800) continue
@@ -379,21 +433,22 @@ export function placeVegetation(t) {
       } else {
         const absLat = Math.abs(Math.asin(Math.max(-1, Math.min(1, dir.y))) * 57.29578)
         const snowLine = SNOW_LINE_BASE - absLat * SNOW_LINE_LAT
-        if (h > snowLine + 150) r = ABOVE_SNOW
-        else if (h > snowLine - 450 && r && r.d > 0.3) r = NEAR_SNOW
+        if (h > liftRelief(snowLine + 150)) r = ABOVE_SNOW
+        else if (h > liftRelief(snowLine - 450) && r && r.d > 0.3) r = NEAR_SNOW
       }
-      if (!r) continue
+      if (!r || (low && !r.ground)) continue
 
       // macchia: bosco fitto nel cuore, rado al margine, radure quasi spoglie
       const m = macchia(face, cx, cy, seed)
       const [edge, core] = woodland(m, r.cover)
-      const p = r.sparse * (1 - edge) + edge * r.d * (0.4 + 0.6 * core)
-      if (!inPond && hash4(face, ci, cj, seed + 37) >= p) continue
+      // strato basso: pieno nelle radure, più rado sotto le chiome fitte
+      const p = low ? r.gd * (1 - 0.55 * edge * core) : r.sparse * (1 - edge) + edge * r.d * (0.4 + 0.6 * core)
+      if (!inPond && hash4(face, ci, cj, seed + 37 + salt) >= p) continue
 
       // specie: nel bosco il mix del bosco, nelle radure quello delle radure
       const inWood = hash4(face, ci, cj, seed + 41) < edge
-      const mix = inPond && r.pond ? r.pond : inWood ? r.mix : r.open
-      let pick = hash4(face, ci, cj, seed + 53)
+      const mix = low ? r.ground : inPond && r.pond ? r.pond : inWood ? r.mix : r.open
+      let pick = hash4(face, ci, cj, seed + 53 + salt)
       let sp = mix[0][0]
       for (let k = 0; k < mix.length; k++) {
         if (pick < mix[k][1]) {
@@ -408,12 +463,12 @@ export function placeVegetation(t) {
       if (sea && (sp === S.saltroot || sp === S.tidelotus) && h < -110) sp = S.coralfan
 
       const spec = SPECIES[sp]
-      const hv = hash4(face, ci, cj, seed + 71)
+      const hv = hash4(face, ci, cj, seed + 71 + salt)
       // taglia: varia per specie, cresce verso il cuore del bosco; qualche
       // raro esemplare secolare molto più grande
       let size = spec.h * (1 - spec.var + 2 * spec.var * hv)
-      if (!sea) size *= 0.8 + 0.35 * core
-      if (hash4(face, ci, cj, seed + 83) < 0.035) size *= 1.55
+      if (!sea && !low) size *= 0.8 + 0.35 * core
+      if (!low && hash4(face, ci, cj, seed + 83) < 0.035) size *= 1.55
       const rEff = rankFor(rank, size)
       if (rEff >= keep) continue
 
@@ -435,10 +490,11 @@ export function placeVegetation(t) {
       pos[n * 3 + 2] = dir.z * SCENE_RADIUS
       attr[n * 5] = sea ? 0 : Math.max(h, 0) * 0.001
       attr[n * 5 + 1] = size
-      attr[n * 5 + 2] = hash4(face, ci, cj, seed + 89) * Math.PI * 2
-      attr[n * 5 + 3] = hash4(face, ci, cj, seed + 97)
+      attr[n * 5 + 2] = hash4(face, ci, cj, seed + 89 + salt) * Math.PI * 2
+      attr[n * 5 + 3] = hash4(face, ci, cj, seed + 97 + salt)
       attr[n * 5 + 4] = rEff
       n++
+     }
     }
   }
   if (n === 0) return null
@@ -468,6 +524,7 @@ export function biomeFlora(biome) {
   add(r.mix, r.cover, 'woods')
   add(r.open, (1 - r.cover) * 0.6, 'clearings')
   add(r.pond, 0.12, 'lagoons')
+  add(r.ground, 0.3, 'ground')
   const out = [...acc.values()]
   const tot = out.reduce((a, e) => a + e.w, 0) || 1
   for (const e of out) e.w /= tot
