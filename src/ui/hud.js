@@ -73,9 +73,9 @@ export function createHud({ planet, nations, onSave, onHome, onZoomIn, onZoomOut
     el.biome.textContent = name
     el.temp.textContent = sample.temp.toFixed(0) + ' °C'
     if (el.nation && nations) {
-      // lakes and rivers belong to the nation: "international waters" only at sea
+      // laghi e fiumi appartengono alla terra: "open sea" solo in mare
       const onLand = sample.height >= 0
-      el.nation.textContent = onLand ? nations.atLatLon(lat, lon).title : 'international waters'
+      el.nation.textContent = onLand ? nations.atLatLon(lat, lon).title : 'open sea'
     }
   }
 

@@ -120,7 +120,7 @@ cumuli di neve e basalto spaccato.
 
 ## Nazioni
 
-La terraferma (~44% del pianeta, con quattro terre nuove negli oceani più vuoti: una grande terra boreale, una australe e due grandi isole paludose) è divisa in 76 regni dai nomi inventati di sapore medievale (es. "Kingdom of Wendmere", "Duchy of Merrowdale"): il rango dipende dall'estensione del regno. Avvicinandosi
+La terraferma (~44% del pianeta, con quattro terre nuove negli oceani più vuoti: una grande terra boreale, una australe e due grandi isole paludose) è divisa in 76 regni dai nomi inventati di sapore medievale (es. Wendmere, Merrowdale): solo nomi, senza ranghi né sovrani, perché il pianeta non è ancora abitato (nel riquadro in basso la voce è "Land", e in mare "open sea"). Avvicinandosi
 (sotto i ~7000 km) compaiono i nomi, ancorati a punti fissi del territorio: restano fermi sul
 terreno anche durante zoom e spostamenti. I confini sono una linea scura
 tratteggiata su un alone chiaro, leggibile da vicino e anche dallo spazio. L'HUD descrive il punto

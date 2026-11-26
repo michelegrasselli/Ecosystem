@@ -66,22 +66,6 @@ const NAMES = [
   'Thornwaite', 'Uthermoor', 'Vauclère', 'Wolfreach', 'Yarnwick', 'Ambermoor'
 ]
 
-/**
- * Rango del regno in base all'estensione (posizione in classifica, come
- * frazione del numero di regni): il più vasto è un impero, poi regni,
- * granducati, ducati… fino alle contee e baronie più piccole.
- */
-const RANKS = [
-  [0.02, 'Empire of'],
-  [0.12, 'Kingdom of'],
-  [0.22, 'Grand Duchy of'],
-  [0.38, 'Duchy of'],
-  [0.5, 'Principality of'],
-  [0.65, 'March of'],
-  [0.82, 'County of'],
-  [Infinity, 'Barony of']
-]
-
 /** Deformazione delle coordinate (identica a `nationWarp` in GLSL). */
 export function nationWarp(x, y, z, out) {
   let wx = x
@@ -339,13 +323,9 @@ export class Nations {
       n.center = best
     }
 
-    // rango (titolo) per estensione della terraferma
-    const bySize = this.list.slice().sort((a, b) => b.share - a.share)
-    bySize.forEach((n, i) => {
-      const rank = RANKS.find(([upTo]) => i < Math.max(1, Math.round(upTo * bySize.length)))[1]
-      n.rank = rank
-      n.title = rank + ' ' + n.name
-    })
+    // Elyra non è abitata: niente ranghi (regni, ducati, baronie…); il titolo
+    // di una terra è solo il suo nome
+    for (const n of this.list) n.title = n.name
 
     // array per lo shader
     this.uniformSeeds = new Float32Array(MAX_NATIONS * 3)

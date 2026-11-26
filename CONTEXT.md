@@ -88,7 +88,7 @@ dall'utente: **va guardata a ogni nuova richiesta** e resta sempre nei commit.
 | R12 | Navigazione: mouse = ruota, **Ctrl + mouse = traslazione rigida** (anche rotella premuta) | **fatto** |
 | R13 | Interfaccia (HUD, caricamento, messaggi) **in inglese** | **fatto** |
 | R14 | Scopo: mondo **fantasy-medievale** creato da zero (prima il pianeta, poi le creature, poi i villaggi) con **comportamenti propri** per ogni elemento | pianeta **fatto**; creature e villaggi da fare |
-| R15 | Nomi dei regni **di sapore medievale** (originali), con un rango (Impero, Regno, Ducato, Marca, Contea…) | **fatto** |
+| R15 | Nomi delle terre **di sapore medievale** (originali). Il rango (Impero, Regno, Ducato, Marca, Contea…) è stato tolto: Elyra non è abitata, nel riquadro e sulla mappa compare solo il nome | **fatto** |
 | R16 | **Niente notte, per ora**: tutto il pianeta inquadrato è illuminato | **fatto** (sole che segue la camera) |
 | R17 | Acqua (mari, fiumi, laghi) con **animazioni semplici di movimento** visibili zoomando, **già da lontano** | **fatto** (da ~3000 km di quota) |
 | R18 | Risoluzione **molto più alta**, soprattutto durante lo zoom, **senza perdere fluidità** | **fatto** (mai sotto la risoluzione nativa, frame 30-40% più leggero) |
@@ -368,8 +368,7 @@ Generazione **procedurale deterministica** da un seed:
   0.65 × quella normale) e un generatore a parte: Nethercombe (regno boreale), Hollinsgard,
   Greycairn e Maldane (terra australe), Corvennes (isola paludosa del nord). L'isola del sud
   resta divisa fra Brannoch e Vauclère. Lo 0.25% dei campioni di terraferma storica cambia
-  regno lungo i nuovi confini e alcuni ranghi slittano di un gradino (dipendono dalla
-  classifica delle superfici).
+  regno lungo i nuovi confini.
 - **Catene montuose**: *ridged multifractal* mascherato da un campo di "orogenesi" esteso
   (anche vicino alle coste), più un secondo sistema di sierre minori (ridged a scala ~700
   km). Dentro le catene, **massicci e valli come in una catena vera**: ridged a 6 ottave
