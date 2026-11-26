@@ -36,9 +36,12 @@ export class Planet {
       options.continentThreshold ?? CONTINENT_THRESHOLD
     this._out = createSample()
     this._vf = createFeatureSample()
-    // vulcani: lista fissa, scelta dopo che il resto del pianeta esiste
+    // vulcani: lista fissa, scelta dopo che il resto del pianeta esiste.
+    // Si scelgono SENZA le terre nuove, così restano quelli degli episodi.
     this.volcanoes = []
+    this.newLands = false
     this.volcanoes = pickVolcanoes(this)
+    this.newLands = options.newLands ?? true
   }
 
   /** Crea un oggetto riutilizzabile per il campionamento. */
@@ -106,6 +109,30 @@ export class Planet {
     }
 
     const threshold = this.continentThreshold
+
+    // Terre nuove (NEW_LANDS): masse aggiunte negli oceani più vuoti, lontane
+    // dalle coste esistenti, così la geografia di prima non cambia. Bordo
+    // inciso dalle stesse scale di rumore dei continenti; attorno, una
+    // piattaforma di acque basse.
+    let newWet = 0
+    let newFlat = 0
+    if (this.newLands) {
+      for (let k = 0; k < NEW_LANDS.length; k++) {
+        const L = NEW_LANDS[k]
+        const dot = px * L.x + py * L.y + pz * L.z
+        if (dot < L.cosOuter) continue
+        const ang = Math.acos(Math.min(1, dot))
+        const e = ang / L.r + (med * 0.55 + fine * 0.5) * L.rough
+        const k1 = smoothstep(1.2, 0.5, e)
+        const target = threshold - 0.07 + k1 * (0.22 + 0.16 * med + L.lift)
+        if (target > cont) cont = lerp(cont, target, smoothstep(1.45, 1.05, e))
+        if (k1 > 0) {
+          newWet = Math.max(newWet, L.wet * k1)
+          newFlat = Math.max(newFlat, L.flat * k1)
+        }
+      }
+    }
+
     let height
     // quota "di fondo" del continente, che varia su migliaia di km: è il pelo
     // dell'acqua dei laghi (quasi piatto sulla scala di un lago)
@@ -144,7 +171,8 @@ export class Planet {
       // minori a scala più piccola: più dislivelli e più cime sopra le nevi.
       const orogeny = smoothstep(-0.14, 0.36, fbm(n, px * 2.7 - 13.1, py * 2.7 + 5.3, pz * 2.7 - 9.7, 3))
       const ridge = ridged(n, px * 3.6 + 2.4, py * 3.6 - 8.8, pz * 3.6 + 4.2, 5)
-      const inland = smoothstep(0.01, 0.16, l)
+      // le terre nuove "piatte" (paludi) hanno poche montagne
+      const inland = smoothstep(0.01, 0.16, l) * (1 - newFlat)
       height += ridge * orogeny * inland * MAX_MOUNTAIN_HEIGHT
       const sierraBelt = smoothstep(0.05, 0.4, fbm(n, px * 5.2 + 7.7, py * 5.2 - 1.9, pz * 5.2 + 3.3, 2))
       const sierra = ridged(n, px * 9.0 - 4.4, py * 9.0 + 6.1, pz * 9.0 - 2.8, 4)
@@ -407,7 +435,8 @@ export class Planet {
       bandEq * 0.11 +
       bandMid * 0.06 -
       bandDry * 0.38 +
-      smoothstep(1900, 0, height) * 0.12
+      smoothstep(1900, 0, height) * 0.12 +
+      newWet
     moist = clamp(moist, 0, 1)
 
     // ---------- 7. Calotte glaciali ----------
@@ -712,6 +741,30 @@ export class Planet {
     return this.sample(cl * Math.cos(lo), Math.sin(la), -cl * Math.sin(lo), quality, out)
   }
 }
+
+/**
+ * Terre nuove, aggiunte negli oceani più vuoti (passo "Terre nuove" di
+ * sample()). Centro lat/lon e raggio r in gradi; rough = quanto il rumore
+ * incide la costa, lift = quota in più, wet = umidità in più (le terre basse
+ * e umide dei mari caldi diventano paludi), flat = quanto si spengono le
+ * montagne (1 = pianura).
+ */
+export const NEW_LANDS = [
+  // grande terra del nord-ovest, fra i due continenti boreali
+  { lat: 48, lon: -88, r: 13, rough: 0.55, lift: 0.04, wet: 0.08, flat: 0 },
+  // terra australe fra i due oceani del sud
+  { lat: -35, lon: 92, r: 12, rough: 0.55, lift: 0.04, wet: 0.1, flat: 0.2 },
+  // grandi isole basse e paludose dei mari caldi
+  { lat: 24, lon: 84, r: 9.5, rough: 0.5, lift: -0.04, wet: 0.42, flat: 0.85 },
+  { lat: -21, lon: -88, r: 9.5, rough: 0.45, lift: 0.08, wet: 0.42, flat: 0.85 }
+].map((L) => {
+  const la = degToRad(L.lat)
+  const lo = degToRad(L.lon)
+  const cl = Math.cos(la)
+  const r = degToRad(L.r)
+  // stessa convenzione di sampleLatLon
+  return { ...L, x: cl * Math.cos(lo), y: Math.sin(la), z: -cl * Math.sin(lo), r, cosOuter: Math.cos(r * 2.3) }
+})
 
 /** Vulcani: quanti, raggio del cono (sfera unitaria: 0.01 = 64 km, quindi 40-95 km), cratere. */
 const VOLC_LAND = 30

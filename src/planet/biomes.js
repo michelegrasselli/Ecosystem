@@ -133,8 +133,8 @@ export function classifyLandBiome(height, temp, moist, absLat, variety = 0, crys
   // biomi "rari" dentro le fasce climatiche, guidati dal rumore di varietà
   // paludi: vaste pianure basse e umide, acquitrini tra la vegetazione (lo
   // shader disegna le pozze). Calde: Swamp con alberi; temperate: Marshland
-  if (temp > 15 && moist > 0.4 && height < 650 && variety > -0.1) return BIOME.SWAMP
-  if (temp > 1 && moist > 0.37 && height < 700 && variety > -0.06) return BIOME.WETLAND
+  if (temp > 15 && moist > 0.37 && height < 700 && variety > -0.2) return BIOME.SWAMP
+  if (temp > 1 && moist > 0.34 && height < 750 && variety > -0.16) return BIOME.WETLAND
   if (temp > 14 && moist < 0.32 && moist > 0.08 && height > 450 && variety > 0.18) {
     return BIOME.BADLANDS
   }

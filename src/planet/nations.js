@@ -9,7 +9,7 @@
 //
 // Deterministico: stesso seed del pianeta → stesse nazioni e stessi nomi.
 
-import { Planet } from './planet.js'
+import { Planet, NEW_LANDS } from './planet.js'
 import { cubeFaceDir } from '../render/tileData.js'
 
 /** Numero massimo di nazioni (dimensione dell'array uniform nello shader). */
@@ -150,12 +150,17 @@ export class Nations {
     }
 
     // --- capoluoghi: punti di terraferma ben distanziati ---
+    // Prima i regni storici, scelti sulla terraferma SENZA le terre nuove
+    // (planet.newLands): così nomi e capitali restano quelli degli episodi.
     const N = 6000
     const cand = []
+    const hadNew = planet.newLands
+    planet.newLands = false
     for (let i = 0; i < N; i++) {
       const p = fibonacciSphere(N, i)
       if (isLand(p[0], p[1], p[2])) cand.push(p)
     }
+    planet.newLands = hadNew
     for (let i = cand.length - 1; i > 0; i--) {
       const j = Math.floor(rand() * (i + 1))
       const t = cand[i]
@@ -174,6 +179,38 @@ export class Nations {
         }
       }
       if (ok) seeds.push(p)
+    }
+    const oldCount = seeds.length
+    // Poi i regni delle terre nuove: capoluoghi sui punti diventati terra,
+    // con un generatore a parte (non sposta quello dei nomi storici)
+    if (hadNew) {
+      const rand2 = mulberry32((planet.seed ^ 0x7a3c19d5) >>> 0)
+      const fresh = []
+      const was = Planet.createSample()
+      for (let i = 0; i < N; i++) {
+        const p = fibonacciSphere(N, i)
+        // solo nel cuore delle terre nuove: un capoluogo vicino alla costa
+        // di un regno storico gli ruberebbe territorio
+        if (!NEW_LANDS.some((L) => p[0] * L.x + p[1] * L.y + p[2] * L.z > Math.cos(L.r * 0.62))) continue
+        if (!isLand(p[0], p[1], p[2])) continue
+        planet.newLands = false
+        planet.sample(p[0], p[1], p[2], 1, was)
+        planet.newLands = true
+        if (was.height < 0 || was.water >= 0.5) fresh.push(p)
+      }
+      for (let i = fresh.length - 1; i > 0; i--) {
+        const j = Math.floor(rand2() * (i + 1))
+        const t = fresh[i]
+        fresh[i] = fresh[j]
+        fresh[j] = t
+      }
+      // distanza minima più corta (~1300 km): anche le isole grandi, vicine
+      // a un regno storico, hanno un regno proprio
+      const freshDot = Math.cos(MIN_SEPARATION * 0.65)
+      for (const p of fresh) {
+        if (seeds.length >= MAX_NATIONS) break
+        if (seeds.every((s) => p[0] * s[0] + p[1] * s[1] + p[2] * s[2] <= freshDot)) seeds.push(p)
+      }
     }
     // i capoluoghi vengono confrontati nello spazio deformato
     this.seeds = seeds.map((p) => {

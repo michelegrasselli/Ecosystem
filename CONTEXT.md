@@ -83,7 +83,7 @@ dall'utente: **va guardata a ogni nuova richiesta** e resta sempre nei commit.
 | R7 | Tasto **poco visibile "Salva"** che salva lo stato del pianeta | **fatto** |
 | R8 | Lo stato salvato viene **ricaricato automaticamente** al prossimo avvio | **fatto** (verificato) |
 | R9 | Repository GitHub con **commit + push dopo ogni prompt** | attivo |
-| R10 | Terraferma divisa in **nazioni** con nomi inventati (medievali), nomi visibili avvicinandosi e confini **ben visibili** (inchiostro scuro tratteggiato su alone chiaro), regni **fitti** | **fatto** (79 regni) |
+| R10 | Terraferma divisa in **nazioni** con nomi inventati (medievali), nomi visibili avvicinandosi e confini **ben visibili** (inchiostro scuro tratteggiato su alone chiaro), regni **fitti** | **fatto** (76 regni: 71 storici + 5 delle terre nuove) |
 | R11 | Texture **realistiche da vicino** (erba, acqua che scorre, sabbia, neve) e **transizioni morbide** tra biomi | **fatto** |
 | R12 | Navigazione: mouse = ruota, **Ctrl + mouse = traslazione rigida** (anche rotella premuta) | **fatto** |
 | R13 | Interfaccia (HUD, caricamento, messaggi) **in inglese** | **fatto** |
@@ -354,6 +354,22 @@ Generazione **procedurale deterministica** da un seed:
   (variabile `VARIANTS` per provare combinazioni): ~41% di terre emerse in 13 masse
   (la maggiore ~37%, poi 17%, 16%, 5%…), né un supercontinente né un arcipelago. Con un
   warp più forte (0.3) le coste diventavano "pennellate" stirate.
+- **Terre nuove** (`NEW_LANDS` in `planet.js`, opzione `newLands`, default acceso): quattro
+  masse aggiunte negli oceani più vuoti, lontane dalle coste esistenti, così la geografia di
+  prima (e i luoghi degli episodi I–V) non cambia: una grande terra boreale (48°N 88°W,
+  raggio 13°), una terra australe (35°S 92°E, 12°) e due grandi isole basse e paludose dei
+  mari caldi (24°N 84°E e 21°S 88°W, 9.5°). Ogni voce alza il campo di continentalità con un
+  profilo radiale inciso dal rumore `med`/`fine` (bordo organico, piattaforma di acque
+  basse attorno) e ha `lift` (quota), `wet` (umidità in più) e `flat` (spegne montagne e
+  colline: le isole paludose sono pianure). Le terre emerse passano da ~41% a ~44%.
+  **Vulcani e regni storici si scelgono con `newLands = false`** (stessi vulcani, stessi 71
+  regni con stessi nomi e capitali); poi `Nations` aggiunge i regni delle terre nuove, con
+  capoluoghi solo nel cuore di ogni terra nuova (entro 0.62 r dal centro, distanza minima
+  0.65 × quella normale) e un generatore a parte: Nethercombe (regno boreale), Hollinsgard,
+  Greycairn e Maldane (terra australe), Corvennes (isola paludosa del nord). L'isola del sud
+  resta divisa fra Brannoch e Vauclère. Lo 0.25% dei campioni di terraferma storica cambia
+  regno lungo i nuovi confini e alcuni ranghi slittano di un gradino (dipendono dalla
+  classifica delle superfici).
 - **Catene montuose**: *ridged multifractal* mascherato da un campo di "orogenesi" esteso
   (anche vicino alle coste), più un secondo sistema di sierre minori (ridged a scala ~700
   km). Dentro le catene, **massicci e valli come in una catena vera**: ridged a 6 ottave
@@ -545,7 +561,9 @@ con uno script Node: non c'è pdftoppm e caricare pdf.js da CDN nella pagina non
 #### Terreno da vicino e paludi (`render/materials.js`)
 
 - **Paludi**: due biomi, **Swamp** (caldo: cipressi, salici, funghi e campane luminose) e
-  **Marshland** (temperato: canneti, felci-piuma, funghetti), su pianure fino a ~650 m;
+  **Marshland** (temperato: canneti, felci-piuma, funghetti), su pianure fino a ~700-750 m
+  (soglie allargate: Swamp umidità > 0.37 e varietà > -0.2, Marshland > 0.34 e > -0.16;
+  insieme ~8.3% della superficie del pianeta, prima ~5.9%);
   insieme ~14% delle terre. Le **lagune** vengono da un campo di rumore calcolato sulla CPU
   (`marshPond` in `flora.js`, scale ~30/10/4 km, passato per vertice in `aEco.w`): lo
   stesso campo apre l'acqua nello shader e tiene le piante fuori dalle lagune, così la
@@ -695,7 +713,7 @@ Strumento di produzione dei video della serie (§1.1). Tutto nel browser, niente
   di titolo finale).
   **Canone di Elyra** (da rispettare nei prossimi episodi):
   - dal generatore: raggio 6371 km, ~43% di terre emerse, vetta più alta ~9.5 km, fondali
-    fino a ~7 km, 71 regni (nazioni), 46 vulcani di cui 21 attivi, due calotte di ghiaccio;
+    fino a ~7 km, 71 regni (nazioni) negli episodi I–V, 76 dopo le terre nuove, 46 vulcani di cui 21 attivi, due calotte di ghiaccio;
   - inventati, volutamente diversi dalla Terra: **nessuna luna**, eppure le maree salgono
     ("though nothing pulls them"); tutto è più leggero e la pioggia cade lenta (gravità
     bassa); di notte gli **oceani brillano** debolmente e nessuno sa perché; il ghiaccio dei
@@ -904,7 +922,7 @@ Misure fatte sul seed `20261116` (laptop medio, Chrome):
 
 | Voce | Valore |
 |------|--------|
-| Terre emerse | ~41% (+ banchisa polare) |
+| Terre emerse | ~44% (+ banchisa polare; ~41% senza le terre nuove) |
 | Quota massima | ~8400 m |
 | Masse continentali | 13 (37%, 17%, 16%, 5% della terraferma, poi minori) |
 | Laghi | ~0.7% della superficie |
