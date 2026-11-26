@@ -6,8 +6,9 @@
 //   "fotografia" renderizzata (ui/plantPortrait.js), tipo di pianta, altezza,
 //   habitat, tossicità, caratteristiche, storia e curiosità.
 // - Fermando il mouse sul nome di una nazione compare la sua pagina:
-//   superficie, popolazione, biomi, clima, vicini, stemma e storia
-//   (ui/nationLore.js).
+//   superficie, biomi, clima, rilievi, acque, vulcani, terre vicine e storia
+//   naturale (ui/nationLore.js). Elyra non è ancora abitata: niente
+//   popolazione, capitali, sovrani o città.
 // Le finestre restano aperte finché il mouse ci sta sopra; si chiudono quando
 // il mouse si allontana sul pianeta, a ogni clic o zoom e con Esc.
 
@@ -24,17 +25,16 @@ const CLOSE_PX = 40
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 const css = (c) => `rgb(${Math.round(c[0] * 255)}, ${Math.round(c[1] * 255)}, ${Math.round(c[2] * 255)})`
 
-function fmtKm(km) {
-  if (km >= 10) return Math.round(km) + ' km'
-  if (km >= 1) return km.toFixed(1) + ' km'
-  return Math.round(km * 1000) + ' m'
+/**
+ * Altezza di una pianta. Sul pianeta le piante sono giganti (FLORA_SCALE, in
+ * km di scena) perché si vedano da centinaia di km; nell'enciclopedia lo
+ * stesso numero si legge in METRI, l'altezza "vera" di Elyra.
+ */
+function fmtHeight(h) {
+  if (h >= 10) return Math.round(h) + ' m'
+  return h.toFixed(1) + ' m'
 }
 const fmtInt = (v) => Math.round(v).toLocaleString('en-US')
-function fmtPop(v) {
-  if (v >= 1e6) return (v / 1e6).toFixed(1) + ' million'
-  if (v >= 1e3) return Math.round(v / 1e3) + ' thousand'
-  return fmtInt(v)
-}
 function fmtLatLon(p) {
   if (!p) return ''
   const f = (v, a, b) => Math.abs(v).toFixed(1) + '°' + (v >= 0 ? a : b)
@@ -149,7 +149,7 @@ export function createEncyclopedia({ canvas, planet, nationLabels, nations, pick
         <span class="enc-dot" style="background:${info.tone || '#9c9'}"></span>
         <span class="enc-row-name">${esc(sp.name)}${rare}</span>
         <span class="enc-row-kind">${esc(info.kind || '')}</span>
-        <span class="enc-row-h">${fmtKm(sp.h)}</span>
+        <span class="enc-row-h">${fmtHeight(sp.h)}</span>
       </div>`
     }
     panel.innerHTML = `
@@ -180,8 +180,8 @@ export function createEncyclopedia({ canvas, planet, nationLabels, nations, pick
       <div class="enc-title">${esc(sp.name)}</div>
       <div class="enc-kind">${esc(info.kind || '')}</div>
       <div class="enc-facts">
-        <div><span>Height</span><b>${fmtKm(lo)} – ${fmtKm(hi)}</b></div>
-        <div><span>Ancient specimens</span><b>up to ${fmtKm(hi * 1.55)}</b></div>
+        <div><span>Height</span><b>${fmtHeight(lo)} – ${fmtHeight(hi)}</b></div>
+        <div><span>Ancient specimens</span><b>up to ${fmtHeight(hi * 1.55)}</b></div>
         <div><span>Habitat</span><b>${esc(habitats || '—')}</b></div>
         <div><span>Toxicity</span><b class="enc-tox enc-tox${tox[0]}">${TOXIC_LEVEL[tox[0]]}</b></div>
       </div>
@@ -227,27 +227,29 @@ export function createEncyclopedia({ canvas, planet, nationLabels, nations, pick
       .slice(0, 6)
       .map((b) => `<div class="enc-brow"><span class="enc-dot" style="background:${PALETTE[b.biome] ? css(PALETTE[b.biome]) : '#777'}"></span>${esc(b.name)}<b>${Math.round(b.share * 100)}%</b></div>`)
       .join('')
-    const nb = d.neighbors.slice(0, 6).map((x) => esc(x.name)).join(', ') || 'none: an island realm'
+    const nb = d.neighbors.slice(0, 6).map((x) => esc(x.name)).join(', ') || 'none: an island surrounded by sea'
+    const main = PALETTE[d.mainBiome] ? css(PALETTE[d.mainBiome]) : '#6a8'
+    const volc = d.volcanoes ? `${d.volcanoes}${d.active ? ` · ${d.active} with a lava lake` : ''}` : 'none'
     panel.innerHTML = `
       <div class="enc-head">
-        <span class="enc-shield" style="background:linear-gradient(135deg, ${d.banner.c1} 0 50%, ${d.banner.c2} 50% 100%)"></span>
-        <div><div class="enc-kicker">Encyclopedia of Elyra · Nation</div><div class="enc-title">${esc(n.name)}</div>
-        <div class="enc-kind">${esc(n.rank.replace(/ of$/, ''))} · founded in ${d.founded} of the Long Dawn</div></div></div>
+        <span class="enc-swatch" style="background:${main}"></span>
+        <div><div class="enc-kicker">Encyclopedia of Elyra · Land</div><div class="enc-title">${esc(n.name)}</div>
+        <div class="enc-kind">${d.newLand ? 'One of the young lands' : esc(d.biomes[0]?.name || 'Land')} · uninhabited</div></div></div>
       <div class="enc-facts">
         <div><span>Area</span><b>${fmtInt(d.area)} km² · ${(d.landShare * 100).toFixed(1)}% of the land</b></div>
-        <div><span>Population</span><b>about ${fmtPop(d.population)}</b></div>
-        <div><span>Capital</span><b>${esc(d.capital)} <i>${fmtLatLon(d.capitalAt)}</i></b></div>
-        <div><span>Ruler</span><b>${esc(d.ruler)}, House of ${esc(d.dynasty)}</b></div>
-        <div><span>Highest point</span><b>${fmtInt(d.peak)} m</b></div>
-        <div><span>Mean temperature</span><b>${d.temp.toFixed(0)} °C</b></div>
-        <div><span>Banner</span><b>${esc(d.banner.text)}</b></div>
-        <div><span>Neighbours</span><b>${nb}</b></div>
+        <div><span>Heart of the land</span><b>${fmtLatLon(d.centerAt)}</b></div>
+        <div><span>Highest point</span><b>${fmtInt(d.peak)} m <i>${fmtLatLon(d.peakAt)}</i></b></div>
+        <div><span>Temperature</span><b>mean ${d.temp.toFixed(0)} °C · ${d.tempMin.toFixed(0)} to ${d.tempMax.toFixed(0)} °C</b></div>
+        <div><span>Rivers and lakes</span><b>${(d.waterShare * 100).toFixed(1)}% of its surface</b></div>
+        <div><span>Volcanoes</span><b>${volc}</b></div>
+        <div><span>First Seed</span><b>${d.newLand ? 'seeds arrived later, on wind and sea' : d.seedKm < 600 ? 'it began here' : `reached after about ${d.weeks} week${d.weeks > 1 ? 's' : ''}`}</b></div>
+        <div><span>Bordering lands</span><b>${nb}</b></div>
       </div>
       <h4>Biomes</h4>
       <div class="enc-bar">${bar}</div>
       <div class="enc-blist">${blist}</div>
       <h4>Typical flora</h4><p>${esc(d.flora.join(', '))}</p>
-      <h4>History</h4>${d.history.map((t) => `<p>${esc(t)}</p>`).join('')}`
+      <h4>Natural history</h4>${d.history.map((t) => `<p>${esc(t)}</p>`).join('')}`
     panel.classList.add('enc-nation')
     place(panel, anchor.x, anchor.y)
   }

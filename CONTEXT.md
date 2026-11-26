@@ -599,9 +599,17 @@ dimensioni, biomi, un po' di storia.
 - **Bioma**: nome, descrizione breve (`BIOME_INFO`), specie ordinate per frequenza
   (`biomeFlora` in flora.js unisce bosco, radure e lagune; le rare hanno un'etichetta),
   con tipo e altezza tipica.
+- **Altezze in metri**: sul pianeta le piante sono giganti (`SPECIES.h` in km di scena, già
+  moltiplicato per `FLORA_SCALE`) perché si vedano da centinaia di km; l'enciclopedia legge
+  lo stesso numero in **metri** (`fmtHeight`): Elderoak 8 m, Canopy Titan 22 m, Reedmace
+  1.6 m. È voluto che sia fuori scala rispetto al rilievo del pianeta.
 - **Pianta**: testi in `PLANT_INFO` (in inglese come il resto dell'interfaccia): tipo,
-  tossicità su 4 livelli con nota, caratteristiche, storia, curiosità; altezza e habitat
-  calcolati da `SPECIES` e `speciesHabitats`.
+  tossicità su 4 livelli con nota, caratteristiche, storia naturale, curiosità; altezza e
+  habitat calcolati da `SPECIES` e `speciesHabitats`.
+- **Elyra non è abitata**: nessun testo dell'enciclopedia nomina persone, villaggi, città,
+  regni, sovrani, mestieri o usi delle piante da parte di qualcuno (e nemmeno animali: nel
+  canone non ci sono ancora). Le storie sono storia naturale legata agli episodi: First
+  Breath, la Ninety-Year Heartbeat (Episodio IV), la First Seed (Episodio V).
 - **Foto** (`plantPortrait`): un secondo canvas WebGL fuori schermo, una volta per specie
   (~40 ms, poi in cache). Scenario per habitat (foresta, giungla, palude, mare, ghiacci,
   fuoco, deserto, cristalli, prati): cielo crepuscolare in gradiente con bagliore, colline
@@ -609,14 +617,20 @@ dimensioni, biomi, un po' di storia.
   parte sommersa. Accanto crescono specie dello stesso bioma **in proporzione** e due
   esemplari sullo sfondo. Luce principale calda, controluce colorato, poi una seconda
   passata con le sole parti luminose, sfocata e sommata (alone/bloom), e vignettatura.
-- **Nazione** (`nationInfo`, calcolata alla prima apertura): superficie (campioni di
-  terraferma della nazione sulla sfera), quota delle terre, popolazione stimata dalla
-  densità per bioma, capitale (il capoluogo, con le coordinate), punto più alto,
-  temperatura media, biomi con barra a colori, vicini (punti vicini al confine), flora
-  tipica, stemma e una storia inventata in 5 paragrafi: fondazione, eventi legati ai biomi
-  dominanti (foreste, nord, pianure, montagne, ghiacci, deserti, paludi, vulcani, cristalli,
-  coste), sovrano attuale con il titolo del rango (imperatore, re, margravio, barone...).
-  Tutto deterministico dal seed e dall'id della nazione.
+- **Terra** (le "nazioni" della carta; `nationInfo`, calcolata alla prima apertura): pagina
+  "Encyclopedia of Elyra · Land", senza popolazione, capitale, sovrano, stemma o rango.
+  Superficie (campioni di terraferma sulla sfera) e quota delle terre, cuore della terra
+  (baricentro), punto più alto con coordinate, temperatura media/minima/massima, quota di
+  fiumi e laghi, vulcani (quelli di `planet.volcanoes` dentro i confini, con lago di lava),
+  quando arrivò l'onda verde della First Seed (distanza dalla costa di Esmerault, 8.75°S
+  66.65°E: il giro del pianeta = 13 settimane, "in a single season"), terre confinanti,
+  biomi con barra a colori, flora tipica e una **storia naturale** in 5 paragrafi: origine
+  geologica secondo il gruppo di biomi dominante, il fuoco (i suoi vulcani o la cenere
+  portata dal vento), l'arrivo delle piante con la specie pioniera (la più piccola fra le
+  più comuni del bioma principale), com'è oggi, una chiusa ("No foot has ever walked here.
+  Not yet."). Le **terre nuove** (più di metà dei punti era mare senza `NEW_LANDS`) hanno
+  una storia propria: emerse dopo il fuoco, mai toccate dalla cenere, piante arrivate col
+  vento e le correnti. Tutto deterministico dal seed e dall'id della terra.
 
 ### 3.4 Persistenza (R7 + R8)
 

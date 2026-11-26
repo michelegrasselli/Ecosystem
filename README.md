@@ -111,9 +111,10 @@ dall'acqua con una campana viola e tentacoli luminosi.
 
 **Enciclopedia**: fermando il mouse per un attimo su un punto del pianeta compare l'elenco
 delle piante del bioma; passando su una pianta si apre la sua pagina, con una "foto"
-renderizzata in stile fantasy, tipo, altezza, habitat, tossicità, caratteristiche, storia e
-curiosità. Fermando il mouse sul nome di una nazione compare la sua pagina: superficie,
-popolazione, capitale, biomi, vicini, stemma e storia. Da vicino le piante sono in 3D e si
+renderizzata in stile fantasy, tipo, altezza (in metri), habitat, tossicità, caratteristiche,
+storia naturale e curiosità. Fermando il mouse sul nome di una nazione compare la pagina
+della sua terra: superficie, rilievi, clima, acque, vulcani, biomi, terre confinanti e
+storia naturale. Elyra non è ancora abitata: niente popolazione, capitali o sovrani. Da vicino le piante sono in 3D e si
 muovono nel vento, e il terreno mostra erba pettinata dal vento, increspature della sabbia,
 cumuli di neve e basalto spaccato.
 
